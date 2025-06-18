@@ -3,12 +3,12 @@ let map;
 let measuring = false;
 let measureMarkers = [];
 let totalDistance = 0;
-let localTrailsLayer;
 let baseLayers = {};
 let activeBaseLayer = 'osm';
 let searchHistory = [];
 let favorites = [];
 let activeRoutes = [];
+let highlightLayer; // For highlighting clicked etappes
 
 // Route definitions - alleen de 4 gewenste LAW routes
 const routeDefinitions = {
@@ -109,6 +109,10 @@ function initMap() {
         'satellite': satelliteLayer,
         'terrain': terrainLayer
     };
+
+    // Initialize highlight layer for etappe highlighting
+    highlightLayer = L.layerGroup();
+    highlightLayer.addTo(map);
 
     // Setup event listeners
     setupEventListeners();
@@ -224,7 +228,9 @@ function getRouteInfoAtPoint(latlng, point) {
             .then(response => response.json())
             .then(data => {
                 if (data.features && data.features.length > 0) {
-                    showRouteInfoPopup(data.features[0], latlng);
+                    const feature = data.features[0];
+                    showRouteInfoPopup(feature, latlng);
+                    highlightEtappe(feature, route);
                 }
             })
             .catch(error => {
@@ -233,7 +239,115 @@ function getRouteInfoAtPoint(latlng, point) {
     });
 }
 
-// Show route info popup with detailed information
+// Highlight the clicked etappe
+function highlightEtappe(feature, route) {
+    // Clear previous highlights
+    highlightLayer.clearLayers();
+    
+    // Get the specific etappe geometry if available
+    if (feature.geometry && feature.geometry.coordinates) {
+        let coordinates;
+        
+        // Handle different geometry types
+        if (feature.geometry.type === 'LineString') {
+            coordinates = feature.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+        } else if (feature.geometry.type === 'MultiLineString') {
+            // For MultiLineString, take the first line
+            coordinates = feature.geometry.coordinates[0].map(coord => [coord[1], coord[0]]);
+        }
+        
+        if (coordinates && coordinates.length > 0) {
+            // Create highlight polyline
+            const highlightLine = L.polyline(coordinates, {
+                color: '#ffff00',        // Bright yellow
+                weight: 8,               // Thick line
+                opacity: 0.9,
+                dashArray: '10, 5',      // Dashed line
+                zIndex: 1000             // On top of everything
+            });
+            
+            highlightLayer.addLayer(highlightLine);
+            
+            // Add pulsing effect with circle markers at start/end
+            if (coordinates.length >= 2) {
+                const startPoint = coordinates[0];
+                const endPoint = coordinates[coordinates.length - 1];
+                
+                // Start marker
+                const startMarker = L.circleMarker(startPoint, {
+                    radius: 12,
+                    color: '#ff6b35',
+                    fillColor: '#ff6b35',
+                    fillOpacity: 0.8,
+                    weight: 3,
+                    className: 'pulse-marker'
+                });
+                
+                // End marker  
+                const endMarker = L.circleMarker(endPoint, {
+                    radius: 12,
+                    color: '#dc2626',
+                    fillColor: '#dc2626', 
+                    fillOpacity: 0.8,
+                    weight: 3,
+                    className: 'pulse-marker'
+                });
+                
+                highlightLayer.addLayer(startMarker);
+                highlightLayer.addLayer(endMarker);
+            }
+            
+            console.log('Highlighted etappe:', feature.properties.etappnaam || feature.properties.etappe || 'Onbekende etappe');
+            
+            // Auto-remove highlight after 10 seconds
+            setTimeout(() => {
+                clearEtappeHighlight();
+            }, 10000);
+        }
+    } else {
+        // Fallback: create a WFS request to get the exact geometry of this etappe
+        getEtappeGeometry(feature.properties, route);
+    }
+}
+
+// Get exact etappe geometry via WFS for better highlighting
+function getEtappeGeometry(properties, route) {
+    // Build filter for this specific etappe
+    let filter = `<Filter><PropertyIsEqualTo><PropertyName>lawnaam</PropertyName><Literal>${route.filter}</Literal></PropertyIsEqualTo>`;
+    
+    // Add etappe filter if available
+    if (properties.etappe) {
+        filter += `<And><PropertyIsEqualTo><PropertyName>etappe</PropertyName><Literal>${properties.etappe}</Literal></PropertyIsEqualTo></And>`;
+    }
+    filter += `</Filter>`;
+    
+    const wfsUrl = 'https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wfs/v1_0' +
+                   '?service=WFS' +
+                   '&version=2.0.0' +
+                   '&request=GetFeature' +
+                   '&typeName=' + route.layerName +
+                   '&outputFormat=application/json' +
+                   '&filter=' + encodeURIComponent(filter) +
+                   '&maxFeatures=1';
+    
+    fetch(wfsUrl)
+        .then(response => response.json())
+        .then(data => {
+            if (data.features && data.features.length > 0) {
+                highlightEtappe(data.features[0], route);
+            }
+        })
+        .catch(error => {
+            console.log('Could not get detailed etappe geometry:', error);
+        });
+}
+
+// Clear etappe highlight
+function clearEtappeHighlight() {
+    highlightLayer.clearLayers();
+}
+
+// Show route info popup with detailed information and highlight controls
 function showRouteInfoPopup(feature, latlng) {
     const props = feature.properties;
     
@@ -251,8 +365,13 @@ function showRouteInfoPopup(feature, latlng) {
                 ${props.fuid ? `<p><strong>Route ID:</strong> ${props.fuid}</p>` : ''}
                 ${props.samenvatting ? `<p><strong>Beschrijving:</strong> ${props.samenvatting}</p>` : ''}
             </div>
-            <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b;">
-                💡 Klik op andere route delen voor meer etappe informatie
+            <div style="margin-top: 12px; display: flex; gap: 8px;">
+                <button onclick="clearEtappeHighlight()" style="flex: 1; background: #64748b; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                    <i class="fas fa-eye-slash"></i> Verberg highlight
+                </button>
+            </div>
+            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b;">
+                💡 Etappe wordt 10 seconden gehighlight in <span style="color: #ffff00; background: #333; padding: 1px 4px;">geel</span>
             </div>
         </div>
     `;
