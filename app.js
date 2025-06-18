@@ -158,7 +158,58 @@ function setupEventListeners() {
         } else {
             // Check if any route layers are active and get route info
             if (activeRoutes.length > 0) {
-                getRouteInfoAtPoint(e.latlng, e.containerPoint);
+                let foundRoute = false;
+                
+                activeRoutes.forEach(route => {
+                    const bounds = map.getBounds();
+                    const size = map.getSize();
+                    
+                    const params = {
+                        request: 'GetFeatureInfo',
+                        service: 'WMS',
+                        srs: 'EPSG:4326',
+                        version: '1.1.0',
+                        format: 'image/png',
+                        bbox: `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`,
+                        height: size.y,
+                        width: size.x,
+                        layers: route.layerName,
+                        query_layers: route.layerName,
+                        info_format: 'application/json',
+                        x: Math.round(e.containerPoint.x),
+                        y: Math.round(e.containerPoint.y)
+                    };
+                    
+                    const url = 'https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0?' + 
+                                Object.keys(params).map(key => `${key}=${encodeURIComponent(params[key])}`).join('&');
+                    
+                    fetch(url)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.features && data.features.length > 0) {
+                                // Filter features to only include the specific route we're displaying
+                                const filteredFeatures = data.features.filter(feature => 
+                                    feature.properties.lawnaam === route.filter
+                                );
+                                
+                                if (filteredFeatures.length > 0) {
+                                    foundRoute = true;
+                                    showRouteInfoInPanel(filteredFeatures[0], e.latlng);
+                                    highlightEtappe(filteredFeatures[0], route);
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            console.log('Geen route info beschikbaar voor', route.name);
+                        });
+                });
+                
+                // If no route was clicked after a short delay, clear highlights
+                setTimeout(() => {
+                    if (!foundRoute) {
+                        clearEtappeHighlight();
+                    }
+                }, 100);
             }
         }
     });
@@ -388,7 +439,7 @@ function showRouteInfoInPanel(feature, latlng) {
                     Verberg highlight
                 </button>
                 <div class="highlight-timer">
-                    Highlight 30 sec zichtbaar
+                    Klik elders om te verbergen
                 </div>
             </div>
         </div>
@@ -430,45 +481,55 @@ function highlightEtappe(feature, route) {
         }
         
         if (coordinates && coordinates.length > 0) {
-            // Main highlight line
+            // Main highlight line with gradient effect
             const highlightLine = L.polyline(coordinates, {
-                color: '#fbbf24',
-                weight: 10,
+                color: '#f59e0b',
+                weight: 12,
                 opacity: 0.9,
-                zIndex: 1000
+                zIndex: 1000,
+                className: 'highlight-route'
             });
             
+            // Add a subtle shadow line
+            const shadowLine = L.polyline(coordinates, {
+                color: '#92400e',
+                weight: 14,
+                opacity: 0.3,
+                zIndex: 999
+            });
+            
+            highlightLayer.addLayer(shadowLine);
             highlightLayer.addLayer(highlightLine);
             
             // Add kilometer markers along the route
             addKilometerMarkers(coordinates);
             
-            // Start/end markers
+            // Start/end markers with better styling
             if (coordinates.length >= 2) {
                 const startPoint = coordinates[0];
                 const endPoint = coordinates[coordinates.length - 1];
                 
                 const startMarker = L.circleMarker(startPoint, {
-                    radius: 12,
-                    color: '#059669',
-                    fillColor: '#10b981',
-                    fillOpacity: 0.9,
+                    radius: 14,
+                    color: '#ffffff',
+                    fillColor: '#059669',
+                    fillOpacity: 1,
                     weight: 3,
-                    className: 'pulse-marker'
-                }).bindTooltip('🏁 START', { 
+                    zIndex: 1002
+                }).bindTooltip('🚶‍♂️ START', { 
                     permanent: false, 
                     direction: 'top',
                     className: 'start-tooltip'
                 });
                 
                 const endMarker = L.circleMarker(endPoint, {
-                    radius: 12,
-                    color: '#dc2626',
-                    fillColor: '#ef4444',
-                    fillOpacity: 0.9,
+                    radius: 14,
+                    color: '#ffffff',
+                    fillColor: '#dc2626',
+                    fillOpacity: 1,
                     weight: 3,
-                    className: 'pulse-marker'
-                }).bindTooltip('🏆 EINDE', { 
+                    zIndex: 1002
+                }).bindTooltip('🏁 FINISH', { 
                     permanent: false, 
                     direction: 'top',
                     className: 'end-tooltip'
@@ -479,16 +540,11 @@ function highlightEtappe(feature, route) {
             }
             
             console.log('✨ Highlighted etappe:', feature.properties.etappnaam || feature.properties.etappe || 'Onbekende etappe');
-            
-            // Auto-remove after 30 seconds
-            setTimeout(() => {
-                clearEtappeHighlight();
-            }, 30000);
         }
     }
 }
 
-// Add kilometer markers along the route
+// Add kilometer markers along the route with better styling
 function addKilometerMarkers(coordinates) {
     if (coordinates.length < 2) return;
     
@@ -508,19 +564,20 @@ function addKilometerMarkers(coordinates) {
             const kmPosition = interpolatePosition(coordinates, kmCount * 1000);
             
             if (kmPosition) {
-                // Create kilometer marker
+                // Create kilometer marker with nature-inspired colors
                 const kmMarker = L.circleMarker(kmPosition, {
-                    radius: 8,
+                    radius: 10,
                     color: '#ffffff',
-                    fillColor: '#3b82f6',
+                    fillColor: '#7c3aed',
                     fillOpacity: 1,
                     weight: 2,
-                    zIndex: 1001
+                    zIndex: 1001,
+                    className: 'km-marker'
                 }).bindTooltip(`${kmCount} km`, { 
                     permanent: true, 
                     direction: 'top',
                     className: 'km-tooltip',
-                    offset: [0, -10]
+                    offset: [0, -15]
                 });
                 
                 highlightLayer.addLayer(kmMarker);
