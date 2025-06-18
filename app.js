@@ -1,31 +1,4 @@
-// Add route to map with correct CQL filter
-function addRouteToMap(routeData) {
-    // Use simple CQL filter syntax that PDOK supports
-    const cqlFilter = `lawnaam = '${routeData.filter}'`;
-    
-    console.log('Route Data:', routeData);
-    console.log('CQL Filter:', cqlFilter);
-    
-    const wmsLayer = L.tileLayer.wms('https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0', {
-        layers: routeData.layerName,
-        format: 'image/png',
-        transparent: true,
-        attribution: '© PDOK Wandelnet',
-        opacity: 0.8,
-        zIndex: 10,
-        version: '1.1.1', // Use same version as your working URL
-        cql_filter: cqlFilter // Back to cql_filter, not filter
-    });
-    
-    // Debug: log the actual URL being generated
-    wmsLayer.on('loading', function() {
-        console.log('WMS Layer URL:', this._url);
-    });
-    
-    wmsLayer.addTo(map);
-    routeData.layer = wmsLayer;
-    
-    show// Global variables
+// Global variables
 let map;
 let measuring = false;
 let measureMarkers = [];
@@ -80,6 +53,50 @@ const routeDefinitions = {
         { value: 'STV1', name: 'Stad te voet Amsterdam', filter: 'Amsterdam' },
         { value: 'STV2', name: 'Stad te voet Rotterdam', filter: 'Rotterdam' }
     ]
+};
+
+// Custom WMS Layer class to handle PDOK XML filtering
+L.TileLayer.PDOKFilter = L.TileLayer.WMS.extend({
+    initialize: function (url, options) {
+        L.TileLayer.WMS.prototype.initialize.call(this, url, options);
+    },
+    
+    getTileUrl: function (coords) {
+        var bbox = this._tileCoordsToNwSe(coords);
+        var crs = this.options.crs || this.options.srs || 'EPSG:3857';
+        
+        var url = this._url + '?';
+        var params = {
+            'REQUEST': 'GetMap',
+            'SERVICE': 'WMS',
+            'VERSION': '1.3.0',
+            'FORMAT': 'image/png',
+            'STYLES': '',
+            'TRANSPARENT': 'true',
+            'LAYERS': this.options.layers,
+            'CRS': crs,
+            'WIDTH': this.options.tileSize || 256,
+            'HEIGHT': this.options.tileSize || 256,
+            'BBOX': bbox.join(',')
+        };
+        
+        // Add XML filter if provided
+        if (this.options.xmlFilter) {
+            params['FILTER'] = this.options.xmlFilter;
+        }
+        
+        // Build query string
+        var queryString = Object.keys(params).map(key => 
+            encodeURIComponent(key) + '=' + encodeURIComponent(params[key])
+        ).join('&');
+        
+        return url + queryString;
+    }
+});
+
+// Helper function to create PDOK filtered layer
+L.tileLayer.pdokFilter = function (url, options) {
+    return new L.TileLayer.PDOKFilter(url, options);
 };
 
 // Initialize map
@@ -305,7 +322,8 @@ function showSelectedRoute() {
         name: routeName,
         type: routeType,
         filter: routeFilter,
-        layerName: layerName
+        layerName: layerName,
+        value: selectedOption.value
     };
     
     // Add to active routes
@@ -318,32 +336,30 @@ function showSelectedRoute() {
     updateActiveRoutesDisplay();
     updateRouteDetails(routeData);
     resetRouteForm();
-    
-    showNotification(`Route "${routeName}" toegevoegd`, 'success');
 }
 
-// Add route to map with exact CQL filtering
+// Add route to map with PDOK XML filtering exactly like your URL
 function addRouteToMap(routeData) {
-    // Use exact match for lawnaam field
-    let cqlFilter = `lawnaam = '${routeData.filter}'`;
+    // Create XML filter exactly like your working URL
+    const xmlFilter = `<Filter><PropertyIsEqualTo><PropertyName>lawnaam</PropertyName><Literal>${routeData.filter}</Literal></PropertyIsEqualTo></Filter>`;
     
-    console.log('CQL Filter:', cqlFilter); // Debug log
+    console.log('Adding route:', routeData.name);
+    console.log('XML Filter:', xmlFilter);
     
-    const wmsLayer = L.tileLayer.wms('https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0', {
+    // Use custom PDOK filter layer
+    const wmsLayer = L.tileLayer.pdokFilter('https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0', {
         layers: routeData.layerName,
-        format: 'image/png',
-        transparent: true,
+        xmlFilter: xmlFilter,
         attribution: '© PDOK Wandelnet',
         opacity: 0.8,
         zIndex: 10,
-        cql_filter: cqlFilter
+        tileSize: 256
     });
     
     wmsLayer.addTo(map);
     routeData.layer = wmsLayer;
     
-    // Show success notification with filter info
-    showNotification(`Route "${routeData.name}" toegevoegd met filter: ${cqlFilter}`, 'success');
+    showNotification(`Route "${routeData.name}" toegevoegd met filter: ${routeData.filter}`, 'success');
 }
 
 // Get layer name
