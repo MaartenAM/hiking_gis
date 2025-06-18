@@ -155,6 +155,8 @@ function setupEventListeners() {
     map.on('click', function(e) {
         if (measuring) {
             addMeasurePoint(e.latlng);
+        } else if (isRouteMeasuring) {
+            addRouteMeasurePoint(e.latlng);
         } else {
             // Check if any route layers are active and get route info
             if (activeRoutes.length > 0) {
@@ -434,28 +436,29 @@ function showRouteInfoInPanel(feature, latlng) {
             ` : ''}
             
             <div class="route-trace-section">
-                <h4><i class="fas fa-shoe-prints"></i> Route Traceren</h4>
+                <h4><i class="fas fa-ruler-horizontal"></i> Route Afstand Meten</h4>
                 <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
-                    Volg de route live en zie je voortgang in real-time
+                    Klik op punten langs de route om exact de afstand te meten
                 </p>
-                <button class="trace-btn" onclick="startRouteTrace()" id="traceBtn">
-                    <i class="fas fa-play"></i>
-                    Start Tracering
+                <button class="trace-btn" onclick="startRouteMeasuring()" id="measureRouteBtn">
+                    <i class="fas fa-crosshairs"></i>
+                    Start Route Meting
                 </button>
-                <div class="trace-progress" id="traceProgress" style="display: none;">
+                <div class="trace-progress" id="routeMeasureDisplay" style="display: none;">
                     <div class="trace-stats">
                         <div class="trace-stat">
-                            <span class="trace-value" id="traceDistance">0.0</span>
-                            <span class="trace-label">km gelopen</span>
+                            <span class="trace-value" id="routeMeasureDistance">0.0</span>
+                            <span class="trace-label">km gemeten</span>
                         </div>
                         <div class="trace-stat">
-                            <span class="trace-value" id="tracePercentage">0</span>
-                            <span class="trace-label">% voltooid</span>
+                            <span class="trace-value" id="routeMeasurePoints">0</span>
+                            <span class="trace-label">meetpunten</span>
                         </div>
                     </div>
-                    <div class="trace-progress-bar">
-                        <div class="trace-progress-fill" id="traceProgressFill"></div>
-                    </div>
+                    <button class="clear-measure-btn" onclick="clearRouteMeasurements()">
+                        <i class="fas fa-trash"></i>
+                        Wis metingen
+                    </button>
                 </div>
             </div>
             
@@ -645,160 +648,134 @@ function interpolatePosition(coordinates, targetDistance) {
     return null;
 }
 
-// Route tracing functionality
-let isTracing = false;
-let tracedPath = [];
-let traceLayer;
-let userLocationMarker;
-let totalRouteDistance = 0;
-let tracedDistance = 0;
-let watchId = null;
+// Route measuring functionality
+let isRouteMeasuring = false;
+let routeMeasurePoints = [];
+let routeMeasureMarkers = [];
+let routeMeasureLines = [];
+let routeMeasureDistance = 0;
 
-// Start route tracing
-function startRouteTrace() {
+// Start route measuring
+function startRouteMeasuring() {
     if (!window.currentRouteCoords) {
-        showNotification('Geen route geselecteerd om te traceren', 'error');
+        showNotification('Geen route geselecteerd om te meten', 'error');
         return;
     }
     
-    if (isTracing) {
-        stopRouteTrace();
+    if (isRouteMeasuring) {
+        stopRouteMeasuring();
         return;
     }
     
-    // Check if geolocation is available
-    if (!navigator.geolocation) {
-        showNotification('Geolocation wordt niet ondersteund', 'error');
-        return;
-    }
-    
-    isTracing = true;
-    tracedPath = [];
-    tracedDistance = 0;
-    
-    // Calculate total route distance
-    calculateTotalRouteDistance();
-    
-    // Initialize trace layer
-    if (traceLayer) {
-        map.removeLayer(traceLayer);
-    }
-    traceLayer = L.layerGroup().addTo(map);
+    isRouteMeasuring = true;
+    routeMeasurePoints = [];
+    routeMeasureMarkers = [];
+    routeMeasureLines = [];
+    routeMeasureDistance = 0;
     
     // Update UI
-    const traceBtn = document.getElementById('traceBtn');
-    const traceProgress = document.getElementById('traceProgress');
+    const measureBtn = document.getElementById('measureRouteBtn');
+    const measureDisplay = document.getElementById('routeMeasureDisplay');
     
-    traceBtn.innerHTML = '<i class="fas fa-stop"></i> Stop Tracering';
-    traceBtn.classList.add('active');
-    traceProgress.style.display = 'block';
+    measureBtn.innerHTML = '<i class="fas fa-stop"></i> Stop Meting';
+    measureBtn.classList.add('active');
+    measureDisplay.style.display = 'block';
     
-    // Start watching user location
-    watchId = navigator.geolocation.watchPosition(
-        updateUserPosition,
-        handleLocationError,
-        {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 5000
-        }
-    );
+    // Change cursor to crosshair
+    map.getContainer().style.cursor = 'crosshair';
     
-    showNotification('Route tracering gestart! Begin met wandelen', 'success');
+    showNotification('Klik op punten langs de route om afstand te meten', 'info');
 }
 
-// Stop route tracing
-function stopRouteTrace() {
-    isTracing = false;
-    
-    if (watchId) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-    }
+// Stop route measuring
+function stopRouteMeasuring() {
+    isRouteMeasuring = false;
     
     // Update UI
-    const traceBtn = document.getElementById('traceBtn');
-    const traceProgress = document.getElementById('traceProgress');
+    const measureBtn = document.getElementById('measureRouteBtn');
     
-    if (traceBtn) {
-        traceBtn.innerHTML = '<i class="fas fa-play"></i> Start Tracering';
-        traceBtn.classList.remove('active');
+    if (measureBtn) {
+        measureBtn.innerHTML = '<i class="fas fa-crosshairs"></i> Start Route Meting';
+        measureBtn.classList.remove('active');
     }
     
-    if (traceProgress) {
-        traceProgress.style.display = 'none';
-    }
+    // Reset cursor
+    map.getContainer().style.cursor = '';
     
-    // Clean up markers and paths
-    if (traceLayer) {
-        map.removeLayer(traceLayer);
-    }
-    
-    showNotification('Route tracering gestopt', 'info');
+    showNotification('Route meting gestopt', 'info');
 }
 
-// Update user position during tracing
-function updateUserPosition(position) {
-    if (!isTracing) return;
+// Add route measure point
+function addRouteMeasurePoint(latlng) {
+    if (!isRouteMeasuring) return;
     
-    const lat = position.coords.latitude;
-    const lng = position.coords.longitude;
-    const accuracy = position.coords.accuracy;
+    // Find closest point on the route
+    const closestPoint = findClosestPointOnRoute(latlng);
+    if (!closestPoint) return;
     
-    // Add current position to traced path
-    tracedPath.push([lat, lng]);
+    // Add point to array
+    routeMeasurePoints.push(closestPoint);
     
-    // Update user location marker
-    if (userLocationMarker) {
-        traceLayer.removeLayer(userLocationMarker);
-    }
-    
-    userLocationMarker = L.circleMarker([lat, lng], {
-        radius: 8,
+    // Create marker
+    const marker = L.circleMarker(closestPoint, {
+        radius: 6,
         color: '#ffffff',
-        fillColor: '#3b82f6',
+        fillColor: '#f59e0b',
         fillOpacity: 1,
-        weight: 3
-    }).bindTooltip(`📍 Huidige locatie<br>Nauwkeurigheid: ${accuracy.toFixed(0)}m`, {
-        permanent: false,
-        direction: 'top'
+        weight: 2,
+        zIndex: 1002
+    }).bindTooltip(`Punt ${routeMeasurePoints.length}`, {
+        permanent: true,
+        direction: 'top',
+        className: 'measure-point-tooltip'
     });
     
-    traceLayer.addLayer(userLocationMarker);
+    marker.addTo(map);
+    routeMeasureMarkers.push(marker);
     
-    // Draw traced path
-    if (tracedPath.length > 1) {
-        // Remove old path
-        traceLayer.eachLayer(layer => {
-            if (layer instanceof L.Polyline && !(layer instanceof L.CircleMarker)) {
-                traceLayer.removeLayer(layer);
-            }
-        });
+    // Draw line if we have more than one point
+    if (routeMeasurePoints.length > 1) {
+        const prevPoint = routeMeasurePoints[routeMeasurePoints.length - 2];
+        const currentPoint = closestPoint;
         
-        // Add new traced path
-        const tracedLine = L.polyline(tracedPath, {
-            color: '#3b82f6',
-            weight: 5,
+        const line = L.polyline([prevPoint, currentPoint], {
+            color: '#f59e0b',
+            weight: 4,
             opacity: 0.8,
-            dashArray: '10, 10'
+            dashArray: '8, 8'
         });
         
-        traceLayer.addLayer(tracedLine);
+        line.addTo(map);
+        routeMeasureLines.push(line);
         
-        // Calculate traced distance
-        calculateTracedDistance();
-        updateTraceProgress();
+        // Calculate distance for this segment
+        const segmentDistance = L.latLng(prevPoint).distanceTo(L.latLng(currentPoint));
+        routeMeasureDistance += segmentDistance;
+        
+        // Add distance label at midpoint
+        const midLat = (prevPoint[0] + currentPoint[0]) / 2;
+        const midLng = (prevPoint[1] + currentPoint[1]) / 2;
+        
+        const distanceLabel = L.marker([midLat, midLng], {
+            icon: L.divIcon({
+                className: 'distance-label',
+                html: `<div class="distance-text">${(segmentDistance / 1000).toFixed(1)}km</div>`,
+                iconSize: [60, 20],
+                iconAnchor: [30, 10]
+            }),
+            zIndex: 1003
+        });
+        
+        distanceLabel.addTo(map);
+        routeMeasureMarkers.push(distanceLabel);
     }
     
-    // Center map on user location
-    map.setView([lat, lng], map.getZoom());
+    updateRouteMeasureDisplay();
 }
 
-// Calculate total route distance
-function calculateTotalRouteDistance() {
-    totalRouteDistance = 0;
-    
-    if (!window.currentRouteCoords) return;
+// Find closest point on route
+function findClosestPointOnRoute(clickedLatLng) {
+    if (!window.currentRouteCoords) return null;
     
     let coordinates;
     if (window.currentRouteGeometry.type === 'LineString') {
@@ -807,72 +784,87 @@ function calculateTotalRouteDistance() {
         coordinates = window.currentRouteCoords[0].map(coord => [coord[1], coord[0]]);
     }
     
-    if (coordinates && coordinates.length > 1) {
-        for (let i = 1; i < coordinates.length; i++) {
-            const prevPoint = L.latLng(coordinates[i-1]);
-            const currentPoint = L.latLng(coordinates[i]);
-            totalRouteDistance += prevPoint.distanceTo(currentPoint);
+    if (!coordinates || coordinates.length < 2) return null;
+    
+    let closestPoint = null;
+    let minDistance = Infinity;
+    
+    // Check each line segment of the route
+    for (let i = 0; i < coordinates.length - 1; i++) {
+        const segmentStart = L.latLng(coordinates[i]);
+        const segmentEnd = L.latLng(coordinates[i + 1]);
+        
+        // Find closest point on this line segment
+        const closestOnSegment = getClosestPointOnLineSegment(clickedLatLng, segmentStart, segmentEnd);
+        const distance = clickedLatLng.distanceTo(closestOnSegment);
+        
+        if (distance < minDistance) {
+            minDistance = distance;
+            closestPoint = [closestOnSegment.lat, closestOnSegment.lng];
         }
     }
+    
+    // Only return point if it's reasonably close (within 100 meters)
+    return minDistance < 100 ? closestPoint : null;
 }
 
-// Calculate traced distance
-function calculateTracedDistance() {
-    tracedDistance = 0;
+// Get closest point on line segment
+function getClosestPointOnLineSegment(point, lineStart, lineEnd) {
+    const A = point.lat - lineStart.lat;
+    const B = point.lng - lineStart.lng;
+    const C = lineEnd.lat - lineStart.lat;
+    const D = lineEnd.lng - lineStart.lng;
     
-    if (tracedPath.length < 2) return;
+    const dot = A * C + B * D;
+    const lenSq = C * C + D * D;
     
-    for (let i = 1; i < tracedPath.length; i++) {
-        const prevPoint = L.latLng(tracedPath[i-1]);
-        const currentPoint = L.latLng(tracedPath[i]);
-        tracedDistance += prevPoint.distanceTo(currentPoint);
+    if (lenSq === 0) return lineStart;
+    
+    let param = dot / lenSq;
+    
+    if (param < 0) return lineStart;
+    if (param > 1) return lineEnd;
+    
+    return L.latLng(
+        lineStart.lat + param * C,
+        lineStart.lng + param * D
+    );
+}
+
+// Update route measure display
+function updateRouteMeasureDisplay() {
+    const distanceEl = document.getElementById('routeMeasureDistance');
+    const pointsEl = document.getElementById('routeMeasurePoints');
+    
+    if (distanceEl && pointsEl) {
+        distanceEl.textContent = (routeMeasureDistance / 1000).toFixed(1);
+        pointsEl.textContent = routeMeasurePoints.length;
     }
 }
 
-// Update trace progress display
-function updateTraceProgress() {
-    const traceDistanceEl = document.getElementById('traceDistance');
-    const tracePercentageEl = document.getElementById('tracePercentage');
-    const traceProgressFillEl = document.getElementById('traceProgressFill');
+// Clear route measurements
+function clearRouteMeasurements() {
+    // Remove all markers and lines
+    routeMeasureMarkers.forEach(marker => map.removeLayer(marker));
+    routeMeasureLines.forEach(line => map.removeLayer(line));
     
-    if (traceDistanceEl && tracePercentageEl && traceProgressFillEl) {
-        const distanceKm = (tracedDistance / 1000).toFixed(1);
-        const percentage = totalRouteDistance > 0 ? Math.min(100, (tracedDistance / totalRouteDistance) * 100) : 0;
-        
-        traceDistanceEl.textContent = distanceKm;
-        tracePercentageEl.textContent = percentage.toFixed(0);
-        traceProgressFillEl.style.width = percentage + '%';
-    }
-}
-
-// Handle location errors
-function handleLocationError(error) {
-    let message = 'Locatie fout: ';
-    switch(error.code) {
-        case error.PERMISSION_DENIED:
-            message += 'Toegang tot locatie geweigerd';
-            break;
-        case error.POSITION_UNAVAILABLE:
-            message += 'Locatie niet beschikbaar';
-            break;
-        case error.TIMEOUT:
-            message += 'Locatie timeout';
-            break;
-        default:
-            message += 'Onbekende fout';
-            break;
-    }
+    // Reset arrays and distance
+    routeMeasurePoints = [];
+    routeMeasureMarkers = [];
+    routeMeasureLines = [];
+    routeMeasureDistance = 0;
     
-    showNotification(message, 'error');
-    stopRouteTrace();
+    updateRouteMeasureDisplay();
+    showNotification('Route metingen gewist', 'info');
 }
 
 // Clear etappe highlight
 function clearEtappeHighlight() {
     highlightLayer.clearLayers();
-    // Stop tracing if active
-    if (isTracing) {
-        stopRouteTrace();
+    // Stop measuring if active
+    if (isRouteMeasuring) {
+        stopRouteMeasuring();
+        clearRouteMeasurements();
     }
     // Clear route info panel
     document.getElementById('routeInfoPanel').innerHTML = '<div class="empty-state">Geen etappe geselecteerd</div>';
