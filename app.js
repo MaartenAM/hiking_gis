@@ -10,19 +10,30 @@ let searchHistory = [];
 let favorites = [];
 let activeRoutes = [];
 
-// Route definitions
+// Route definitions with exact PDOK lawnaam values
 const routeDefinitions = {
     law: [
-        { value: 'LAW 1', name: 'LAW 1 - Noordzeeroute', filter: 'LAW 1' },
-        { value: 'LAW 2', name: 'LAW 2 - Pieterpad', filter: 'LAW 2' },
-        { value: 'LAW 3', name: 'LAW 3 - Pelgrimspad', filter: 'LAW 3' },
-        { value: 'LAW 4', name: 'LAW 4 - Zuiderzeepad', filter: 'LAW 4' },
-        { value: 'LAW 5', name: 'LAW 5 - Grenspad', filter: 'LAW 5' },
-        { value: 'LAW 6', name: 'LAW 6 - Krijtlandpad', filter: 'LAW 6' },
-        { value: 'LAW 7', name: 'LAW 7 - Boerenlandpad', filter: 'LAW 7' },
-        { value: 'LAW 8', name: 'LAW 8 - Waddenzeepad', filter: 'LAW 8' },
-        { value: 'LAW 9', name: 'LAW 9 - Kustpad', filter: 'LAW 9' },
-        { value: 'LAW 10', name: 'LAW 10 - Marskramerpad', filter: 'LAW 10' }
+        { value: 'LAW 1', name: 'LAW 1 - Noordzeeroute', filter: 'Noordzeeroute' },
+        { value: 'LAW 2', name: 'LAW 2 - Pieterpad', filter: 'Pieterpad' },
+        { value: 'LAW 3', name: 'LAW 3 - Pelgrimspad', filter: 'Pelgrimspad' },
+        { value: 'LAW 4', name: 'LAW 4 - Zuiderzeepad', filter: 'Zuiderzeepad' },
+        { value: 'LAW 5', name: 'LAW 5 - Grenspad', filter: 'Grenspad' },
+        { value: 'LAW 6', name: 'LAW 6 - Krijtlandpad', filter: 'Krijtlandpad' },
+        { value: 'LAW 7', name: 'LAW 7 - Boerenlandpad', filter: 'Boerenlandpad' },
+        { value: 'LAW 8', name: 'LAW 8 - Waddenzeepad', filter: 'Waddenzeepad' },
+        { value: 'LAW 9', name: 'LAW 9 - Kustpad', filter: 'Kustpad' },
+        { value: 'LAW 10', name: 'LAW 10 - Marskramerpad', filter: 'Marskramerpad' },
+        { value: 'LAW 11', name: 'LAW 11 - Veluwerandpad', filter: 'Veluwerandpad' },
+        { value: 'LAW 12', name: 'LAW 12 - Maaspad', filter: 'Maaspad' },
+        { value: 'LAW 13', name: 'LAW 13 - Streek-en Landschapsenpad', filter: 'Streek-en Landschapsenpad' },
+        { value: 'LAW 14', name: 'LAW 14 - Lauwersmeerpad', filter: 'Lauwersmeerpad' },
+        { value: 'LAW 15', name: 'LAW 15 - Smorenburgerpad', filter: 'Smorenburgerpad' },
+        { value: 'LAW 16', name: 'LAW 16 - Geuldal-Grenslandpad', filter: 'Geuldal-Grenslandpad' },
+        { value: 'LAW 17', name: 'LAW 17 - Deltapad', filter: 'Deltapad' },
+        { value: 'LAW 18', name: 'LAW 18 - Groot Frieslandpad', filter: 'Groot Frieslandpad' },
+        { value: 'LAW 19', name: 'LAW 19 - Oer-IJ pad', filter: 'Oer-IJ pad' },
+        { value: 'LAW 20', name: 'LAW 20 - Heuvellandroute', filter: 'Heuvellandroute' },
+        { value: 'LAW 21', name: 'LAW 21 - Kennemerland-Zaanse Schanspad', filter: 'Kennemerland-Zaanse Schanspad' }
     ],
     streekpaden: [
         { value: 'SP1', name: 'Streekpad Waterland', filter: 'Waterland' },
