@@ -854,46 +854,144 @@ body {
 
 /* Kilometer marker tooltips */
 .km-tooltip {
-    background: #3b82f6 !important;
+    background: linear-gradient(135deg, #7c3aed, #a855f7) !important;
     color: white !important;
     border: none !important;
-    border-radius: 4px !important;
+    border-radius: 6px !important;
     font-size: 11px !important;
-    font-weight: 600 !important;
-    padding: 4px 8px !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+    font-weight: 700 !important;
+    padding: 6px 10px !important;
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3) !important;
+    letter-spacing: 0.5px !important;
 }
 
 .km-tooltip::before {
-    border-top-color: #3b82f6 !important;
+    border-top-color: #7c3aed !important;
 }
 
 .start-tooltip {
-    background: #10b981 !important;
+    background: linear-gradient(135deg, #059669, #10b981) !important;
     color: white !important;
     border: none !important;
-    border-radius: 6px !important;
+    border-radius: 8px !important;
     font-size: 12px !important;
-    font-weight: 600 !important;
-    padding: 6px 10px !important;
+    font-weight: 700 !important;
+    padding: 8px 12px !important;
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3) !important;
 }
 
 .start-tooltip::before {
-    border-top-color: #10b981 !important;
+    border-top-color: #059669 !important;
 }
 
 .end-tooltip {
-    background: #ef4444 !important;
+    background: linear-gradient(135deg, #dc2626, #ef4444) !important;
     color: white !important;
     border: none !important;
-    border-radius: 6px !important;
+    border-radius: 8px !important;
     font-size: 12px !important;
-    font-weight: 600 !important;
-    padding: 6px 10px !important;
+    font-weight: 700 !important;
+    padding: 8px 12px !important;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3) !important;
 }
 
 .end-tooltip::before {
-    border-top-color: #ef4444 !important;
+    border-top-color: #dc2626 !important;
+}
+
+/* Highlight route animation */
+.highlight-route {
+    animation: routePulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes routePulse {
+    0% {
+        opacity: 0.8;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Kilometer marker animation */
+.km-marker {
+    animation: kmBounce 1s ease-out;
+}
+
+@keyframes kmBounce {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Improved route info panel */
+.route-info-card {
+    background: linear-gradient(135deg, var(--surface), var(--surface-elevated));
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: 24px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(10px);
+}
+
+.route-info-header {
+    background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
+    color: white;
+    padding: 20px;
+    border-radius: var(--radius-lg);
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-md);
+}
+
+.route-info-section {
+    margin-bottom: 20px;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--surface-elevated), var(--surface));
+    border-radius: var(--radius-lg);
+    border-left: 4px solid var(--accent-green);
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease;
+}
+
+.route-info-section:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.highlight-btn {
+    background: linear-gradient(135deg, var(--orange), var(--orange-hover));
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: var(--shadow-sm);
+}
+
+.highlight-btn:hover {
+    background: linear-gradient(135deg, var(--orange-hover), #d55a3a);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.highlight-btn.active {
+    background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
 }
 
 /* Responsive */
