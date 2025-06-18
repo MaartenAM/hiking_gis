@@ -434,64 +434,139 @@ body {
     text-align: center;
 }
 
-/* Info Instruction Styles */
-.info-instruction {
-    text-align: center;
-    padding: 24px 16px;
+/* Step-by-step interface */
+.step-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding: 16px;
+    background: var(--surface-elevated);
+    border-radius: var(--radius-lg);
+    border-left: 4px solid var(--accent-green);
+    transition: all 0.3s ease;
 }
 
-.instruction-icon {
-    width: 60px;
-    height: 60px;
-    background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
+.step-container.active {
+    background: var(--surface);
+    border-left-color: var(--orange);
+    box-shadow: var(--shadow-sm);
+}
+
+.step-number {
+    width: 32px;
+    height: 32px;
+    background: var(--accent-green);
+    color: white;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 16px;
-    color: white;
-    font-size: 24px;
-}
-
-.info-instruction h4 {
-    font-size: 18px;
-    color: var(--text-primary);
-    margin-bottom: 12px;
     font-weight: 600;
-}
-
-.info-instruction p {
-    color: var(--text-secondary);
     font-size: 14px;
-    line-height: 1.5;
-    margin-bottom: 20px;
+    flex-shrink: 0;
 }
 
-.instruction-steps {
+.step-container.active .step-number {
+    background: var(--orange);
+}
+
+.step-content {
+    flex: 1;
+}
+
+.step-content .control-label {
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* Active routes display */
+.active-route-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 8px;
+}
+
+.active-route-info h4 {
+    font-size: 14px;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.active-route-info p {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.route-remove-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--radius-sm);
+    transition: all 0.2s ease;
+}
+
+.route-remove-btn:hover {
+    background: var(--surface-elevated);
+    color: #ef4444;
+}
+
+/* Route details styling */
+.route-detail-item {
+    padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 12px;
+}
+
+.route-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.route-detail-header h4 {
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.route-type-badge {
+    background: var(--accent-green);
+    color: white;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.route-detail-info {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 4px;
 }
 
-.step {
+.route-detail-info div {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px;
-    background: var(--surface-elevated);
-    border-radius: var(--radius-md);
-    text-align: left;
-}
-
-.step i {
-    width: 20px;
-    color: var(--accent-green);
-    font-size: 16px;
-}
-
-.step span {
-    font-size: 13px;
+    gap: 8px;
+    font-size: 12px;
     color: var(--text-secondary);
+}
+
+.route-detail-info i {
+    width: 12px;
+    color: var(--accent-green);
 }
 
 /* Route Popup */
