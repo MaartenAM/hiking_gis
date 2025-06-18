@@ -74,32 +74,14 @@
                     <div class="control-section">
                         <div class="section-title">
                             <i class="fas fa-hiking"></i>
-                            Extra Lagen
+                            Route Informatie
                         </div>
-                        <div class="layer-grid">
-                            <div class="layer-card" data-overlay="local">
-                                <i class="fas fa-walking"></i>
-                                <div class="layer-name">Lokale routes</div>
+                        <div class="info-instruction">
+                            <div class="instruction-icon">
+                                <i class="fas fa-info-circle"></i>
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="legend">
-                        <div class="legend-title">
-                            <i class="fas fa-list"></i>
-                            Legenda
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-color" style="background: #dc2626;"></div>
-                            <span>LAW Paden (PDOK)</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-color" style="background: #ea580c;"></div>
-                            <span>Lokale routes</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-color" style="background: #7c3aed;"></div>
-                            <span>Meetlijn</span>
+                            <h4>Etappe Details Bekijken</h4>
+                            <p>Klik op een route lijn op de kaart om gedetailleerde informatie te zien over etappes, van/naar locaties, en route eigenschappen.</p>
                         </div>
                     </div>
                 </div>
@@ -116,14 +98,10 @@
                         <div class="step-container">
                             <div class="step-number">1</div>
                             <div class="step-content">
-                                <label class="control-label">Kies route type:</label>
+                                <label class="control-label">Kies LAW route:</label>
                                 <select id="routeTypeSelect" class="select-field" onchange="loadRouteOptions()">
-                                    <option value="">-- Selecteer route type --</option>
+                                    <option value="">-- Selecteer LAW routes --</option>
                                     <option value="law">Lange Afstand Wandelpaden (LAW)</option>
-                                    <option value="streekpaden">Streekpaden</option>
-                                    <option value="ns-wandelingen">NS-wandelingen</option>
-                                    <option value="ov-stappers">OV-stappers</option>
-                                    <option value="stad-te-voet">Stad te voet</option>
                                 </select>
                             </div>
                         </div>
