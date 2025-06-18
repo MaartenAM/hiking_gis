@@ -98,12 +98,19 @@ L.TileLayer.PDOKFilter = L.TileLayer.WMS.extend({
         var map = this._map,
             tileSize = this.getTileSize(),
             nwPoint = coords.scaleBy(tileSize),
-            sePoint = nwPoint.add(tileSize),
-            nw = map.unproject(nwPoint, coords.z),
-            se = map.unproject(sePoint, coords.z);
+            sePoint = nwPoint.add(tileSize);
         
-        // Return as simple array [west, south, east, north] for WMS 1.3.0
-        return [nw.lng, se.lat, se.lng, nw.lat];
+        // Get bounds in EPSG:3857 (Web Mercator) coordinates - meters, not degrees
+        var tileBounds = L.bounds(nwPoint, sePoint);
+        var nw = map.options.crs.pointToLatLng(tileBounds.min, coords.z);
+        var se = map.options.crs.pointToLatLng(tileBounds.max, coords.z);
+        
+        // Convert to EPSG:3857 coordinates (meters)
+        var nwProjected = map.options.crs.latLngToPoint(nw, coords.z);
+        var seProjected = map.options.crs.latLngToPoint(se, coords.z);
+        
+        // Return Web Mercator coordinates [west, south, east, north] in meters
+        return [nwProjected.x, seProjected.y, seProjected.x, nwProjected.y];
     }
 });
 
