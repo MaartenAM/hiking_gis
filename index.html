@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hiking WebGIS - LAW & Wandelroutes</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    
+    <!-- Font Awesome voor iconen -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 350px;
+            background: linear-gradient(135deg, #2d5016, #4a7c59);
+            color: white;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+
+        .sidebar h1 {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            text-align: center;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #4a7c59;
+        }
+
+        .control-section {
+            margin-bottom: 25px;
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-section h3 {
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        select, input, button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        select, input {
+            background: rgba(255,255,255,0.9);
+            color: #333;
+        }
+
+        button {
+            background: #ff6b35;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+        }
+
+        button:hover {
+            background: #e55a2b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+        }
+
+        button.active {
+            background: #27ae60;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .checkbox-item:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+
+        .distance-display {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        #map {
+            flex: 1;
+            position: relative;
+        }
+
+        .map-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .map-control-btn {
+            width: 50px;
+            height: 50px;
+            background: white;
+            border: 2px solid #ccc;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 20px;
+            color: #333;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+
+        .map-control-btn:hover {
+            background: #f0f0f0;
+            transform: scale(1.1);
+        }
+
+        .map-control-btn.active {
+            background: #27ae60;
+            color: white;
+            border-color: #27ae60;
+        }
+
+        .legend {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 3px;
+            border-radius: 2px;
+        }
+
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.2);
+            max-width: 300px;
+            z-index: 1000;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+                max-height: 40vh;
+            }
+            
+            #map {
+                height: 60vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1><i class="fas fa-hiking"></i> Hiking WebGIS</h1>
+            
+            <div class="control-section">
+                <h3><i class="fas fa-map"></i> Kaartlagen</h3>
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="osmLayer" checked>
+                        <label for="osmLayer">OpenStreetMap</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="topoLayer">
+                        <label for="topoLayer">Topografische kaart</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="satelliteLayer">
+                        <label for="satelliteLayer">Satellietbeeld</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h3><i class="fas fa-route"></i> Wandelroutes</h3>
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="lawLayer" checked>
+                        <label for="lawLayer">LAW Paden</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="waymarkedLayer" checked>
+                        <label for="waymarkedLayer">Waymarked Trails</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="localTrails">
+                        <label for="localTrails">Lokale routes</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h3><i class="fas fa-filter"></i> LAW Filters</h3>
+                <div class="control-group">
+                    <label for="lawTypeFilter">LAW Type:</label>
+                    <select id="lawTypeFilter">
+                        <option value="">Alle types</option>
+                        <option value="LAW">Lange Afstand Wandelpad</option>
+                        <option value="GR">Grote Routepaden</option>
+                        <option value="SP">Streekpaden</option>
+                        <option value="RP">Rondwandelingen</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="etappeFilter">Etappe:</label>
+                    <select id="etappeFilter">
+                        <option value="">Alle etappes</option>
+                        <option value="1">Etappe 1</option>
+                        <option value="2">Etappe 2</option>
+                        <option value="3">Etappe 3</option>
+                        <option value="4">Etappe 4</option>
+                        <option value="5">Etappe 5</option>
+                    </select>
+                </div>
+                <button onclick="applyFilters()">
+                    <i class="fas fa-search"></i> Filters toepassen
+                </button>
+            </div>
+
+            <div class="control-section">
+                <h3><i class="fas fa-ruler"></i> Afstand meten</h3>
+                <button id="measureBtn" onclick="toggleMeasure()">
+                    <i class="fas fa-ruler-combined"></i> Start meting
+                </button>
+                <button onclick="clearMeasurements()">
+                    <i class="fas fa-trash"></i> Wis metingen
+                </button>
+                <div id="distanceDisplay" class="distance-display">
+                    Totale afstand: 0.00 km
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h3><i class="fas fa-search"></i> Zoeken</h3>
+                <div class="control-group">
+                    <input type="text" id="searchInput" placeholder="Zoek locatie, plaats of route...">
+                    <button onclick="searchLocation()">
+                        <i class="fas fa-search"></i> Zoeken
+                    </button>
+                </div>
+            </div>
+
+            <div class="legend">
+                <h3><i class="fas fa-list"></i> Legenda</h3>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e74c3c;"></div>
+                    <span>LAW Paden</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #3498db;"></div>
+                    <span>Waymarked Trails</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #f39c12;"></div>
+                    <span>Lokale routes</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #9b59b6;"></div>
+                    <span>Meetlijn</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="map"></div>
+        
+        <div class="map-controls">
+            <div class="map-control-btn" onclick="zoomToNetherlands()" title="Zoom naar Nederland">
+                <i class="fas fa-home"></i>
+            </div>
+            <div class="map-control-btn" onclick="getCurrentLocation()" title="Mijn locatie">
+                <i class="fas fa-crosshairs"></i>
+            </div>
+            <div class="map-control-btn" onclick="toggleFullscreen()" title="Volledig scherm">
+                <i class="fas fa-expand"></i>
+            </div>
+        </div>
+    </div>
+
+    <div id="infoPanel" class="info-panel">
+        <h4>Route informatie</h4>
+        <div id="routeInfo"></div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    
+    <script>
+        // Globale variabelen
+        let map;
+        let measuring = false;
+        let measureLine;
+        let measureMarkers = [];
+        let totalDistance = 0;
+        let lawLayer, waymarkedLayer, localTrailsLayer;
+        let baseLayers = {};
+        let overlayLayers = {};
+
+        // Kaart initialiseren
+        function initMap() {
+            // Kaart maken gecentreerd op Nederland
+            map = L.map('map').setView([52.1326, 5.2913], 7);
+
+            // Base layers
+            const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            });
+
+            const topoLayer = L.tileLayer('https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:3857/{z}/{x}/{y}.png', {
+                attribution: '© PDOK'
+            });
+
+            const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: '© Esri'
+            });
+
+            // Standaard OSM layer toevoegen
+            osmLayer.addTo(map);
+
+            // Base layers object
+            baseLayers = {
+                'OpenStreetMap': osmLayer,
+                'Topografisch': topoLayer,
+                'Satelliet': satelliteLayer
+            };
+
+            // LAW layer (simulatie met hiking routes)
+            lawLayer = L.layerGroup();
+            addLAWRoutes();
+            lawLayer.addTo(map);
+
+            // Waymarked trails layer
+            waymarkedLayer = L.tileLayer('https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png', {
+                attribution: '© Waymarked Trails',
+                opacity: 0.7
+            });
+            waymarkedLayer.addTo(map);
+
+            // Lokale trails layer (simulatie)
+            localTrailsLayer = L.layerGroup();
+            addLocalTrails();
+
+            // Overlay layers object
+            overlayLayers = {
+                'LAW Paden': lawLayer,
+                'Waymarked Trails': waymarkedLayer,
+                'Lokale routes': localTrailsLayer
+            };
+
+            // Event listeners
+            setupEventListeners();
+        }
+
+        // LAW routes toevoegen (gesimuleerd)
+        function addLAWRoutes() {
+            const lawRoutes = [
+                {
+                    name: 'LAW 1 - Noordzeeroute',
+                    type: 'LAW',
+                    etappe: 1,
+                    coordinates: [[52.0907, 4.2026], [52.1580, 4.4970], [52.3676, 4.9041]],
+                    description: 'Lange afstand wandelroute langs de Nederlandse kust'
+                },
+                {
+                    name: 'LAW 2 - Pieterpad',
+                    type: 'LAW',
+                    etappe: 2,
+                    coordinates: [[53.2194, 6.5665], [52.7168, 6.8037], [52.1326, 5.2913]],
+                    description: 'Van Pieterburen naar Sint-Pietersberg'
+                },
+                {
+                    name: 'GR 5 - Via Hollandica',
+                    type: 'GR',
+                    etappe: 1,
+                    coordinates: [[51.9851, 4.3641], [52.0907, 4.2026], [52.3545, 4.8339]],
+                    description: 'Europese wandelroute door Nederland'
+                },
+                {
+                    name: 'SP 1 - Streekpad Waterland',
+                    type: 'SP',
+                    etappe: 3,
+                    coordinates: [[52.4584, 4.7595], [52.5015, 4.9406], [52.4339, 5.0621]],
+                    description: 'Streekpad door het Waterland'
+                }
+            ];
+
+            lawRoutes.forEach(route => {
+                const polyline = L.polyline(route.coordinates, {
+                    color: '#e74c3c',
+                    weight: 4,
+                    opacity: 0.8,
+                    routeData: route
+                });
+
+                polyline.bindPopup(`
+                    <div>
+                        <h4>${route.name}</h4>
+                        <p><strong>Type:</strong> ${route.type}</p>
+                        <p><strong>Etappe:</strong> ${route.etappe}</p>
+                        <p>${route.description}</p>
+                    </div>
+                `);
+
+                polyline.on('click', function(e) {
+                    showRouteInfo(route);
+                });
+
+                lawLayer.addLayer(polyline);
+            });
+        }
+
+        // Lokale trails toevoegen
+        function addLocalTrails() {
+            const localRoutes = [
+                {
+                    name: 'Boslus Veluwe',
+                    coordinates: [[52.0880, 5.6673], [52.1015, 5.7234], [52.0854, 5.7891]],
+                    description: 'Mooie bosroute door de Veluwe'
+                },
+                {
+                    name: 'Duinpad Zandvoort',
+                    coordinates: [[52.3676, 4.5309], [52.3584, 4.5198], [52.3421, 4.5067]],
+                    description: 'Wandeling door de duinen van Zandvoort'
+                }
+            ];
+
+            localRoutes.forEach(route => {
+                const polyline = L.polyline(route.coordinates, {
+                    color: '#f39c12',
+                    weight: 3,
+                    opacity: 0.7
+                });
+
+                polyline.bindPopup(`
+                    <div>
+                        <h4>${route.name}</h4>
+                        <p>${route.description}</p>
+                    </div>
+                `);
+
+                localTrailsLayer.addLayer(polyline);
+            });
+        }
+
+        // Event listeners instellen
+        function setupEventListeners() {
+            // Checkbox event listeners voor layers
+            document.getElementById('osmLayer').addEventListener('change', function() {
+                toggleBaseLayer('OpenStreetMap', this.checked);
+            });
+
+            document.getElementById('topoLayer').addEventListener('change', function() {
+                toggleBaseLayer('Topografisch', this.checked);
+            });
+
+            document.getElementById('satelliteLayer').addEventListener('change', function() {
+                toggleBaseLayer('Satelliet', this.checked);
+            });
+
+            document.getElementById('lawLayer').addEventListener('change', function() {
+                toggleOverlay('LAW Paden', this.checked);
+            });
+
+            document.getElementById('waymarkedLayer').addEventListener('change', function() {
+                toggleOverlay('Waymarked Trails', this.checked);
+            });
+
+            document.getElementById('localTrails').addEventListener('change', function() {
+                toggleOverlay('Lokale routes', this.checked);
+            });
+
+            // Zoek functionaliteit
+            document.getElementById('searchInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchLocation();
+                }
+            });
+
+            // Kaart click event voor meten
+            map.on('click', function(e) {
+                if (measuring) {
+                    addMeasurePoint(e.latlng);
+                }
+            });
+        }
+
+        // Base layer toggle
+        function toggleBaseLayer(layerName, show) {
+            const layer = baseLayers[layerName];
+            if (show) {
+                // Verwijder andere base layers eerst
+                Object.values(baseLayers).forEach(l => map.removeLayer(l));
+                // Voeg geselecteerde layer toe
+                layer.addTo(map);
+                // Update checkboxes
+                document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    if (cb.id.includes('Layer') && cb !== document.getElementById(layerName.toLowerCase().replace(' ', '') + 'Layer')) {
+                        if (cb.id === 'osmLayer' || cb.id === 'topoLayer' || cb.id === 'satelliteLayer') {
+                            cb.checked = false;
+                        }
+                    }
+                });
+            }
+        }
+
+        // Overlay toggle
+        function toggleOverlay(layerName, show) {
+            const layer = overlayLayers[layerName];
+            if (show) {
+                layer.addTo(map);
+            } else {
+                map.removeLayer(layer);
+            }
+        }
+
+        // Meten toggle
+        function toggleMeasure() {
+            measuring = !measuring;
+            const btn = document.getElementById('measureBtn');
+            
+            if (measuring) {
+                btn.innerHTML = '<i class="fas fa-stop"></i> Stop meting';
+                btn.classList.add('active');
+                map.getContainer().style.cursor = 'crosshair';
+            } else {
+                btn.innerHTML = '<i class="fas fa-ruler-combined"></i> Start meting';
+                btn.classList.remove('active');
+                map.getContainer().style.cursor = '';
+            }
+        }
+
+        // Meetpunt toevoegen
+        function addMeasurePoint(latlng) {
+            const marker = L.circleMarker(latlng, {
+                radius: 5,
+                color: '#9b59b6',
+                fillColor: '#9b59b6',
+                fillOpacity: 0.8
+            }).addTo(map);
+
+            measureMarkers.push(marker);
+
+            if (measureMarkers.length > 1) {
+                const prevMarker = measureMarkers[measureMarkers.length - 2];
+                const line = L.polyline([prevMarker.getLatLng(), latlng], {
+                    color: '#9b59b6',
+                    weight: 3,
+                    dashArray: '5, 10'
+                }).addTo(map);
+
+                measureMarkers.push(line);
+
+                // Bereken afstand
+                const distance = prevMarker.getLatLng().distanceTo(latlng) / 1000; // in km
+                totalDistance += distance;
+                updateDistanceDisplay();
+            }
+        }
+
+        // Distance display updaten
+        function updateDistanceDisplay() {
+            document.getElementById('distanceDisplay').innerHTML = 
+                `Totale afstand: ${totalDistance.toFixed(2)} km`;
+        }
+
+        // Metingen wissen
+        function clearMeasurements() {
+            measureMarkers.forEach(item => {
+                map.removeLayer(item);
+            });
+            measureMarkers = [];
+            totalDistance = 0;
+            updateDistanceDisplay();
+        }
+
+        // Filters toepassen
+        function applyFilters() {
+            const typeFilter = document.getElementById('lawTypeFilter').value;
+            const etappeFilter = document.getElementById('etappeFilter').value;
+
+            // Verwijder huidige LAW layer
+            map.removeLayer(lawLayer);
+            lawLayer.clearLayers();
+
+            // Voeg gefilterde routes toe
+            addFilteredLAWRoutes(typeFilter, etappeFilter);
+            lawLayer.addTo(map);
+        }
+
+        // Gefilterde LAW routes toevoegen
+        function addFilteredLAWRoutes(typeFilter, etappeFilter) {
+            const lawRoutes = [
+                {
+                    name: 'LAW 1 - Noordzeeroute',
+                    type: 'LAW',
+                    etappe: 1,
+                    coordinates: [[52.0907, 4.2026], [52.1580, 4.4970], [52.3676, 4.9041]],
+                    description: 'Lange afstand wandelroute langs de Nederlandse kust'
+                },
+                {
+                    name: 'LAW 2 - Pieterpad',
+                    type: 'LAW',
+                    etappe: 2,
+                    coordinates: [[53.2194, 6.5665], [52.7168, 6.8037], [52.1326, 5.2913]],
+                    description: 'Van Pieterburen naar Sint-Pietersberg'
+                },
+                {
+                    name: 'GR 5 - Via Hollandica',
+                    type: 'GR',
+                    etappe: 1,
+                    coordinates: [[51.9851, 4.3641], [52.0907, 4.2026], [52.3545, 4.8339]],
+                    description: 'Europese wandelroute door Nederland'
+                },
+                {
+                    name: 'SP 1 - Streekpad Waterland',
+                    type: 'SP',
+                    etappe: 3,
+                    coordinates: [[52.4584, 4.7595], [52.5015, 4.9406], [52.4339, 5.0621]],
+                    description: 'Streekpad door het Waterland'
+                }
+            ];
+
+            const filteredRoutes = lawRoutes.filter(route => {
+                const typeMatch = !typeFilter || route.type === typeFilter;
+                const etappeMatch = !etappeFilter || route.etappe.toString() === etappeFilter;
+                return typeMatch && etappeMatch;
+            });
+
+            filteredRoutes.forEach(route => {
+                const polyline = L.polyline(route.coordinates, {
+                    color: '#e74c3c',
+                    weight: 4,
+                    opacity: 0.8,
+                    routeData: route
+                });
+
+                polyline.bindPopup(`
+                    <div>
+                        <h4>${route.name}</h4>
+                        <p><strong>Type:</strong> ${route.type}</p>
+                        <p><strong>Etappe:</strong> ${route.etappe}</p>
+                        <p>${route.description}</p>
+                    </div>
+                `);
+
+                polyline.on('click', function(e) {
+                    showRouteInfo(route);
+                });
+
+                lawLayer.addLayer(polyline);
+            });
+        }
+
+        // Route informatie tonen
+        function showRouteInfo(route) {
+            const infoPanel = document.getElementById('infoPanel');
+            const routeInfo = document.getElementById('routeInfo');
+            
+            routeInfo.innerHTML = `
+                <p><strong>Naam:</strong> ${route.name}</p>
+                <p><strong>Type:</strong> ${route.type}</p>
+                <p><strong>Etappe:</strong> ${route.etappe}</p>
+                <p><strong>Beschrijving:</strong> ${route.description}</p>
+            `;
+            
+            infoPanel.style.display = 'block';
+            
+            setTimeout(() => {
+                infoPanel.style.display = 'none';
+            }, 5000);
+        }
+
+        // Locatie zoeken
+        function searchLocation() {
+            const query = document.getElementById('searchInput').value;
+            if (!query) return;
+
+            // Gebruik Nominatim API voor geocoding
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=nl&limit=1`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        const result = data[0];
+                        const lat = parseFloat(result.lat);
+                        const lon = parseFloat(result.lon);
+                        
+                        map.setView([lat, lon], 12);
+                        
+                        // Voeg marker toe
+                        L.marker([lat, lon])
+                            .addTo(map)
+                            .bindPopup(result.display_name)
+                            .openPopup();
+                    } else {
+                        alert('Locatie niet gevonden');
+                    }
+                })
+                .catch(error => {
+                    console.error('Zoekfout:', error);
+                    alert('Er is een fout opgetreden bij het zoeken');
+                });
+        }
+
+        // Zoom naar Nederland
+        function zoomToNetherlands() {
+            map.setView([52.1326, 5.2913], 7);
+        }
+
+        // Huidige locatie ophalen
+        function getCurrentLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    
+                    map.setView([lat, lon], 14);
+                    
+                    L.marker([lat, lon])
+                        .addTo(map)
+                        .bindPopup('Uw huidige locatie')
+                        .openPopup();
+                }, function(error) {
+                    alert('Locatie kon niet worden bepaald');
+                });
+            } else {
+                alert('Geolocation wordt niet ondersteund door deze browser');
+            }
+        }
+
+        // Volledig scherm toggle
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // Kaart initialiseren wanneer pagina geladen is
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+        });
+    </script>
+</body>
+</html>
