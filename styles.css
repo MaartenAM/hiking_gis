@@ -425,6 +425,150 @@ body {
 .status-loading { background: var(--orange); }
 .status-offline { background: #ef4444; }
 
+/* Info instruction styling */
+.info-instruction {
+    background: linear-gradient(135deg, var(--surface-elevated), var(--surface));
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 24px;
+    text-align: center;
+}
+
+.instruction-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--accent-green), var(--light-green));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    color: white;
+    font-size: 20px;
+}
+
+.info-instruction h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.info-instruction p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* Route info panel styling */
+.route-info-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-sm);
+}
+
+.route-info-header {
+    background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
+    color: white;
+    padding: 16px;
+    border-radius: var(--radius-md);
+    margin-bottom: 16px;
+}
+
+.route-info-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.route-info-badge {
+    background: rgba(255,255,255,0.2);
+    padding: 4px 12px;
+    border-radius: 16px;
+    display: inline-block;
+    font-size: 12px;
+}
+
+.route-info-section {
+    margin-bottom: 16px;
+    padding: 12px;
+    background: var(--surface-elevated);
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--accent-green);
+}
+
+.route-info-section h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent-green);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.route-info-section p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 4px 0;
+    line-height: 1.4;
+}
+
+.route-info-section strong {
+    color: var(--text-primary);
+}
+
+.route-description {
+    background: var(--surface);
+    padding: 12px;
+    border-radius: var(--radius-md);
+    font-style: italic;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
+}
+
+.route-info-actions {
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 16px;
+    margin-top: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.highlight-btn {
+    background: var(--orange);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.highlight-btn:hover {
+    background: var(--orange-hover);
+}
+
+.highlight-btn.active {
+    background: var(--primary-green);
+}
+
+.highlight-timer {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
 /* Empty State */
 .empty-state {
     font-style: italic;
