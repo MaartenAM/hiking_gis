@@ -615,17 +615,9 @@
                                 <i class="fas fa-route"></i>
                                 <div class="layer-name">LAW Paden</div>
                             </div>
-                            <div class="layer-card active" data-overlay="waymarked">
-                                <i class="fas fa-sign"></i>
-                                <div class="layer-name">Waymarked</div>
-                            </div>
                             <div class="layer-card" data-overlay="local">
                                 <i class="fas fa-walking"></i>
                                 <div class="layer-name">Lokale routes</div>
-                            </div>
-                            <div class="layer-card" data-overlay="cycling">
-                                <i class="fas fa-bicycle"></i>
-                                <div class="layer-name">Fietsroutes</div>
                             </div>
                         </div>
                     </div>
@@ -641,10 +633,6 @@
                         </div>
                         <div class="legend-item">
                             <div class="legend-color" style="background: #2563eb;"></div>
-                            <span>Waymarked Trails</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-color" style="background: #ea580c;"></div>
                             <span>Lokale routes</span>
                         </div>
                         <div class="legend-item">
@@ -662,38 +650,22 @@
                             LAW Route Filters
                         </div>
                         <div class="filter-row">
-                            <select id="lawTypeFilter" class="select-field">
-                                <option value="">Alle route types</option>
-                                <option value="law">Lange Afstand Wandelpad</option>
-                                <option value="gr">Grote Routepaden (GR)</option>
-                                <option value="sp">Streekpaden</option>
-                                <option value="rp">Rondwandelingen</option>
+                            <select id="lawLayerFilter" class="select-field">
+                                <option value="">Alle LAW types</option>
+                                <option value="landelijke-wandelroutes">Landelijke Wandelroutes</option>
+                                <option value="streekpaden">Streekpaden</option>
+                                <option value="ns-wandelingen">NS-wandelingen</option>
+                                <option value="ov-stappers">OV-stappers</option>
+                                <option value="stad-te-voet">Stad te voet</option>
                             </select>
                         </div>
-                        <div class="filter-row">
-                            <select id="provinceFilter" class="select-field">
-                                <option value="">Alle provincies</option>
-                                <option value="noord-holland">Noord-Holland</option>
-                                <option value="zuid-holland">Zuid-Holland</option>
-                                <option value="utrecht">Utrecht</option>
-                                <option value="gelderland">Gelderland</option>
-                                <option value="overijssel">Overijssel</option>
-                                <option value="noord-brabant">Noord-Brabant</option>
-                                <option value="limburg">Limburg</option>
-                                <option value="zeeland">Zeeland</option>
-                                <option value="friesland">Friesland</option>
-                                <option value="groningen">Groningen</option>
-                                <option value="drenthe">Drenthe</option>
-                                <option value="flevoland">Flevoland</option>
-                            </select>
-                        </div>
-                        <button class="button-primary" onclick="applyRouteFilters()">
+                        <button class="button-primary" onclick="applyLAWFilters()">
                             <i class="fas fa-filter"></i>
-                            Filters toepassen
+                            LAW Filter toepassen
                         </button>
-                        <button class="button-secondary" onclick="clearRouteFilters()">
+                        <button class="button-secondary" onclick="clearLAWFilters()">
                             <i class="fas fa-times"></i>
-                            Filters wissen
+                            Alle LAW lagen tonen
                         </button>
                     </div>
 
@@ -756,33 +728,18 @@
                     <div class="control-section">
                         <div class="section-title">
                             <i class="fas fa-map-pin"></i>
-                            Waypoints
+                            Navigatie Tools
                         </div>
-                        <button class="button-secondary" onclick="addWaypoint()">
-                            <i class="fas fa-plus"></i>
-                            Waypoint toevoegen
+                        <button class="button-secondary" onclick="zoomToNetherlands()">
+                            <i class="fas fa-home"></i>
+                            Zoom naar Nederland
                         </button>
-                        <button class="button-secondary" onclick="clearWaypoints()">
-                            <i class="fas fa-times"></i>
-                            Waypoints wissen
+                        <button class="button-secondary" onclick="getCurrentLocation()">
+                            <i class="fas fa-crosshairs"></i>
+                            Mijn locatie
                         </button>
                         <div id="waypointsList" style="margin-top: 16px;">
                             <!-- Waypoints lijst wordt hier dynamisch toegevoegd -->
-                        </div>
-                    </div>
-
-                    <div class="control-section">
-                        <div class="section-title">
-                            <i class="fas fa-chart-line"></i>
-                            Hoogteprofiel
-                        </div>
-                        <button class="button-secondary" onclick="showElevationProfile()">
-                            <i class="fas fa-mountain"></i>
-                            Toon hoogteprofiel
-                        </button>
-                        <div class="legend-item">
-                            <i class="fas fa-info-circle" style="color: var(--text-muted);"></i>
-                            <span style="font-size: 12px; color: var(--text-muted);">Klik eerst een route aan</span>
                         </div>
                     </div>
                 </div>
@@ -908,38 +865,42 @@
                 'terrain': terrainLayer
             };
 
-            // LAW layer van PDOK
-            lawLayer = L.tileLayer.wms('https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0', {
-                layers: 'law_routes',
-                format: 'image/png',
-                transparent: true,
-                attribution: '© PDOK Wandelnet'
+            // LAW layer van PDOK - alle LAW lagen
+            lawLayer = L.layerGroup();
+            
+            // Voeg alle beschikbare LAW lagen toe
+            const lawLayers = [
+                'landelijke-wandelroutes',  // Hoofdlaag
+                'streekpaden',
+                'ns-wandelingen', 
+                'ov-stappers',
+                'stad-te-voet'
+            ];
+            
+            lawLayers.forEach(layerName => {
+                const wmsLayer = L.tileLayer.wms('https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0', {
+                    layers: layerName,
+                    format: 'image/png',
+                    transparent: true,
+                    attribution: '© PDOK Wandelnet',
+                    opacity: 0.8
+                });
+                lawLayer.addLayer(wmsLayer);
             });
+            
             lawLayer.addTo(map);
 
-            // Waymarked trails layer
-            waymarkedLayer = L.tileLayer('https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png', {
-                attribution: '© Waymarked Trails',
-                opacity: 0.7
-            });
-            waymarkedLayer.addTo(map);
+            // Waymarked trails layer (verwijderd)
+            // waymarkedLayer.addTo(map);
 
             // Lokale trails layer (simulatie)
             localTrailsLayer = L.layerGroup();
             addLocalTrails();
 
-            // Fietsroutes layer
-            const cyclingLayer = L.tileLayer('https://tile.waymarkedtrails.org/cycling/{z}/{x}/{y}.png', {
-                attribution: '© Waymarked Trails',
-                opacity: 0.6
-            });
-
-            // Overlay layers object
+            // Overlay layers object (waymarked en cycling verwijderd)
             overlayLayers = {
                 'law': lawLayer,
-                'waymarked': waymarkedLayer,
-                'local': localTrailsLayer,
-                'cycling': cyclingLayer
+                'local': localTrailsLayer
             };
 
             // Event listeners
@@ -1102,19 +1063,29 @@
             measureMarkers.push(marker);
 
             if (measureMarkers.length > 1) {
-                const prevMarker = measureMarkers[measureMarkers.length - 2];
-                const line = L.polyline([prevMarker.getLatLng(), latlng], {
-                    color: '#7c3aed',
-                    weight: 3,
-                    dashArray: '8, 12'
-                }).addTo(map);
+                // Zoek de vorige marker (geen lijn)
+                let prevMarker = null;
+                for (let i = measureMarkers.length - 2; i >= 0; i--) {
+                    if (measureMarkers[i].getLatLng) {
+                        prevMarker = measureMarkers[i];
+                        break;
+                    }
+                }
 
-                measureMarkers.push(line);
+                if (prevMarker) {
+                    const line = L.polyline([prevMarker.getLatLng(), latlng], {
+                        color: '#7c3aed',
+                        weight: 3,
+                        dashArray: '8, 12'
+                    }).addTo(map);
 
-                // Bereken afstand
-                const distance = prevMarker.getLatLng().distanceTo(latlng) / 1000; // in km
-                totalDistance += distance;
-                updateDistanceDisplay();
+                    measureMarkers.push(line);
+
+                    // Bereken afstand
+                    const distance = prevMarker.getLatLng().distanceTo(latlng) / 1000; // in km
+                    totalDistance += distance;
+                    updateDistanceDisplay();
+                }
             }
         }
 
@@ -1134,53 +1105,53 @@
             updateDistanceDisplay();
         }
 
-        // Route filters toepassen
-        function applyRouteFilters() {
-            const typeFilter = document.getElementById('lawTypeFilter').value;
-            const provinceFilter = document.getElementById('provinceFilter').value;
-
-            // Hier zou je normaal de WMS layer parameters aanpassen
-            // Voor demonstratie tonen we een melding
-            console.log('Filters toegepast:', { type: typeFilter, province: provinceFilter });
+        // LAW filters toepassen
+        function applyLAWFilters() {
+            const selectedLayer = document.getElementById('lawLayerFilter').value;
             
-            // Update LAW layer met filters (simplified voor demo)
-            if (typeFilter || provinceFilter) {
-                // Rebuild LAW layer met nieuwe parameters
-                map.removeLayer(lawLayer);
-                
-                let cqlFilter = '';
-                if (typeFilter) cqlFilter += `route_type='${typeFilter}'`;
-                if (provinceFilter) {
-                    if (cqlFilter) cqlFilter += ' AND ';
-                    cqlFilter += `province='${provinceFilter}'`;
-                }
-
-                lawLayer = L.tileLayer.wms('https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0', {
-                    layers: 'law_routes',
+            // Verwijder huidige LAW layer
+            map.removeLayer(lawLayer);
+            lawLayer.clearLayers();
+            
+            if (selectedLayer) {
+                // Voeg alleen geselecteerde laag toe
+                const wmsLayer = L.tileLayer.wms('https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0', {
+                    layers: selectedLayer,
                     format: 'image/png',
                     transparent: true,
                     attribution: '© PDOK Wandelnet',
-                    cql_filter: cqlFilter
+                    opacity: 0.8
                 });
+                lawLayer.addLayer(wmsLayer);
+            } else {
+                // Voeg alle lagen toe
+                const lawLayers = [
+                    'landelijke-wandelroutes',
+                    'streekpaden',
+                    'ns-wandelingen', 
+                    'ov-stappers',
+                    'stad-te-voet'
+                ];
                 
-                lawLayer.addTo(map);
+                lawLayers.forEach(layerName => {
+                    const wmsLayer = L.tileLayer.wms('https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0', {
+                        layers: layerName,
+                        format: 'image/png',
+                        transparent: true,
+                        attribution: '© PDOK Wandelnet',
+                        opacity: 0.8
+                    });
+                    lawLayer.addLayer(wmsLayer);
+                });
             }
+            
+            lawLayer.addTo(map);
         }
 
-        // Route filters wissen
-        function clearRouteFilters() {
-            document.getElementById('lawTypeFilter').value = '';
-            document.getElementById('provinceFilter').value = '';
-            
-            // Reset LAW layer
-            map.removeLayer(lawLayer);
-            lawLayer = L.tileLayer.wms('https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0', {
-                layers: 'law_routes',
-                format: 'image/png',
-                transparent: true,
-                attribution: '© PDOK Wandelnet'
-            });
-            lawLayer.addTo(map);
+        // LAW filters wissen
+        function clearLAWFilters() {
+            document.getElementById('lawLayerFilter').value = '';
+            applyLAWFilters(); // Dit voegt alle lagen weer toe
         }
 
         // Routes exporteren
@@ -1413,14 +1384,7 @@
         function saveStoredData() {
             const data = {
                 searchHistory,
-                favorites,
-                waypoints: waypoints.map(wp => ({
-                    id: wp.id,
-                    lat: wp.lat,
-                    lng: wp.lng,
-                    name: wp.name,
-                    description: wp.description
-                }))
+                favorites
             };
             localStorage.setItem('hikingWebGIS', JSON.stringify(data));
         }
@@ -1441,34 +1405,9 @@
                         favorites = data.favorites;
                         updateFavoritesList();
                     }
-                    
-                    if (data.waypoints) {
-                        data.waypoints.forEach(wp => {
-                            const marker = L.marker([wp.lat, wp.lng], {
-                                icon: L.divIcon({
-                                    className: 'waypoint-marker',
-                                    html: `<div style="background: #ff7b54; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">${waypoints.length + 1}</div>`,
-                                    iconSize: [24, 24]
-                                })
-                            }).addTo(map);
-
-                            marker.bindPopup(`
-                                <div>
-                                    <h4>${wp.name}</h4>
-                                    <p>${wp.description}</p>
-                                    <button onclick="removeWaypoint(${wp.id})" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Verwijderen</button>
-                                </div>
-                            `);
-
-                            wp.marker = marker;
-                            waypoints.push(wp);
-                        });
-                        updateWaypointsList();
-                    }
+                } catch (error) {
+                    console.error('Fout bij laden opgeslagen data:', error);
                 }
-            } catch (error) {
-                console.error('Fout bij laden opgeslagen data:', error);
-            }
         }
 
         // Zoom naar Nederland
