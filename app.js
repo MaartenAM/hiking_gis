@@ -415,7 +415,7 @@ function switchToRouteInfoTab() {
     document.getElementById('info-panel').classList.add('active');
 }
 
-// Highlight the clicked etappe
+// Highlight the clicked etappe with kilometer markers
 function highlightEtappe(feature, route) {
     // Clear previous highlights
     highlightLayer.clearLayers();
@@ -440,6 +440,9 @@ function highlightEtappe(feature, route) {
             
             highlightLayer.addLayer(highlightLine);
             
+            // Add kilometer markers along the route
+            addKilometerMarkers(coordinates);
+            
             // Start/end markers
             if (coordinates.length >= 2) {
                 const startPoint = coordinates[0];
@@ -452,6 +455,10 @@ function highlightEtappe(feature, route) {
                     fillOpacity: 0.9,
                     weight: 3,
                     className: 'pulse-marker'
+                }).bindTooltip('🏁 START', { 
+                    permanent: false, 
+                    direction: 'top',
+                    className: 'start-tooltip'
                 });
                 
                 const endMarker = L.circleMarker(endPoint, {
@@ -461,6 +468,10 @@ function highlightEtappe(feature, route) {
                     fillOpacity: 0.9,
                     weight: 3,
                     className: 'pulse-marker'
+                }).bindTooltip('🏆 EINDE', { 
+                    permanent: false, 
+                    direction: 'top',
+                    className: 'end-tooltip'
                 });
                 
                 highlightLayer.addLayer(startMarker);
@@ -475,6 +486,76 @@ function highlightEtappe(feature, route) {
             }, 30000);
         }
     }
+}
+
+// Add kilometer markers along the route
+function addKilometerMarkers(coordinates) {
+    if (coordinates.length < 2) return;
+    
+    let totalDistance = 0;
+    let kmCount = 1;
+    
+    for (let i = 1; i < coordinates.length; i++) {
+        const prevPoint = L.latLng(coordinates[i-1]);
+        const currentPoint = L.latLng(coordinates[i]);
+        const segmentDistance = prevPoint.distanceTo(currentPoint);
+        
+        totalDistance += segmentDistance;
+        
+        // Check if we've passed a kilometer mark
+        while (kmCount * 1000 <= totalDistance) {
+            // Calculate the position for this kilometer mark
+            const kmPosition = interpolatePosition(coordinates, kmCount * 1000);
+            
+            if (kmPosition) {
+                // Create kilometer marker
+                const kmMarker = L.circleMarker(kmPosition, {
+                    radius: 8,
+                    color: '#ffffff',
+                    fillColor: '#3b82f6',
+                    fillOpacity: 1,
+                    weight: 2,
+                    zIndex: 1001
+                }).bindTooltip(`${kmCount} km`, { 
+                    permanent: true, 
+                    direction: 'top',
+                    className: 'km-tooltip',
+                    offset: [0, -10]
+                });
+                
+                highlightLayer.addLayer(kmMarker);
+            }
+            
+            kmCount++;
+        }
+    }
+}
+
+// Interpolate position along route for exact kilometer marks
+function interpolatePosition(coordinates, targetDistance) {
+    let currentDistance = 0;
+    
+    for (let i = 1; i < coordinates.length; i++) {
+        const prevPoint = L.latLng(coordinates[i-1]);
+        const currentPoint = L.latLng(coordinates[i]);
+        const segmentDistance = prevPoint.distanceTo(currentPoint);
+        
+        if (currentDistance + segmentDistance >= targetDistance) {
+            // The target distance is within this segment
+            const remainingDistance = targetDistance - currentDistance;
+            const ratio = remainingDistance / segmentDistance;
+            
+            // Interpolate between the two points
+            const lat = coordinates[i-1][0] + (coordinates[i][0] - coordinates[i-1][0]) * ratio;
+            const lng = coordinates[i-1][1] + (coordinates[i][1] - coordinates[i-1][1]) * ratio;
+            
+            return [lat, lng];
+        }
+        
+        currentDistance += segmentDistance;
+    }
+    
+    return null;
 }
 
 // Clear etappe highlight
