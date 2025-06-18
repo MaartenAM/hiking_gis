@@ -62,8 +62,13 @@ L.TileLayer.PDOKFilter = L.TileLayer.WMS.extend({
     },
     
     getTileUrl: function (coords) {
-        var bbox = this._tileCoordsToNwSe(coords);
-        var crs = this.options.crs || this.options.srs || 'EPSG:3857';
+        // Use Leaflet's built-in WMS bbox calculation
+        var tileBounds = this._tileCoordsToBounds(coords);
+        var nw = this._crs.project(tileBounds.getNorthWest());
+        var se = this._crs.project(tileBounds.getSouthEast());
+        
+        // BBOX for EPSG:3857 should be [minx, miny, maxx, maxy]
+        var bbox = [nw.x, se.y, se.x, nw.y].join(',');
         
         var url = this._url + '?';
         var params = {
@@ -74,10 +79,10 @@ L.TileLayer.PDOKFilter = L.TileLayer.WMS.extend({
             'STYLES': '',
             'TRANSPARENT': 'true',
             'LAYERS': this.options.layers,
-            'CRS': crs,
+            'CRS': 'EPSG:3857',
             'WIDTH': this.options.tileSize || 256,
             'HEIGHT': this.options.tileSize || 256,
-            'BBOX': bbox[0] + ',' + bbox[1] + ',' + bbox[2] + ',' + bbox[3] // Fix: just comma-separated numbers
+            'BBOX': bbox
         };
         
         // Add XML filter if provided
@@ -90,27 +95,11 @@ L.TileLayer.PDOKFilter = L.TileLayer.WMS.extend({
             encodeURIComponent(key) + '=' + encodeURIComponent(params[key])
         ).join('&');
         
-        console.log('Generated PDOK URL:', url + queryString);
-        return url + queryString;
-    },
-    
-    _tileCoordsToNwSe: function (coords) {
-        var map = this._map,
-            tileSize = this.getTileSize(),
-            nwPoint = coords.scaleBy(tileSize),
-            sePoint = nwPoint.add(tileSize);
+        var finalUrl = url + queryString;
+        console.log('Generated PDOK URL:', finalUrl);
+        console.log('BBOX:', bbox);
         
-        // Get bounds in EPSG:3857 (Web Mercator) coordinates - meters, not degrees
-        var tileBounds = L.bounds(nwPoint, sePoint);
-        var nw = map.options.crs.pointToLatLng(tileBounds.min, coords.z);
-        var se = map.options.crs.pointToLatLng(tileBounds.max, coords.z);
-        
-        // Convert to EPSG:3857 coordinates (meters)
-        var nwProjected = map.options.crs.latLngToPoint(nw, coords.z);
-        var seProjected = map.options.crs.latLngToPoint(se, coords.z);
-        
-        // Return Web Mercator coordinates [west, south, east, north] in meters
-        return [nwProjected.x, seProjected.y, seProjected.x, nwProjected.y];
+        return finalUrl;
     }
 });
 
