@@ -1,4 +1,31 @@
-// Global variables
+// Add route to map with correct CQL filter
+function addRouteToMap(routeData) {
+    // Use simple CQL filter syntax that PDOK supports
+    const cqlFilter = `lawnaam = '${routeData.filter}'`;
+    
+    console.log('Route Data:', routeData);
+    console.log('CQL Filter:', cqlFilter);
+    
+    const wmsLayer = L.tileLayer.wms('https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0', {
+        layers: routeData.layerName,
+        format: 'image/png',
+        transparent: true,
+        attribution: '© PDOK Wandelnet',
+        opacity: 0.8,
+        zIndex: 10,
+        version: '1.1.1', // Use same version as your working URL
+        cql_filter: cqlFilter // Back to cql_filter, not filter
+    });
+    
+    // Debug: log the actual URL being generated
+    wmsLayer.on('loading', function() {
+        console.log('WMS Layer URL:', this._url);
+    });
+    
+    wmsLayer.addTo(map);
+    routeData.layer = wmsLayer;
+    
+    show// Global variables
 let map;
 let measuring = false;
 let measureMarkers = [];
