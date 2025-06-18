@@ -433,6 +433,32 @@ function showRouteInfoInPanel(feature, latlng) {
                 </div>
             ` : ''}
             
+            <div class="route-trace-section">
+                <h4><i class="fas fa-shoe-prints"></i> Route Traceren</h4>
+                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
+                    Volg de route live en zie je voortgang in real-time
+                </p>
+                <button class="trace-btn" onclick="startRouteTrace()" id="traceBtn">
+                    <i class="fas fa-play"></i>
+                    Start Tracering
+                </button>
+                <div class="trace-progress" id="traceProgress" style="display: none;">
+                    <div class="trace-stats">
+                        <div class="trace-stat">
+                            <span class="trace-value" id="traceDistance">0.0</span>
+                            <span class="trace-label">km gelopen</span>
+                        </div>
+                        <div class="trace-stat">
+                            <span class="trace-value" id="tracePercentage">0</span>
+                            <span class="trace-label">% voltooid</span>
+                        </div>
+                    </div>
+                    <div class="trace-progress-bar">
+                        <div class="trace-progress-fill" id="traceProgressFill"></div>
+                    </div>
+                </div>
+            </div>
+            
             <div class="route-info-actions">
                 <button class="highlight-btn" onclick="clearEtappeHighlight()">
                     <i class="fas fa-eye-slash"></i>
@@ -447,6 +473,10 @@ function showRouteInfoInPanel(feature, latlng) {
     
     // Update the route info panel
     document.getElementById('routeInfoPanel').innerHTML = panelContent;
+    
+    // Store current route coordinates for tracing
+    window.currentRouteCoords = feature.geometry.coordinates;
+    window.currentRouteGeometry = feature.geometry;
     
     // Switch to the Route Info tab
     switchToRouteInfoTab();
@@ -544,7 +574,7 @@ function highlightEtappe(feature, route) {
     }
 }
 
-// Add kilometer markers along the route with better styling
+// Add kilometer markers along the route with subtler styling
 function addKilometerMarkers(coordinates) {
     if (coordinates.length < 2) return;
     
@@ -564,20 +594,20 @@ function addKilometerMarkers(coordinates) {
             const kmPosition = interpolatePosition(coordinates, kmCount * 1000);
             
             if (kmPosition) {
-                // Create kilometer marker with nature-inspired colors
+                // Create subtle kilometer marker with white background and green text
                 const kmMarker = L.circleMarker(kmPosition, {
-                    radius: 10,
-                    color: '#ffffff',
-                    fillColor: '#7c3aed',
-                    fillOpacity: 1,
+                    radius: 8,
+                    color: '#059669',
+                    fillColor: '#ffffff',
+                    fillOpacity: 0.95,
                     weight: 2,
                     zIndex: 1001,
                     className: 'km-marker'
-                }).bindTooltip(`${kmCount} km`, { 
+                }).bindTooltip(`${kmCount}`, { 
                     permanent: true, 
-                    direction: 'top',
-                    className: 'km-tooltip',
-                    offset: [0, -15]
+                    direction: 'center',
+                    className: 'km-tooltip-subtle',
+                    offset: [0, 0]
                 });
                 
                 highlightLayer.addLayer(kmMarker);
@@ -615,9 +645,235 @@ function interpolatePosition(coordinates, targetDistance) {
     return null;
 }
 
+// Route tracing functionality
+let isTracing = false;
+let tracedPath = [];
+let traceLayer;
+let userLocationMarker;
+let totalRouteDistance = 0;
+let tracedDistance = 0;
+let watchId = null;
+
+// Start route tracing
+function startRouteTrace() {
+    if (!window.currentRouteCoords) {
+        showNotification('Geen route geselecteerd om te traceren', 'error');
+        return;
+    }
+    
+    if (isTracing) {
+        stopRouteTrace();
+        return;
+    }
+    
+    // Check if geolocation is available
+    if (!navigator.geolocation) {
+        showNotification('Geolocation wordt niet ondersteund', 'error');
+        return;
+    }
+    
+    isTracing = true;
+    tracedPath = [];
+    tracedDistance = 0;
+    
+    // Calculate total route distance
+    calculateTotalRouteDistance();
+    
+    // Initialize trace layer
+    if (traceLayer) {
+        map.removeLayer(traceLayer);
+    }
+    traceLayer = L.layerGroup().addTo(map);
+    
+    // Update UI
+    const traceBtn = document.getElementById('traceBtn');
+    const traceProgress = document.getElementById('traceProgress');
+    
+    traceBtn.innerHTML = '<i class="fas fa-stop"></i> Stop Tracering';
+    traceBtn.classList.add('active');
+    traceProgress.style.display = 'block';
+    
+    // Start watching user location
+    watchId = navigator.geolocation.watchPosition(
+        updateUserPosition,
+        handleLocationError,
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 5000
+        }
+    );
+    
+    showNotification('Route tracering gestart! Begin met wandelen', 'success');
+}
+
+// Stop route tracing
+function stopRouteTrace() {
+    isTracing = false;
+    
+    if (watchId) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+    }
+    
+    // Update UI
+    const traceBtn = document.getElementById('traceBtn');
+    const traceProgress = document.getElementById('traceProgress');
+    
+    if (traceBtn) {
+        traceBtn.innerHTML = '<i class="fas fa-play"></i> Start Tracering';
+        traceBtn.classList.remove('active');
+    }
+    
+    if (traceProgress) {
+        traceProgress.style.display = 'none';
+    }
+    
+    // Clean up markers and paths
+    if (traceLayer) {
+        map.removeLayer(traceLayer);
+    }
+    
+    showNotification('Route tracering gestopt', 'info');
+}
+
+// Update user position during tracing
+function updateUserPosition(position) {
+    if (!isTracing) return;
+    
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
+    const accuracy = position.coords.accuracy;
+    
+    // Add current position to traced path
+    tracedPath.push([lat, lng]);
+    
+    // Update user location marker
+    if (userLocationMarker) {
+        traceLayer.removeLayer(userLocationMarker);
+    }
+    
+    userLocationMarker = L.circleMarker([lat, lng], {
+        radius: 8,
+        color: '#ffffff',
+        fillColor: '#3b82f6',
+        fillOpacity: 1,
+        weight: 3
+    }).bindTooltip(`📍 Huidige locatie<br>Nauwkeurigheid: ${accuracy.toFixed(0)}m`, {
+        permanent: false,
+        direction: 'top'
+    });
+    
+    traceLayer.addLayer(userLocationMarker);
+    
+    // Draw traced path
+    if (tracedPath.length > 1) {
+        // Remove old path
+        traceLayer.eachLayer(layer => {
+            if (layer instanceof L.Polyline && !(layer instanceof L.CircleMarker)) {
+                traceLayer.removeLayer(layer);
+            }
+        });
+        
+        // Add new traced path
+        const tracedLine = L.polyline(tracedPath, {
+            color: '#3b82f6',
+            weight: 5,
+            opacity: 0.8,
+            dashArray: '10, 10'
+        });
+        
+        traceLayer.addLayer(tracedLine);
+        
+        // Calculate traced distance
+        calculateTracedDistance();
+        updateTraceProgress();
+    }
+    
+    // Center map on user location
+    map.setView([lat, lng], map.getZoom());
+}
+
+// Calculate total route distance
+function calculateTotalRouteDistance() {
+    totalRouteDistance = 0;
+    
+    if (!window.currentRouteCoords) return;
+    
+    let coordinates;
+    if (window.currentRouteGeometry.type === 'LineString') {
+        coordinates = window.currentRouteCoords.map(coord => [coord[1], coord[0]]);
+    } else if (window.currentRouteGeometry.type === 'MultiLineString') {
+        coordinates = window.currentRouteCoords[0].map(coord => [coord[1], coord[0]]);
+    }
+    
+    if (coordinates && coordinates.length > 1) {
+        for (let i = 1; i < coordinates.length; i++) {
+            const prevPoint = L.latLng(coordinates[i-1]);
+            const currentPoint = L.latLng(coordinates[i]);
+            totalRouteDistance += prevPoint.distanceTo(currentPoint);
+        }
+    }
+}
+
+// Calculate traced distance
+function calculateTracedDistance() {
+    tracedDistance = 0;
+    
+    if (tracedPath.length < 2) return;
+    
+    for (let i = 1; i < tracedPath.length; i++) {
+        const prevPoint = L.latLng(tracedPath[i-1]);
+        const currentPoint = L.latLng(tracedPath[i]);
+        tracedDistance += prevPoint.distanceTo(currentPoint);
+    }
+}
+
+// Update trace progress display
+function updateTraceProgress() {
+    const traceDistanceEl = document.getElementById('traceDistance');
+    const tracePercentageEl = document.getElementById('tracePercentage');
+    const traceProgressFillEl = document.getElementById('traceProgressFill');
+    
+    if (traceDistanceEl && tracePercentageEl && traceProgressFillEl) {
+        const distanceKm = (tracedDistance / 1000).toFixed(1);
+        const percentage = totalRouteDistance > 0 ? Math.min(100, (tracedDistance / totalRouteDistance) * 100) : 0;
+        
+        traceDistanceEl.textContent = distanceKm;
+        tracePercentageEl.textContent = percentage.toFixed(0);
+        traceProgressFillEl.style.width = percentage + '%';
+    }
+}
+
+// Handle location errors
+function handleLocationError(error) {
+    let message = 'Locatie fout: ';
+    switch(error.code) {
+        case error.PERMISSION_DENIED:
+            message += 'Toegang tot locatie geweigerd';
+            break;
+        case error.POSITION_UNAVAILABLE:
+            message += 'Locatie niet beschikbaar';
+            break;
+        case error.TIMEOUT:
+            message += 'Locatie timeout';
+            break;
+        default:
+            message += 'Onbekende fout';
+            break;
+    }
+    
+    showNotification(message, 'error');
+    stopRouteTrace();
+}
+
 // Clear etappe highlight
 function clearEtappeHighlight() {
     highlightLayer.clearLayers();
+    // Stop tracing if active
+    if (isTracing) {
+        stopRouteTrace();
+    }
     // Clear route info panel
     document.getElementById('routeInfoPanel').innerHTML = '<div class="empty-state">Geen etappe geselecteerd</div>';
 }
