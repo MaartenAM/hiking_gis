@@ -308,7 +308,7 @@ function loadRouteOptions() {
     }
 }
 
-// Show selected route
+// Show selected route - improved for multiple routes
 function showSelectedRoute() {
     const routeTypeSelect = document.getElementById('routeTypeSelect');
     const specificSelect = document.getElementById('specificRouteSelect');
@@ -325,6 +325,14 @@ function showSelectedRoute() {
     const routeFilter = selectedOption.dataset.filter;
     const layerName = getLayerName(routeType);
     
+    // Check if route already exists
+    const existingRoute = activeRoutes.find(route => route.filter === routeFilter && route.layerName === layerName);
+    if (existingRoute) {
+        alert(`Route "${routeName}" is al toegevoegd!`);
+        resetRouteForm();
+        return;
+    }
+    
     // Create route data
     const routeData = {
         id: Date.now(),
@@ -335,36 +343,53 @@ function showSelectedRoute() {
         value: selectedOption.value
     };
     
+    console.log('Adding new route:', routeData);
+    console.log('Current active routes:', activeRoutes.length);
+    
     // Add to active routes
     activeRoutes.push(routeData);
     
-    // Add to map
+    // Add to map (each route gets its own layer)
     addRouteToMap(routeData);
     
     // Update UI
     updateActiveRoutesDisplay();
     updateRouteDetails(routeData);
     resetRouteForm();
+    
+    showNotification(`Route "${routeName}" toegevoegd (totaal: ${activeRoutes.length} routes)`, 'success');
 }
 
-// Add route to map with PDOK XML filtering exactly like your URL
+// Add route to map with PDOK XML filtering - improved for multiple routes
 function addRouteToMap(routeData) {
     // Create XML filter exactly like your working URL
     const xmlFilter = `<Filter><PropertyIsEqualTo><PropertyName>lawnaam</PropertyName><Literal>${routeData.filter}</Literal></PropertyIsEqualTo></Filter>`;
     
-    console.log('Adding route:', routeData.name);
+    console.log('Adding route to map:', routeData.name);
     console.log('XML Filter:', xmlFilter);
+    console.log('Layer name:', routeData.layerName);
     
-    // Use custom PDOK filter layer
+    // Create unique layer for this route
     const wmsLayer = L.tileLayer.pdokFilter('https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0', {
         layers: routeData.layerName,
         xmlFilter: xmlFilter,
         attribution: '© PDOK Wandelnet',
         opacity: 0.8,
-        zIndex: 10,
+        zIndex: 10 + activeRoutes.length, // Unique z-index for each route
         tileSize: 256
     });
     
+    // Add error handling
+    wmsLayer.on('tileerror', function(error) {
+        console.error('Error loading route tiles:', error);
+        showNotification(`Fout bij laden route "${routeData.name}"`, 'error');
+    });
+    
+    wmsLayer.on('tileload', function() {
+        console.log(`Tiles loaded for route: ${routeData.name}`);
+    });
+    
+    // Add to map
     wmsLayer.addTo(map);
     routeData.layer = wmsLayer;
     
@@ -478,19 +503,25 @@ function getDisplayName(routeType) {
     return displayNames[routeType] || routeType;
 }
 
-// Show notification
+// Show notification with error type support
 function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
+    const bgColor = type === 'success' ? '#10b981' : 
+                   type === 'error' ? '#ef4444' : 
+                   type === 'warning' ? '#f59e0b' : '#3b82f6';
+    
     notification.style.cssText = `
         position: fixed;
         top: 20px;
         right: 20px;
-        background: ${type === 'success' ? '#10b981' : '#3b82f6'};
+        background: ${bgColor};
         color: white;
         padding: 12px 20px;
         border-radius: 8px;
         z-index: 10000;
         font-size: 14px;
+        max-width: 300px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     `;
     notification.textContent = message;
     document.body.appendChild(notification);
@@ -499,7 +530,7 @@ function showNotification(message, type = 'info') {
         if (notification.parentNode) {
             notification.parentNode.removeChild(notification);
         }
-    }, 3000);
+    }, type === 'error' ? 5000 : 3000); // Error messages stay longer
 }
 
 // Measuring functions
