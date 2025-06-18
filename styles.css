@@ -86,20 +86,33 @@ body {
 
 .tab-button {
     flex: 1;
-    padding: 16px 12px;
+    padding: 12px 8px;
     border: none;
     background: transparent;
     color: var(--text-secondary);
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
     border-radius: var(--radius-sm);
-    margin: 4px 2px;
+    margin: 4px 1px;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 4px;
+    min-width: 0;
+}
+
+.tab-button i {
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.tab-button span {
+    font-size: 10px;
+    line-height: 1;
+    text-align: center;
 }
 
 .tab-button:hover {
@@ -837,6 +850,50 @@ body {
 
 .sidebar-content::-webkit-scrollbar-thumb:hover {
     background: var(--text-muted);
+}
+
+/* Kilometer marker tooltips */
+.km-tooltip {
+    background: #3b82f6 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 4px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    padding: 4px 8px !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+}
+
+.km-tooltip::before {
+    border-top-color: #3b82f6 !important;
+}
+
+.start-tooltip {
+    background: #10b981 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 6px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    padding: 6px 10px !important;
+}
+
+.start-tooltip::before {
+    border-top-color: #10b981 !important;
+}
+
+.end-tooltip {
+    background: #ef4444 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 6px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    padding: 6px 10px !important;
+}
+
+.end-tooltip::before {
+    border-top-color: #ef4444 !important;
 }
 
 /* Responsive */
