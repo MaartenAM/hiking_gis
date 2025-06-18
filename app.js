@@ -77,7 +77,7 @@ L.TileLayer.PDOKFilter = L.TileLayer.WMS.extend({
             'CRS': crs,
             'WIDTH': this.options.tileSize || 256,
             'HEIGHT': this.options.tileSize || 256,
-            'BBOX': bbox.join(',')
+            'BBOX': bbox[0] + ',' + bbox[1] + ',' + bbox[2] + ',' + bbox[3] // Fix: just comma-separated numbers
         };
         
         // Add XML filter if provided
@@ -90,7 +90,20 @@ L.TileLayer.PDOKFilter = L.TileLayer.WMS.extend({
             encodeURIComponent(key) + '=' + encodeURIComponent(params[key])
         ).join('&');
         
+        console.log('Generated PDOK URL:', url + queryString);
         return url + queryString;
+    },
+    
+    _tileCoordsToNwSe: function (coords) {
+        var map = this._map,
+            tileSize = this.getTileSize(),
+            nwPoint = coords.scaleBy(tileSize),
+            sePoint = nwPoint.add(tileSize),
+            nw = map.unproject(nwPoint, coords.z),
+            se = map.unproject(sePoint, coords.z);
+        
+        // Return as simple array [west, south, east, north] for WMS 1.3.0
+        return [nw.lng, se.lat, se.lng, nw.lat];
     }
 });
 
