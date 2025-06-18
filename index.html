@@ -33,6 +33,10 @@
                     <i class="fas fa-route"></i>
                     Routes
                 </button>
+                <button class="tab-button" data-tab="info">
+                    <i class="fas fa-info-circle"></i>
+                    Route Info
+                </button>
                 <button class="tab-button" data-tab="tools">
                     <i class="fas fa-tools"></i>
                     Tools
@@ -150,6 +154,26 @@
                         </div>
                         <div id="routeDetailsContainer">
                             <div class="empty-state">Selecteer een route om details te zien</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Route Info Tab -->
+                <div class="tab-panel" id="info-panel">
+                    <div class="control-section">
+                        <div class="section-title">
+                            <i class="fas fa-info-circle"></i>
+                            Etappe Informatie
+                        </div>
+                        <div class="info-instruction">
+                            <div class="instruction-icon">
+                                <i class="fas fa-hand-pointer"></i>
+                            </div>
+                            <h4>Klik op een route lijn</h4>
+                            <p>Klik op een actieve route lijn op de kaart om gedetailleerde informatie te zien over etappes, van/naar locaties, en route eigenschappen.</p>
+                        </div>
+                        <div id="routeInfoPanel">
+                            <div class="empty-state">Geen etappe geselecteerd</div>
                         </div>
                     </div>
                 </div>
