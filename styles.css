@@ -181,6 +181,18 @@ body {
     box-shadow: 0 0 0 3px rgb(77 128 97 / 0.1);
 }
 
+/* Optgroup styling */
+.select-field optgroup {
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--surface-elevated);
+}
+
+.select-field option {
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
 /* Buttons */
 .button-primary {
     width: 100%;
