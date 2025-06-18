@@ -126,9 +126,35 @@
                                 <option value="stad-te-voet">Stad te voet</option>
                             </select>
                         </div>
-                        <button class="button-primary" onclick="applyLAWFilters()">
+                        <div class="control-group">
+                            <label class="control-label">Filter op route naam:</label>
+                            <input type="text" id="routeNameFilter" class="input-field" placeholder="Bijv. Pieterpad, LAW1...">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Filter op provincie:</label>
+                            <select id="provinceFilter" class="select-field">
+                                <option value="">Alle provincies</option>
+                                <option value="Drenthe">Drenthe</option>
+                                <option value="Flevoland">Flevoland</option>
+                                <option value="Friesland">Friesland</option>
+                                <option value="Gelderland">Gelderland</option>
+                                <option value="Groningen">Groningen</option>
+                                <option value="Limburg">Limburg</option>
+                                <option value="Noord-Brabant">Noord-Brabant</option>
+                                <option value="Noord-Holland">Noord-Holland</option>
+                                <option value="Overijssel">Overijssel</option>
+                                <option value="Utrecht">Utrecht</option>
+                                <option value="Zeeland">Zeeland</option>
+                                <option value="Zuid-Holland">Zuid-Holland</option>
+                            </select>
+                        </div>
+                        <button class="button-primary" onclick="applyAdvancedFilters()">
                             <i class="fas fa-filter"></i>
-                            Filter toepassen
+                            Geavanceerde filters
+                        </button>
+                        <button class="button-primary" onclick="queryRouteInfo()">
+                            <i class="fas fa-info-circle"></i>
+                            Route info ophalen
                         </button>
                         <button class="button-secondary" onclick="clearLAWFilters()">
                             <i class="fas fa-times"></i>
@@ -138,18 +164,11 @@
 
                     <div class="control-section">
                         <div class="section-title">
-                            <i class="fas fa-info-circle"></i>
-                            Route Status
+                            <i class="fas fa-list"></i>
+                            Route Details
                         </div>
-                        <div class="status-container">
-                            <div class="status-item">
-                                <div class="status-indicator status-online"></div>
-                                <span>LAW routes geladen</span>
-                            </div>
-                            <div class="status-item">
-                                <div class="status-indicator status-online"></div>
-                                <span>PDOK service beschikbaar</span>
-                            </div>
+                        <div id="routeDetailsContainer">
+                            <div class="empty-state">Klik "Route info ophalen" om details te zien</div>
                         </div>
                     </div>
                 </div>
