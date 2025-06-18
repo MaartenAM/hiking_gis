@@ -74,13 +74,9 @@
                     <div class="control-section">
                         <div class="section-title">
                             <i class="fas fa-hiking"></i>
-                            Wandellagen
+                            Extra Lagen
                         </div>
                         <div class="layer-grid">
-                            <div class="layer-card" data-overlay="law">
-                                <i class="fas fa-route"></i>
-                                <div class="layer-name">LAW Paden</div>
-                            </div>
                             <div class="layer-card" data-overlay="local">
                                 <i class="fas fa-walking"></i>
                                 <div class="layer-name">Lokale routes</div>
@@ -108,101 +104,64 @@
                     </div>
                 </div>
 
-                <!-- Routes Tab -->
+                <!-- Routes Tab - NIEUWE INTERFACE -->
                 <div class="tab-panel" id="routes-panel">
                     <div class="control-section">
                         <div class="section-title">
-                            <i class="fas fa-filter"></i>
-                            LAW Route Filters
+                            <i class="fas fa-route"></i>
+                            Route Selectie
                         </div>
-                        <div class="control-group">
-                            <label class="control-label">Selecteer LAW type:</label>
-                            <select id="lawLayerFilter" class="select-field">
-                                <option value="">Alle LAW types</option>
-                                <option value="landelijke-wandelroutes">Landelijke Wandelroutes</option>
-                                <option value="streekpaden">Streekpaden</option>
-                                <option value="ns-wandelingen">NS-wandelingen</option>
-                                <option value="ov-stappers">OV-stappers</option>
-                                <option value="stad-te-voet">Stad te voet</option>
-                            </select>
+                        
+                        <!-- Stap 1: Kies route type -->
+                        <div class="step-container">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <label class="control-label">Kies route type:</label>
+                                <select id="routeTypeSelect" class="select-field" onchange="loadRouteOptions()">
+                                    <option value="">-- Selecteer route type --</option>
+                                    <option value="law">Lange Afstand Wandelpaden (LAW)</option>
+                                    <option value="streekpaden">Streekpaden</option>
+                                    <option value="ns-wandelingen">NS-wandelingen</option>
+                                    <option value="ov-stappers">OV-stappers</option>
+                                    <option value="stad-te-voet">Stad te voet</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="control-group">
-                            <label class="control-label">Filter op route naam:</label>
-                            <select id="routeNameFilter" class="select-field">
-                                <option value="">Alle routes</option>
-                                <optgroup label="Lange Afstand Wandelpaden (LAW)">
-                                    <option value="LAW 1">LAW 1 - Noordzeeroute</option>
-                                    <option value="LAW 2">LAW 2 - Pieterpad</option>
-                                    <option value="LAW 3">LAW 3 - Pelgrimspad</option>
-                                    <option value="LAW 4">LAW 4 - Zuiderzeepad</option>
-                                    <option value="LAW 5">LAW 5 - Grenspad</option>
-                                    <option value="LAW 6">LAW 6 - Krijtlandpad</option>
-                                    <option value="LAW 7">LAW 7 - Boerenlandpad</option>
-                                    <option value="LAW 8">LAW 8 - Waddenzeepad</option>
-                                    <option value="LAW 9">LAW 9 - Kustpad</option>
-                                    <option value="LAW 10">LAW 10 - Marskramerpad</option>
-                                    <option value="LAW 11">LAW 11 - Veluwerandpad</option>
-                                    <option value="LAW 12">LAW 12 - Maaspad</option>
-                                    <option value="LAW 13">LAW 13 - Streek-en Landschapsenpad</option>
-                                    <option value="LAW 14">LAW 14 - Lauwersmeerpad</option>
-                                    <option value="LAW 15">LAW 15 - Smorenburgerpad</option>
-                                    <option value="LAW 16">LAW 16 - Geuldal-Grenslandpad</option>
-                                    <option value="LAW 17">LAW 17 - Deltapad</option>
-                                    <option value="LAW 18">LAW 18 - Groot Frieslandpad</option>
-                                    <option value="LAW 19">LAW 19 - Oer-IJ pad</option>
-                                    <option value="LAW 20">LAW 20 - Heuvellandroute</option>
-                                    <option value="LAW 21">LAW 21 - Kennemerland-Zaanse Schanspad</option>
-                                </optgroup>
-                                <optgroup label="Populaire routes">
-                                    <option value="Pieterpad">Pieterpad</option>
-                                    <option value="Oranjepad">Oranjepad</option>
-                                    <option value="Noordzeeroute">Noordzeeroute</option>
-                                    <option value="Trekvogelpad">Trekvogelpad</option>
-                                    <option value="Grenspad">Grenspad</option>
-                                    <option value="Zuiderzeepad">Zuiderzeepad</option>
-                                    <option value="Krijtlandpad">Krijtlandpad</option>
-                                    <option value="Pelgrimspad">Pelgrimspad</option>
-                                </optgroup>
-                                <optgroup label="Grote Routes (GR)">
-                                    <option value="GR 5">GR 5 - Via Hollandica</option>
-                                    <option value="GR 12">GR 12 - Maas-Rijnpad</option>
-                                    <option value="GR 57">GR 57 - Sentier de la Moselle</option>
-                                </optgroup>
-                            </select>
+
+                        <!-- Stap 2: Kies specifieke route -->
+                        <div class="step-container" id="step2" style="display: none;">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <label class="control-label">Selecteer route:</label>
+                                <select id="specificRouteSelect" class="select-field">
+                                    <option value="">-- Eerst route type kiezen --</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="control-group">
-                            <label class="control-label">Filter op provincie:</label>
-                            <select id="provinceFilter" class="select-field">
-                                <option value="">Alle provincies</option>
-                                <option value="Drenthe">Drenthe</option>
-                                <option value="Flevoland">Flevoland</option>
-                                <option value="Friesland">Friesland</option>
-                                <option value="Gelderland">Gelderland</option>
-                                <option value="Groningen">Groningen</option>
-                                <option value="Limburg">Limburg</option>
-                                <option value="Noord-Brabant">Noord-Brabant</option>
-                                <option value="Noord-Holland">Noord-Holland</option>
-                                <option value="Overijssel">Overijssel</option>
-                                <option value="Utrecht">Utrecht</option>
-                                <option value="Zeeland">Zeeland</option>
-                                <option value="Zuid-Holland">Zuid-Holland</option>
-                            </select>
+
+                        <!-- Stap 3: Toon route -->
+                        <div class="step-container" id="step3" style="display: none;">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <button class="button-primary" onclick="showSelectedRoute()">
+                                    <i class="fas fa-eye"></i>
+                                    Toon Route op Kaart
+                                </button>
+                            </div>
                         </div>
-                        <button class="button-primary" onclick="applyAdvancedFilters()">
-                            <i class="fas fa-filter"></i>
-                            Geavanceerde filters
-                        </button>
-                        <button class="button-secondary" onclick="clearLAWFilters()">
-                            <i class="fas fa-times"></i>
-                            Alle lagen uitschakelen
-                        </button>
-                        <button class="button-primary" onclick="queryRouteInfo()">
-                            <i class="fas fa-info-circle"></i>
-                            Hoe route info te krijgen
-                        </button>
-                        <button class="button-secondary" onclick="clearLAWFilters()">
-                            <i class="fas fa-times"></i>
-                            Alle lagen tonen
+                    </div>
+
+                    <div class="control-section">
+                        <div class="section-title">
+                            <i class="fas fa-layer-group"></i>
+                            Actieve Routes
+                        </div>
+                        <div id="activeRoutesDisplay">
+                            <div class="empty-state">Geen routes geselecteerd</div>
+                        </div>
+                        <button class="button-secondary" onclick="clearAllRoutes()">
+                            <i class="fas fa-trash"></i>
+                            Alle routes verwijderen
                         </button>
                     </div>
 
@@ -212,7 +171,7 @@
                             Route Details
                         </div>
                         <div id="routeDetailsContainer">
-                            <div class="empty-state">Klik "Route info ophalen" om details te zien</div>
+                            <div class="empty-state">Selecteer een route om details te zien</div>
                         </div>
                     </div>
                 </div>
@@ -262,26 +221,16 @@
                             Locatie zoeken
                         </div>
                         <div class="control-group">
-                            <label class="control-label">Zoek naar plaats, adres of route</label>
+                            <label class="control-label">Zoek naar plaats of adres</label>
                             <div class="search-container">
                                 <input type="text" id="searchInput" class="input-field search-input" 
-                                       placeholder="Bijv. Amsterdam, LAW1, of Pieterpad...">
+                                       placeholder="Bijv. Amsterdam, Utrecht...">
                                 <button class="search-button" onclick="searchLocation()">
                                     <i class="fas fa-search"></i>
                                 </button>
                             </div>
                         </div>
                         <div class="loading-spinner" id="searchSpinner"></div>
-                    </div>
-
-                    <div class="control-section">
-                        <div class="section-title">
-                            <i class="fas fa-history"></i>
-                            Recente zoekopdrachten
-                        </div>
-                        <div id="searchHistory">
-                            <div class="empty-state">Nog geen zoekopdrachten</div>
-                        </div>
                     </div>
 
                     <div class="control-section">
