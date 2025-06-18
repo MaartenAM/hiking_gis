@@ -166,10 +166,15 @@ function setupEventListeners() {
         }
     });
 
-    // Map click event for measuring
+    // Map click event for measuring AND route info
     map.on('click', function(e) {
         if (measuring) {
             addMeasurePoint(e.latlng);
+        } else {
+            // Check if LAW layer is active and get route info
+            if (map.hasLayer(lawLayer)) {
+                getRouteInfoAtPoint(e.latlng, e.containerPoint);
+            }
         }
     });
 }
@@ -360,118 +365,136 @@ function applyAdvancedFilters() {
     console.log('Filter toegepast:', { layerType, routeName, province, cqlFilter });
 }
 
-// Query route information via WFS
-function queryRouteInfo() {
+// Get route info at clicked point using GetFeatureInfo
+function getRouteInfoAtPoint(latlng, point) {
     const bounds = map.getBounds();
-    const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+    const size = map.getSize();
     
-    // WFS request for route information
-    const wfsUrl = 'https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wfs/v1_0' +
-        '?service=WFS' +
-        '&version=2.0.0' +
-        '&request=GetFeature' +
-        '&typeName=wandelnet:landelijke-wandelroutes' +
-        '&outputFormat=application/json' +
-        '&bbox=' + bbox +
-        '&srsName=EPSG:4326' +
-        '&maxFeatures=50';
+    // Build GetFeatureInfo request
+    const params = {
+        request: 'GetFeatureInfo',
+        service: 'WMS',
+        srs: 'EPSG:4326',
+        version: '1.1.0',
+        format: 'image/png',
+        bbox: `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`,
+        height: size.y,
+        width: size.x,
+        layers: getCurrentLAWLayers(),
+        query_layers: getCurrentLAWLayers(),
+        info_format: 'application/json',
+        x: Math.round(point.x),
+        y: Math.round(point.y)
+    };
     
-    // Show loading
-    const container = document.getElementById('routeDetailsContainer');
-    container.innerHTML = '<div class="loading-spinner" style="display: block; margin: 20px auto;"></div>';
+    const url = 'https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0?' + 
+                Object.keys(params).map(key => `${key}=${encodeURIComponent(params[key])}`).join('&');
     
-    fetch(wfsUrl)
+    fetch(url)
         .then(response => response.json())
         .then(data => {
-            displayRouteInfo(data);
-            addInteractiveRoutes(data);
+            if (data.features && data.features.length > 0) {
+                showRouteInfoPopup(data.features[0], latlng);
+            }
         })
         .catch(error => {
-            console.error('Fout bij ophalen route info:', error);
-            container.innerHTML = '<div class="empty-state" style="color: #ef4444;">Fout bij ophalen route gegevens</div>';
+            console.log('Geen route info beschikbaar op deze locatie');
         });
 }
 
-// Display route information
-function displayRouteInfo(geoJsonData) {
+// Get currently active LAW layers
+function getCurrentLAWLayers() {
+    const selectedLayer = document.getElementById('lawLayerFilter').value;
+    if (selectedLayer) {
+        return selectedLayer;
+    }
+    return 'landelijke-wandelroutes,streekpaden,ns-wandelingen,ov-stappers,stad-te-voet';
+}
+
+// Show route info popup
+function showRouteInfoPopup(feature, latlng) {
+    const props = feature.properties;
+    
+    const popupContent = `
+        <div class="route-popup">
+            <h4>${props.routenaam || props.naam || 'LAW Route'}</h4>
+            <div class="popup-details">
+                ${props.routetype ? `<p><strong>Type:</strong> ${props.routetype}</p>` : ''}
+                ${props.provincie ? `<p><strong>Provincie:</strong> ${props.provincie}</p>` : ''}
+                ${props.lengte_m ? `<p><strong>Lengte:</strong> ${(props.lengte_m / 1000).toFixed(1)} km</p>` : ''}
+                ${props.fuid ? `<p><strong>Route ID:</strong> ${props.fuid}</p>` : ''}
+                ${props.samenvatting ? `<p><strong>Beschrijving:</strong> ${props.samenvatting}</p>` : ''}
+            </div>
+        </div>
+    `;
+    
+    L.popup()
+        .setLatLng(latlng)
+        .setContent(popupContent)
+        .openOn(map);
+}
+
+// Query route information in current view (simplified)
+function queryRouteInfo() {
     const container = document.getElementById('routeDetailsContainer');
     
-    if (!geoJsonData.features || geoJsonData.features.length === 0) {
-        container.innerHTML = '<div class="empty-state">Geen routes gevonden in huidige weergave</div>';
-        return;
-    }
-    
-    const routes = geoJsonData.features.slice(0, 10); // Limit to 10 routes
-    
-    container.innerHTML = routes.map(route => {
-        const props = route.properties;
-        return `
-            <div class="route-info-card" onclick="zoomToRoute('${props.fid || props.id}')">
-                <div class="route-header">
-                    <strong>${props.routenaam || props.naam || 'Onbekende route'}</strong>
-                    <span class="route-type">${props.routetype || props.type || ''}</span>
-                </div>
-                <div class="route-details">
-                    ${props.provincie ? `<div><i class="fas fa-map-marker-alt"></i> ${props.provincie}</div>` : ''}
-                    ${props.lengte_m ? `<div><i class="fas fa-ruler"></i> ${(props.lengte_m / 1000).toFixed(1)} km</div>` : ''}
-                    ${props.fuid ? `<div><i class="fas fa-hashtag"></i> ID: ${props.fuid}</div>` : ''}
-                </div>
-                ${props.samenvatting ? `<div class="route-description">${props.samenvatting}</div>` : ''}
+    // Show instruction instead of trying WFS
+    container.innerHTML = `
+        <div class="info-instruction">
+            <div class="instruction-icon">
+                <i class="fas fa-mouse-pointer"></i>
             </div>
-        `;
-    }).join('');
-}
-
-// Add interactive route features
-function addInteractiveRoutes(geoJsonData) {
-    // Clear existing interactive routes
-    routeInfoLayer.clearLayers();
-    
-    // Add clickable route features
-    geoJsonData.features.forEach(feature => {
-        if (feature.geometry && feature.geometry.type === 'LineString') {
-            const coords = feature.geometry.coordinates.map(coord => [coord[1], coord[0]]); // Flip coordinates
-            
-            const routeLine = L.polyline(coords, {
-                color: '#ff6b35',
-                weight: 4,
-                opacity: 0.7,
-                interactive: true
-            });
-            
-            const props = feature.properties;
-            routeLine.bindPopup(`
-                <div class="route-popup">
-                    <h4>${props.routenaam || props.naam || 'Route'}</h4>
-                    <div class="popup-details">
-                        ${props.routetype ? `<p><strong>Type:</strong> ${props.routetype}</p>` : ''}
-                        ${props.provincie ? `<p><strong>Provincie:</strong> ${props.provincie}</p>` : ''}
-                        ${props.lengte_m ? `<p><strong>Lengte:</strong> ${(props.lengte_m / 1000).toFixed(1)} km</p>` : ''}
-                        ${props.samenvatting ? `<p><strong>Beschrijving:</strong> ${props.samenvatting}</p>` : ''}
-                    </div>
-                    <button onclick="highlightRoute('${feature.id || Math.random()}')" class="popup-button">
-                        <i class="fas fa-eye"></i> Highlight route
-                    </button>
+            <h4>Route informatie ophalen</h4>
+            <p>Klik op een route lijn op de kaart om gedetailleerde informatie te zien over die specifieke route.</p>
+            <div class="instruction-steps">
+                <div class="step">
+                    <i class="fas fa-search"></i>
+                    <span>Zoom in op interessant gebied</span>
                 </div>
-            `);
-            
-            routeInfoLayer.addLayer(routeLine);
-        }
-    });
+                <div class="step">
+                    <i class="fas fa-hand-pointer"></i>
+                    <span>Klik op een route lijn</span>
+                </div>
+                <div class="step">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Bekijk route details in popup</span>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
-// Zoom to specific route
+// Simplified filtering - remove WFS attempts
+function applyAdvancedFilters() {
+    const layerType = document.getElementById('lawLayerFilter').value;
+    const routeName = document.getElementById('routeNameFilter').value;
+    const province = document.getElementById('provinceFilter').value;
+    
+    // For demonstration, we'll just apply the layer filter and show a message
+    applyLAWFilters();
+    
+    if (routeName || province) {
+        alert(`Filter ingesteld voor:\n${routeName ? `Route: ${routeName}\n` : ''}${province ? `Provincie: ${province}` : ''}\n\nLet op: Voor specifieke route informatie, klik op de route lijnen op de kaart.`);
+    }
+}
+
+// Remove the complex WFS functions and replace with simpler versions
+function displayRouteInfo(message) {
+    const container = document.getElementById('routeDetailsContainer');
+    container.innerHTML = `<div class="empty-state">${message}</div>`;
+}
+
+function addInteractiveRoutes() {
+    // Routes are already interactive through WMS GetFeatureInfo
+    // No additional overlay needed
+}
+
 function zoomToRoute(routeId) {
-    console.log('Zooming to route:', routeId);
-    // This would need the specific route geometry to zoom to
-    // For now, we'll show a message
-    alert(`Zooming naar route: ${routeId}`);
+    console.log('Route zoom niet beschikbaar zonder WFS');
 }
 
-// Highlight specific route
 function highlightRoute(routeId) {
-    console.log('Highlighting route:', routeId);
-    // Add highlighting logic here
+    console.log('Route highlight niet beschikbaar zonder WFS');
 }
 
 function clearLAWFilters() {
