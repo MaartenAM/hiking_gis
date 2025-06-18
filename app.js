@@ -10,48 +10,13 @@ let searchHistory = [];
 let favorites = [];
 let activeRoutes = [];
 
-// Route definitions with exact PDOK lawnaam values
+// Route definitions - alleen de 4 gewenste LAW routes
 const routeDefinitions = {
     law: [
-        { value: 'LAW 1', name: 'LAW 1 - Noordzeeroute', filter: 'Noordzeeroute' },
-        { value: 'LAW 2', name: 'LAW 2 - Pieterpad', filter: 'Pieterpad' },
-        { value: 'LAW 3', name: 'LAW 3 - Pelgrimspad', filter: 'Pelgrimspad' },
-        { value: 'LAW 4', name: 'LAW 4 - Zuiderzeepad', filter: 'Zuiderzeepad' },
-        { value: 'LAW 5', name: 'LAW 5 - Grenspad', filter: 'Grenspad' },
-        { value: 'LAW 6', name: 'LAW 6 - Krijtlandpad', filter: 'Krijtlandpad' },
-        { value: 'LAW 7', name: 'LAW 7 - Boerenlandpad', filter: 'Boerenlandpad' },
-        { value: 'LAW 8', name: 'LAW 8 - Waddenzeepad', filter: 'Waddenzeepad' },
-        { value: 'LAW 9', name: 'LAW 9 - Kustpad', filter: 'Kustpad' },
         { value: 'LAW 10', name: 'LAW 10 - Marskramerpad', filter: 'Marskramerpad' },
-        { value: 'LAW 11', name: 'LAW 11 - Veluwerandpad', filter: 'Veluwerandpad' },
-        { value: 'LAW 12', name: 'LAW 12 - Maaspad', filter: 'Maaspad' },
-        { value: 'LAW 13', name: 'LAW 13 - Streek-en Landschapsenpad', filter: 'Streek-en Landschapsenpad' },
-        { value: 'LAW 14', name: 'LAW 14 - Lauwersmeerpad', filter: 'Lauwersmeerpad' },
-        { value: 'LAW 15', name: 'LAW 15 - Smorenburgerpad', filter: 'Smorenburgerpad' },
-        { value: 'LAW 16', name: 'LAW 16 - Geuldal-Grenslandpad', filter: 'Geuldal-Grenslandpad' },
-        { value: 'LAW 17', name: 'LAW 17 - Deltapad', filter: 'Deltapad' },
-        { value: 'LAW 18', name: 'LAW 18 - Groot Frieslandpad', filter: 'Groot Frieslandpad' },
-        { value: 'LAW 19', name: 'LAW 19 - Oer-IJ pad', filter: 'Oer-IJ pad' },
-        { value: 'LAW 20', name: 'LAW 20 - Heuvellandroute', filter: 'Heuvellandroute' },
-        { value: 'LAW 21', name: 'LAW 21 - Kennemerland-Zaanse Schanspad', filter: 'Kennemerland-Zaanse Schanspad' }
-    ],
-    streekpaden: [
-        { value: 'SP1', name: 'Streekpad Waterland', filter: 'Waterland' },
-        { value: 'SP2', name: 'Streekpad Veluwe', filter: 'Veluwe' },
-        { value: 'SP3', name: 'Streekpad Utrechtse Heuvelrug', filter: 'Utrechtse Heuvelrug' }
-    ],
-    'ns-wandelingen': [
-        { value: 'NS1', name: 'NS-wandeling Amsterdam', filter: 'Amsterdam' },
-        { value: 'NS2', name: 'NS-wandeling Utrecht', filter: 'Utrecht' },
-        { value: 'NS3', name: 'NS-wandeling Den Haag', filter: 'Den Haag' }
-    ],
-    'ov-stappers': [
-        { value: 'OV1', name: 'OV-stapper Route 1', filter: 'Route 1' },
-        { value: 'OV2', name: 'OV-stapper Route 2', filter: 'Route 2' }
-    ],
-    'stad-te-voet': [
-        { value: 'STV1', name: 'Stad te voet Amsterdam', filter: 'Amsterdam' },
-        { value: 'STV2', name: 'Stad te voet Rotterdam', filter: 'Rotterdam' }
+        { value: 'LAW 5', name: 'LAW 5 - Trekvogelpad', filter: 'Trekvogelpad' },
+        { value: 'LAW 4', name: 'LAW 4 - Zuiderzeepad', filter: 'Zuiderzeepad' },
+        { value: 'LAW 3', name: 'LAW 3 - Pelgrimspad deel 1', filter: 'Pelgrimspad' }
     ]
 };
 
@@ -108,7 +73,7 @@ L.tileLayer.pdokFilter = function (url, options) {
     return new L.TileLayer.PDOKFilter(url, options);
 };
 
-// Initialize map
+// Initialize map - simplified
 function initMap() {
     // Create map centered on Netherlands
     map = L.map('map').setView([52.1326, 5.2913], 7);
@@ -144,10 +109,6 @@ function initMap() {
         'satellite': satelliteLayer,
         'terrain': terrainLayer
     };
-
-    // Local trails layer
-    localTrailsLayer = L.layerGroup();
-    addLocalTrails();
 
     // Setup event listeners
     setupEventListeners();
@@ -206,7 +167,7 @@ function setupTabNavigation() {
     });
 }
 
-// Setup event listeners
+// Setup event listeners - with route info functionality
 function setupEventListeners() {
     setupLayerCards();
 
@@ -220,12 +181,89 @@ function setupEventListeners() {
         });
     }
 
-    // Map click event for measuring
+    // Map click event for measuring AND route info
     map.on('click', function(e) {
         if (measuring) {
             addMeasurePoint(e.latlng);
+        } else {
+            // Check if any route layers are active and get route info
+            if (activeRoutes.length > 0) {
+                getRouteInfoAtPoint(e.latlng, e.containerPoint);
+            }
         }
     });
+}
+
+// Get route info at clicked point using GetFeatureInfo
+function getRouteInfoAtPoint(latlng, point) {
+    const bounds = map.getBounds();
+    const size = map.getSize();
+    
+    // Try to get info from all active routes
+    activeRoutes.forEach(route => {
+        const params = {
+            request: 'GetFeatureInfo',
+            service: 'WMS',
+            srs: 'EPSG:4326',
+            version: '1.1.0',
+            format: 'image/png',
+            bbox: `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`,
+            height: size.y,
+            width: size.x,
+            layers: route.layerName,
+            query_layers: route.layerName,
+            info_format: 'application/json',
+            x: Math.round(point.x),
+            y: Math.round(point.y)
+        };
+        
+        const url = 'https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0?' + 
+                    Object.keys(params).map(key => `${key}=${encodeURIComponent(params[key])}`).join('&');
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.features && data.features.length > 0) {
+                    showRouteInfoPopup(data.features[0], latlng);
+                }
+            })
+            .catch(error => {
+                console.log('Geen route info beschikbaar voor', route.name);
+            });
+    });
+}
+
+// Show route info popup with detailed information
+function showRouteInfoPopup(feature, latlng) {
+    const props = feature.properties;
+    
+    const popupContent = `
+        <div class="route-popup" style="max-width: 300px;">
+            <h4 style="margin-bottom: 12px; color: var(--primary-green);">${props.lawnaam || 'LAW Route'}</h4>
+            <div class="popup-details" style="line-height: 1.4;">
+                ${props.routetype ? `<p><strong>Type:</strong> ${props.routetype}</p>` : ''}
+                ${props.provincie ? `<p><strong>Provincie:</strong> ${props.provincie}</p>` : ''}
+                ${props.lengte_m ? `<p><strong>Lengte:</strong> ${(props.lengte_m / 1000).toFixed(1)} km</p>` : ''}
+                ${props.etappe ? `<p><strong>Etappe:</strong> ${props.etappe}</p>` : ''}
+                ${props.etappnaam ? `<p><strong>Etappe naam:</strong> ${props.etappnaam}</p>` : ''}
+                ${props.van ? `<p><strong>Van:</strong> ${props.van}</p>` : ''}
+                ${props.naar ? `<p><strong>Naar:</strong> ${props.naar}</p>` : ''}
+                ${props.fuid ? `<p><strong>Route ID:</strong> ${props.fuid}</p>` : ''}
+                ${props.samenvatting ? `<p><strong>Beschrijving:</strong> ${props.samenvatting}</p>` : ''}
+            </div>
+            <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b;">
+                💡 Klik op andere route delen voor meer etappe informatie
+            </div>
+        </div>
+    `;
+    
+    L.popup({
+        maxWidth: 350,
+        className: 'route-info-popup'
+    })
+        .setLatLng(latlng)
+        .setContent(popupContent)
+        .openOn(map);
 }
 
 // Setup layer cards
@@ -274,18 +312,18 @@ function toggleLocalTrails() {
     }
 }
 
-// Route selection functions
+// Route selection functions - simplified for LAW only
 function loadRouteOptions() {
     const routeType = document.getElementById('routeTypeSelect').value;
     const specificSelect = document.getElementById('specificRouteSelect');
     const step2 = document.getElementById('step2');
     const step3 = document.getElementById('step3');
     
-    if (routeType && routeDefinitions[routeType]) {
+    if (routeType === 'law' && routeDefinitions.law) {
         step2.style.display = 'block';
         
-        specificSelect.innerHTML = '<option value="">-- Selecteer een route --</option>';
-        routeDefinitions[routeType].forEach(route => {
+        specificSelect.innerHTML = '<option value="">-- Selecteer een LAW route --</option>';
+        routeDefinitions.law.forEach(route => {
             const option = document.createElement('option');
             option.value = route.value;
             option.textContent = route.name;
@@ -304,7 +342,7 @@ function loadRouteOptions() {
     } else {
         step2.style.display = 'none';
         step3.style.display = 'none';
-        specificSelect.innerHTML = '<option value="">-- Eerst route type kiezen --</option>';
+        specificSelect.innerHTML = '<option value="">-- Selecteer eerst LAW --</option>';
     }
 }
 
@@ -382,11 +420,14 @@ function addRouteToMap(routeData) {
     // Add error handling
     wmsLayer.on('tileerror', function(error) {
         console.error('Error loading route tiles:', error);
-        showNotification(`Fout bij laden route "${routeData.name}"`, 'error');
+        showNotification(`Route "${routeData.name}" kon niet geladen worden. Mogelijk bestaat de route naam "${routeData.filter}" niet in PDOK.`, 'error');
+        
+        // Try to get available route names
+        suggestAvailableRoutes(routeData);
     });
     
     wmsLayer.on('tileload', function() {
-        console.log(`Tiles loaded for route: ${routeData.name}`);
+        console.log(`Tiles loaded successfully for route: ${routeData.name}`);
     });
     
     // Add to map
@@ -394,6 +435,38 @@ function addRouteToMap(routeData) {
     routeData.layer = wmsLayer;
     
     showNotification(`Route "${routeData.name}" toegevoegd met filter: ${routeData.filter}`, 'success');
+}
+
+// Function to suggest available route names when a route fails to load
+function suggestAvailableRoutes(failedRoute) {
+    // Make a GetFeatureInfo request to see what routes are actually available in the area
+    const bounds = map.getBounds();
+    const center = map.getCenter();
+    
+    const testUrl = `https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0?service=WMS&version=1.1.0&request=GetFeatureInfo&layers=${failedRoute.layerName}&query_layers=${failedRoute.layerName}&format=image/png&info_format=application/json&width=256&height=256&srs=EPSG:4326&bbox=${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}&x=128&y=128`;
+    
+    fetch(testUrl)
+        .then(response => response.json())
+        .then(data => {
+            if (data.features && data.features.length > 0) {
+                const availableRoutes = [...new Set(data.features.map(f => f.properties.lawnaam).filter(name => name))];
+                console.log('Available route names in current area:', availableRoutes);
+                
+                // Find similar route names
+                const similarRoutes = availableRoutes.filter(name => 
+                    name.toLowerCase().includes('delta') || 
+                    name.toLowerCase().includes(failedRoute.filter.toLowerCase())
+                );
+                
+                if (similarRoutes.length > 0) {
+                    console.log('Suggested route names for', failedRoute.filter + ':', similarRoutes);
+                    showNotification(`Probeer: ${similarRoutes.join(', ')}`, 'warning');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Could not fetch available route names:', error);
+        });
 }
 
 // Get layer name
