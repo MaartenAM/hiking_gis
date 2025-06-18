@@ -9,27 +9,32 @@ let overlayLayers = {};
 let activeBaseLayer = 'osm';
 let searchHistory = [];
 let favorites = [];
+let routeInfoLayer; // Voor interactieve route info
 
 // Initialize map
 function initMap() {
     // Create map centered on Netherlands
     map = L.map('map').setView([52.1326, 5.2913], 7);
 
-    // Base layers
+    // Base layers met lagere z-index
     const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
+        attribution: '© OpenStreetMap contributors',
+        zIndex: 1
     });
 
     const topoLayer = L.tileLayer('https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:3857/{z}/{x}/{y}.png', {
-        attribution: '© PDOK'
+        attribution: '© PDOK',
+        zIndex: 1
     });
 
     const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: '© Esri'
+        attribution: '© Esri',
+        zIndex: 1
     });
 
     const terrainLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}', {
-        attribution: '© Esri'
+        attribution: '© Esri',
+        zIndex: 1
     });
 
     // Add default OSM layer
@@ -43,10 +48,14 @@ function initMap() {
         'terrain': terrainLayer
     };
 
-    // LAW layers from PDOK WMS
+    // LAW layers from PDOK WMS met hogere z-index
     lawLayer = L.layerGroup();
     addLAWLayers();
     lawLayer.addTo(map);
+
+    // Route info layer voor interactieve features
+    routeInfoLayer = L.layerGroup();
+    routeInfoLayer.addTo(map);
 
     // Local trails layer
     localTrailsLayer = L.layerGroup();
@@ -55,7 +64,8 @@ function initMap() {
     // Overlay layers object
     overlayLayers = {
         'law': lawLayer,
-        'local': localTrailsLayer
+        'local': localTrailsLayer,
+        'routeInfo': routeInfoLayer
     };
 
     // Setup event listeners
@@ -80,7 +90,8 @@ function addLAWLayers() {
             format: 'image/png',
             transparent: true,
             attribution: '© PDOK Wandelnet',
-            opacity: 0.8
+            opacity: 0.8,
+            zIndex: 10 // Hogere z-index dan basiskaarten
         });
         lawLayer.addLayer(wmsLayer);
     });
@@ -279,7 +290,7 @@ function clearMeasurements() {
     updateDistanceDisplay();
 }
 
-// LAW filter functions
+// LAW filter functions - enhanced
 function applyLAWFilters() {
     const selectedLayer = document.getElementById('lawLayerFilter').value;
     
@@ -294,7 +305,8 @@ function applyLAWFilters() {
             format: 'image/png',
             transparent: true,
             attribution: '© PDOK Wandelnet',
-            opacity: 0.8
+            opacity: 0.8,
+            zIndex: 10
         });
         lawLayer.addLayer(wmsLayer);
     } else {
@@ -305,8 +317,167 @@ function applyLAWFilters() {
     lawLayer.addTo(map);
 }
 
+// Advanced filtering with WFS
+function applyAdvancedFilters() {
+    const layerType = document.getElementById('lawLayerFilter').value;
+    const routeName = document.getElementById('routeNameFilter').value;
+    const province = document.getElementById('provinceFilter').value;
+    
+    // Build CQL filter
+    let cqlFilter = '';
+    const filters = [];
+    
+    if (routeName) {
+        filters.push(`routenaam ILIKE '%${routeName}%'`);
+    }
+    
+    if (province) {
+        filters.push(`provincie = '${province}'`);
+    }
+    
+    cqlFilter = filters.join(' AND ');
+    
+    // Remove current LAW layer
+    map.removeLayer(lawLayer);
+    lawLayer.clearLayers();
+    
+    const targetLayer = layerType || 'landelijke-wandelroutes';
+    
+    // Add filtered layer
+    const wmsLayer = L.tileLayer.wms('https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0', {
+        layers: targetLayer,
+        format: 'image/png',
+        transparent: true,
+        attribution: '© PDOK Wandelnet',
+        opacity: 0.8,
+        zIndex: 10,
+        cql_filter: cqlFilter || undefined
+    });
+    
+    lawLayer.addLayer(wmsLayer);
+    lawLayer.addTo(map);
+    
+    console.log('Filter toegepast:', { layerType, routeName, province, cqlFilter });
+}
+
+// Query route information via WFS
+function queryRouteInfo() {
+    const bounds = map.getBounds();
+    const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+    
+    // WFS request for route information
+    const wfsUrl = 'https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wfs/v1_0' +
+        '?service=WFS' +
+        '&version=2.0.0' +
+        '&request=GetFeature' +
+        '&typeName=wandelnet:landelijke-wandelroutes' +
+        '&outputFormat=application/json' +
+        '&bbox=' + bbox +
+        '&srsName=EPSG:4326' +
+        '&maxFeatures=50';
+    
+    // Show loading
+    const container = document.getElementById('routeDetailsContainer');
+    container.innerHTML = '<div class="loading-spinner" style="display: block; margin: 20px auto;"></div>';
+    
+    fetch(wfsUrl)
+        .then(response => response.json())
+        .then(data => {
+            displayRouteInfo(data);
+            addInteractiveRoutes(data);
+        })
+        .catch(error => {
+            console.error('Fout bij ophalen route info:', error);
+            container.innerHTML = '<div class="empty-state" style="color: #ef4444;">Fout bij ophalen route gegevens</div>';
+        });
+}
+
+// Display route information
+function displayRouteInfo(geoJsonData) {
+    const container = document.getElementById('routeDetailsContainer');
+    
+    if (!geoJsonData.features || geoJsonData.features.length === 0) {
+        container.innerHTML = '<div class="empty-state">Geen routes gevonden in huidige weergave</div>';
+        return;
+    }
+    
+    const routes = geoJsonData.features.slice(0, 10); // Limit to 10 routes
+    
+    container.innerHTML = routes.map(route => {
+        const props = route.properties;
+        return `
+            <div class="route-info-card" onclick="zoomToRoute('${props.fid || props.id}')">
+                <div class="route-header">
+                    <strong>${props.routenaam || props.naam || 'Onbekende route'}</strong>
+                    <span class="route-type">${props.routetype || props.type || ''}</span>
+                </div>
+                <div class="route-details">
+                    ${props.provincie ? `<div><i class="fas fa-map-marker-alt"></i> ${props.provincie}</div>` : ''}
+                    ${props.lengte_m ? `<div><i class="fas fa-ruler"></i> ${(props.lengte_m / 1000).toFixed(1)} km</div>` : ''}
+                    ${props.fuid ? `<div><i class="fas fa-hashtag"></i> ID: ${props.fuid}</div>` : ''}
+                </div>
+                ${props.samenvatting ? `<div class="route-description">${props.samenvatting}</div>` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+// Add interactive route features
+function addInteractiveRoutes(geoJsonData) {
+    // Clear existing interactive routes
+    routeInfoLayer.clearLayers();
+    
+    // Add clickable route features
+    geoJsonData.features.forEach(feature => {
+        if (feature.geometry && feature.geometry.type === 'LineString') {
+            const coords = feature.geometry.coordinates.map(coord => [coord[1], coord[0]]); // Flip coordinates
+            
+            const routeLine = L.polyline(coords, {
+                color: '#ff6b35',
+                weight: 4,
+                opacity: 0.7,
+                interactive: true
+            });
+            
+            const props = feature.properties;
+            routeLine.bindPopup(`
+                <div class="route-popup">
+                    <h4>${props.routenaam || props.naam || 'Route'}</h4>
+                    <div class="popup-details">
+                        ${props.routetype ? `<p><strong>Type:</strong> ${props.routetype}</p>` : ''}
+                        ${props.provincie ? `<p><strong>Provincie:</strong> ${props.provincie}</p>` : ''}
+                        ${props.lengte_m ? `<p><strong>Lengte:</strong> ${(props.lengte_m / 1000).toFixed(1)} km</p>` : ''}
+                        ${props.samenvatting ? `<p><strong>Beschrijving:</strong> ${props.samenvatting}</p>` : ''}
+                    </div>
+                    <button onclick="highlightRoute('${feature.id || Math.random()}')" class="popup-button">
+                        <i class="fas fa-eye"></i> Highlight route
+                    </button>
+                </div>
+            `);
+            
+            routeInfoLayer.addLayer(routeLine);
+        }
+    });
+}
+
+// Zoom to specific route
+function zoomToRoute(routeId) {
+    console.log('Zooming to route:', routeId);
+    // This would need the specific route geometry to zoom to
+    // For now, we'll show a message
+    alert(`Zooming naar route: ${routeId}`);
+}
+
+// Highlight specific route
+function highlightRoute(routeId) {
+    console.log('Highlighting route:', routeId);
+    // Add highlighting logic here
+}
+
 function clearLAWFilters() {
     document.getElementById('lawLayerFilter').value = '';
+    document.getElementById('routeNameFilter').value = '';
+    document.getElementById('provinceFilter').value = '';
     applyLAWFilters(); // This will add all layers again
 }
 
