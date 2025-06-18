@@ -37,7 +37,7 @@ function initMap() {
         zIndex: 1
     });
 
-    // Add default OSM layer
+    // Add default OSM layer ONLY
     osmLayer.addTo(map);
 
     // Base layers object
@@ -48,18 +48,20 @@ function initMap() {
         'terrain': terrainLayer
     };
 
-    // LAW layers from PDOK WMS met hogere z-index
+    // LAW layers from PDOK WMS - START DISABLED
     lawLayer = L.layerGroup();
-    addLAWLayers();
-    lawLayer.addTo(map);
+    // DON'T add LAW layers on startup
+    // addLAWLayers();
+    // lawLayer.addTo(map);
 
     // Route info layer voor interactieve features
     routeInfoLayer = L.layerGroup();
     routeInfoLayer.addTo(map);
 
-    // Local trails layer
+    // Local trails layer - START DISABLED  
     localTrailsLayer = L.layerGroup();
     addLocalTrails();
+    // DON'T add local trails on startup
 
     // Overlay layers object
     overlayLayers = {
@@ -295,12 +297,14 @@ function clearMeasurements() {
     updateDistanceDisplay();
 }
 
-// LAW filter functions - enhanced
+// LAW filter functions - enhanced with correct field names
 function applyLAWFilters() {
     const selectedLayer = document.getElementById('lawLayerFilter').value;
     
     // Remove current LAW layer
-    map.removeLayer(lawLayer);
+    if (map.hasLayer(lawLayer)) {
+        map.removeLayer(lawLayer);
+    }
     lawLayer.clearLayers();
     
     if (selectedLayer) {
@@ -320,6 +324,9 @@ function applyLAWFilters() {
     }
     
     lawLayer.addTo(map);
+    
+    // Update UI to show LAW layer is active
+    document.querySelector('[data-overlay="law"]').classList.add('active');
 }
 
 // Advanced filtering with WFS
@@ -501,7 +508,15 @@ function clearLAWFilters() {
     document.getElementById('lawLayerFilter').value = '';
     document.getElementById('routeNameFilter').value = '';
     document.getElementById('provinceFilter').value = '';
-    applyLAWFilters(); // This will add all layers again
+    
+    // Remove LAW layers completely
+    if (map.hasLayer(lawLayer)) {
+        map.removeLayer(lawLayer);
+        lawLayer.clearLayers();
+    }
+    
+    // Update UI to show LAW layer is inactive
+    document.querySelector('[data-overlay="law"]').classList.remove('active');
 }
 
 // Search functions
