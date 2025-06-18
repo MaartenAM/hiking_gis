@@ -295,9 +295,12 @@ function showSelectedRoute() {
     showNotification(`Route "${routeName}" toegevoegd`, 'success');
 }
 
-// Add route to map
+// Add route to map with exact CQL filtering
 function addRouteToMap(routeData) {
-    let cqlFilter = `lawnaam ILIKE '%${routeData.filter}%'`;
+    // Use exact match for lawnaam field
+    let cqlFilter = `lawnaam = '${routeData.filter}'`;
+    
+    console.log('CQL Filter:', cqlFilter); // Debug log
     
     const wmsLayer = L.tileLayer.wms('https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0', {
         layers: routeData.layerName,
@@ -311,6 +314,9 @@ function addRouteToMap(routeData) {
     
     wmsLayer.addTo(map);
     routeData.layer = wmsLayer;
+    
+    // Show success notification with filter info
+    showNotification(`Route "${routeData.name}" toegevoegd met filter: ${cqlFilter}`, 'success');
 }
 
 // Get layer name
