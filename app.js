@@ -331,7 +331,7 @@ function getRouteInfoAtPoint(latlng, point) {
                     );
                     
                     if (filteredFeatures.length > 0) {
-                        showRouteInfoPopup(filteredFeatures[0], latlng);
+                        showRouteInfoInPanel(filteredFeatures[0], latlng);
                         highlightEtappe(filteredFeatures[0], route);
                     }
                 }
@@ -342,68 +342,77 @@ function getRouteInfoAtPoint(latlng, point) {
     });
 }
 
-// Show route info popup
-function showRouteInfoPopup(feature, latlng) {
+// Show route info in sidebar panel instead of popup
+function showRouteInfoInPanel(feature, latlng) {
     const props = feature.properties;
     
-    const popupContent = `
-        <div class="route-popup" style="max-width: 350px; font-family: 'Inter', sans-serif;">
-            <div style="background: linear-gradient(135deg, #1e5738, #2d6847); color: white; padding: 16px; border-radius: 12px 12px 0 0; margin: -12px -20px 16px -20px;">
-                <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">${props.lawnaam || 'LAW Route'}</h3>
-                <div style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 16px; display: inline-block; font-size: 12px;">
-                    ${props.routetype || 'LAW Route'}
-                </div>
+    const panelContent = `
+        <div class="route-info-card">
+            <div class="route-info-header">
+                <div class="route-info-title">${props.lawnaam || 'LAW Route'}</div>
+                <div class="route-info-badge">${props.routetype || 'LAW Route'}</div>
             </div>
             
-            <div style="line-height: 1.5;">
-                ${props.etappe || props.etappnaam ? `
-                    <div style="margin-bottom: 16px; padding: 12px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #059669;">
-                        <h4 style="margin: 0 0 8px 0; color: #059669; font-size: 14px;">📍 Etappe Informatie</h4>
-                        ${props.etappe ? `<p style="margin: 4px 0;"><strong>Etappe:</strong> ${props.etappe}</p>` : ''}
-                        ${props.etappnaam ? `<p style="margin: 4px 0;"><strong>Naam:</strong> ${props.etappnaam}</p>` : ''}
-                    </div>
-                ` : ''}
-                
-                ${props.van || props.naar ? `
-                    <div style="margin-bottom: 16px;">
-                        <h4 style="margin: 0 0 8px 0; font-size: 14px; color: #1e5738;">🗺️ Route Traject</h4>
-                        ${props.van ? `<p style="margin: 4px 0;"><strong>Van:</strong> ${props.van}</p>` : ''}
-                        ${props.naar ? `<p style="margin: 4px 0;"><strong>Naar:</strong> ${props.naar}</p>` : ''}
-                    </div>
-                ` : ''}
-                
-                <div style="margin-bottom: 16px;">
-                    <h4 style="margin: 0 0 8px 0; font-size: 14px; color: #1e5738;">ℹ️ Details</h4>
-                    ${props.provincie ? `<p style="margin: 4px 0;"><strong>Provincie:</strong> ${props.provincie}</p>` : ''}
-                    ${props.lengte_m ? `<p style="margin: 4px 0;"><strong>Lengte:</strong> ${(props.lengte_m / 1000).toFixed(1)} km</p>` : ''}
+            ${props.etappe || props.etappnaam ? `
+                <div class="route-info-section">
+                    <h4><i class="fas fa-map-marker-alt"></i> Etappe Informatie</h4>
+                    ${props.etappe ? `<p><strong>Etappe:</strong> ${props.etappe}</p>` : ''}
+                    ${props.etappnaam ? `<p><strong>Naam:</strong> ${props.etappnaam}</p>` : ''}
                 </div>
-                
-                ${props.samenvatting ? `
-                    <div style="background: #f1f5f9; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
-                        <h4 style="margin: 0 0 8px 0; font-size: 14px; color: #1e5738;">📄 Beschrijving</h4>
-                        <p style="margin: 0; font-style: italic; color: #64748b;">${props.samenvatting}</p>
-                    </div>
-                ` : ''}
+            ` : ''}
+            
+            ${props.van || props.naar ? `
+                <div class="route-info-section">
+                    <h4><i class="fas fa-route"></i> Route Traject</h4>
+                    ${props.van ? `<p><strong>Van:</strong> ${props.van}</p>` : ''}
+                    ${props.naar ? `<p><strong>Naar:</strong> ${props.naar}</p>` : ''}
+                </div>
+            ` : ''}
+            
+            <div class="route-info-section">
+                <h4><i class="fas fa-info-circle"></i> Details</h4>
+                ${props.provincie ? `<p><strong>Provincie:</strong> ${props.provincie}</p>` : ''}
+                ${props.lengte_m ? `<p><strong>Lengte:</strong> ${(props.lengte_m / 1000).toFixed(1)} km</p>` : ''}
             </div>
             
-            <div style="border-top: 1px solid #e2e8f0; padding: 12px 0 0 0; margin-top: 16px; display: flex; justify-content: space-between; align-items: center;">
-                <button onclick="clearEtappeHighlight()" style="background: #64748b; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">
-                    👁️‍🗨️ Verberg highlight
+            ${props.samenvatting ? `
+                <div class="route-description">
+                    <h4 style="margin: 0 0 8px 0; font-size: 14px; color: var(--text-primary);">📄 Beschrijving</h4>
+                    <p style="margin: 0; font-size: 13px; line-height: 1.4;">${props.samenvatting}</p>
+                </div>
+            ` : ''}
+            
+            <div class="route-info-actions">
+                <button class="highlight-btn" onclick="clearEtappeHighlight()">
+                    <i class="fas fa-eye-slash"></i>
+                    Verberg highlight
                 </button>
-                <div style="font-size: 11px; color: #64748b;">
-                    ⏱️ Highlight 30 seconden zichtbaar
+                <div class="highlight-timer">
+                    Highlight 30 sec zichtbaar
                 </div>
             </div>
         </div>
     `;
     
-    L.popup({
-        maxWidth: 400,
-        className: 'modern-popup'
-    })
-        .setLatLng(latlng)
-        .setContent(popupContent)
-        .openOn(map);
+    // Update the route info panel
+    document.getElementById('routeInfoPanel').innerHTML = panelContent;
+    
+    // Switch to the Route Info tab
+    switchToRouteInfoTab();
+    
+    // Show notification that info is loaded
+    showNotification(`Etappe informatie geladen: ${props.etappnaam || props.etappe || 'Route segment'}`, 'success');
+}
+
+// Switch to Route Info tab
+function switchToRouteInfoTab() {
+    // Remove active class from all tabs and panels
+    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+    
+    // Activate Route Info tab
+    document.querySelector('[data-tab="info"]').classList.add('active');
+    document.getElementById('info-panel').classList.add('active');
 }
 
 // Highlight the clicked etappe
@@ -471,6 +480,8 @@ function highlightEtappe(feature, route) {
 // Clear etappe highlight
 function clearEtappeHighlight() {
     highlightLayer.clearLayers();
+    // Clear route info panel
+    document.getElementById('routeInfoPanel').innerHTML = '<div class="empty-state">Geen etappe geselecteerd</div>';
 }
 
 // Get layer name
