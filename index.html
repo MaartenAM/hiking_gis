@@ -11,7 +11,35 @@
     <!-- Font Awesome voor iconen -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
     <style>
+        :root {
+            --primary-green: #1e5738;
+            --secondary-green: #2d6847;
+            --accent-green: #4a8061;
+            --light-green: #6da583;
+            --orange: #ff7b54;
+            --orange-hover: #e66a47;
+            --background: #f8fafc;
+            --surface: #ffffff;
+            --surface-elevated: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --border: #e2e8f0;
+            --border-subtle: #f1f5f9;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -19,199 +47,456 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f5f5;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            font-feature-settings: 'cv11', 'ss01';
         }
 
         .container {
             display: flex;
             height: 100vh;
+            overflow: hidden;
         }
 
         .sidebar {
-            width: 350px;
-            background: linear-gradient(135deg, #2d5016, #4a7c59);
-            color: white;
-            padding: 20px;
-            overflow-y: auto;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-        }
-
-        .sidebar h1 {
-            font-size: 1.5em;
-            margin-bottom: 20px;
-            text-align: center;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #4a7c59;
-        }
-
-        .control-section {
-            margin-bottom: 25px;
-            background: rgba(255,255,255,0.1);
-            padding: 15px;
-            border-radius: 10px;
-            backdrop-filter: blur(10px);
-        }
-
-        .control-section h3 {
-            margin-bottom: 15px;
-            font-size: 1.1em;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .control-group {
-            margin-bottom: 15px;
-        }
-
-        .control-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-        }
-
-        select, input, button {
-            width: 100%;
-            padding: 10px;
-            border: none;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-
-        select, input {
-            background: rgba(255,255,255,0.9);
-            color: #333;
-        }
-
-        button {
-            background: #ff6b35;
-            color: white;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s ease;
-            margin-bottom: 10px;
-        }
-
-        button:hover {
-            background: #e55a2b;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
-        }
-
-        button.active {
-            background: #27ae60;
-        }
-
-        .checkbox-group {
+            width: 400px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            gap: 8px;
-        }
-
-        .checkbox-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.3s ease;
-        }
-
-        .checkbox-item:hover {
-            background: rgba(255,255,255,0.2);
-        }
-
-        .checkbox-item input[type="checkbox"] {
-            width: auto;
-            margin: 0;
-        }
-
-        .distance-display {
-            background: rgba(255,255,255,0.2);
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            font-size: 1.2em;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-
-        #map {
-            flex: 1;
-            position: relative;
-        }
-
-        .map-controls {
-            position: absolute;
-            top: 10px;
-            right: 10px;
+            box-shadow: var(--shadow-lg);
             z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
         }
 
-        .map-control-btn {
-            width: 50px;
-            height: 50px;
-            background: white;
-            border: 2px solid #ccc;
-            border-radius: 50%;
+        .sidebar-header {
+            padding: 24px 24px 20px;
+            border-bottom: 1px solid var(--border-subtle);
+            background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
+            color: white;
+        }
+
+        .sidebar-title {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .sidebar-subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        .sidebar-tabs {
+            display: flex;
+            background: var(--surface-elevated);
+            border-bottom: 1px solid var(--border);
+            padding: 0 4px;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 16px 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-radius: var(--radius-sm);
+            margin: 4px 2px;
             display: flex;
             align-items: center;
             justify-content: center;
-            cursor: pointer;
-            font-size: 20px;
-            color: #333;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            transition: all 0.3s ease;
+            gap: 8px;
         }
 
-        .map-control-btn:hover {
-            background: #f0f0f0;
-            transform: scale(1.1);
+        .tab-button:hover {
+            background: var(--surface);
+            color: var(--text-primary);
         }
 
-        .map-control-btn.active {
-            background: #27ae60;
+        .tab-button.active {
+            background: var(--primary-green);
             color: white;
-            border-color: #27ae60;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+        }
+
+        .tab-panel {
+            display: none;
+            padding: 24px;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .control-section {
+            margin-bottom: 32px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: -0.015em;
+        }
+
+        .section-title i {
+            color: var(--accent-green);
+            font-size: 16px;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+        }
+
+        .input-field, .select-field {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-family: inherit;
+            background: var(--surface);
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+        }
+
+        .input-field:focus, .select-field:focus {
+            outline: none;
+            border-color: var(--accent-green);
+            box-shadow: 0 0 0 3px rgb(77 128 97 / 0.1);
+        }
+
+        .button-primary {
+            width: 100%;
+            padding: 12px 20px;
+            border: none;
+            border-radius: var(--radius-md);
+            background: var(--orange);
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            letter-spacing: -0.01em;
+        }
+
+        .button-primary:hover {
+            background: var(--orange-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .button-primary.active {
+            background: var(--primary-green);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .button-secondary {
+            width: 100%;
+            padding: 12px 20px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--surface);
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .button-secondary:hover {
+            background: var(--surface-elevated);
+            border-color: var(--accent-green);
+        }
+
+        .layer-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .layer-card {
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            background: var(--surface);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .layer-card:hover {
+            border-color: var(--accent-green);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .layer-card.active {
+            border-color: var(--primary-green);
+            background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
+            color: white;
+            box-shadow: var(--shadow-md);
+        }
+
+        .layer-card i {
+            font-size: 24px;
+            margin-bottom: 8px;
+            display: block;
+            opacity: 0.8;
+        }
+
+        .layer-card.active i {
+            opacity: 1;
+        }
+
+        .layer-name {
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .filter-row .select-field {
+            flex: 1;
+        }
+
+        .distance-display {
+            background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
+            color: white;
+            padding: 20px;
+            border-radius: var(--radius-xl);
+            text-align: center;
+            margin-top: 16px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .distance-value {
+            font-size: 28px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: -0.02em;
+            margin-bottom: 4px;
+        }
+
+        .distance-label {
+            font-size: 12px;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 500;
         }
 
         .legend {
-            background: rgba(255,255,255,0.1);
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
+            background: var(--surface-elevated);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-top: 24px;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .legend-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .legend-item {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 8px;
+            gap: 12px;
+            margin-bottom: 12px;
+            font-size: 14px;
+            color: var(--text-secondary);
         }
 
         .legend-color {
-            width: 20px;
-            height: 3px;
+            width: 24px;
+            height: 4px;
             border-radius: 2px;
+            flex-shrink: 0;
+        }
+
+        #map {
+            flex: 1;
+            position: relative;
+            background: var(--surface-elevated);
+        }
+
+        .map-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .map-control-btn {
+            width: 48px;
+            height: 48px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            color: var(--text-primary);
+            box-shadow: var(--shadow-md);
+            transition: all 0.2s ease;
+            backdrop-filter: blur(12px);
+        }
+
+        .map-control-btn:hover {
+            background: var(--surface-elevated);
+            transform: scale(1.05);
+            border-color: var(--accent-green);
+        }
+
+        .map-control-btn.active {
+            background: var(--primary-green);
+            color: white;
+            border-color: var(--primary-green);
         }
 
         .info-panel {
             position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: white;
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 2px 15px rgba(0,0,0,0.2);
-            max-width: 300px;
+            bottom: 24px;
+            right: 24px;
+            background: var(--surface);
+            padding: 20px;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-xl);
+            max-width: 320px;
             z-index: 1000;
             display: none;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(12px);
+        }
+
+        .info-panel h4 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .info-content {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .search-container {
+            position: relative;
+        }
+
+        .search-input {
+            padding-right: 48px;
+        }
+
+        .search-button {
+            position: absolute;
+            right: 2px;
+            top: 2px;
+            bottom: 2px;
+            width: 44px;
+            border: none;
+            background: var(--orange);
+            color: white;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .search-button:hover {
+            background: var(--orange-hover);
+        }
+
+        .loading-spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top: 2px solid var(--orange);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-online { background: #10b981; }
+        .status-loading { background: var(--orange); }
+        .status-offline { background: #ef4444; }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 350px;
+            }
+            
+            .layer-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         @media (max-width: 768px) {
@@ -221,125 +506,333 @@
             
             .sidebar {
                 width: 100%;
-                height: auto;
-                max-height: 40vh;
+                height: 50vh;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
             }
             
             #map {
-                height: 60vh;
+                height: 50vh;
             }
+
+            .map-controls {
+                top: 10px;
+                right: 10px;
+            }
+
+            .info-panel {
+                bottom: 10px;
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+        }
+
+        /* Scrollbar styling */
+        .sidebar-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-track {
+            background: var(--surface-elevated);
+        }
+
+        .sidebar-content::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="sidebar">
-            <h1><i class="fas fa-hiking"></i> Hiking WebGIS</h1>
+            <div class="sidebar-header">
+                <div class="sidebar-title">
+                    <i class="fas fa-mountain"></i>
+                    Hiking WebGIS
+                </div>
+                <div class="sidebar-subtitle">LAW routes & wandelnavigatie</div>
+            </div>
             
-            <div class="control-section">
-                <h3><i class="fas fa-map"></i> Kaartlagen</h3>
-                <div class="checkbox-group">
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="osmLayer" checked>
-                        <label for="osmLayer">OpenStreetMap</label>
-                    </div>
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="topoLayer">
-                        <label for="topoLayer">Topografische kaart</label>
-                    </div>
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="satelliteLayer">
-                        <label for="satelliteLayer">Satellietbeeld</label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="control-section">
-                <h3><i class="fas fa-route"></i> Wandelroutes</h3>
-                <div class="checkbox-group">
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="lawLayer" checked>
-                        <label for="lawLayer">LAW Paden</label>
-                    </div>
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="waymarkedLayer" checked>
-                        <label for="waymarkedLayer">Waymarked Trails</label>
-                    </div>
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="localTrails">
-                        <label for="localTrails">Lokale routes</label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="control-section">
-                <h3><i class="fas fa-filter"></i> LAW Filters</h3>
-                <div class="control-group">
-                    <label for="lawTypeFilter">LAW Type:</label>
-                    <select id="lawTypeFilter">
-                        <option value="">Alle types</option>
-                        <option value="LAW">Lange Afstand Wandelpad</option>
-                        <option value="GR">Grote Routepaden</option>
-                        <option value="SP">Streekpaden</option>
-                        <option value="RP">Rondwandelingen</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label for="etappeFilter">Etappe:</label>
-                    <select id="etappeFilter">
-                        <option value="">Alle etappes</option>
-                        <option value="1">Etappe 1</option>
-                        <option value="2">Etappe 2</option>
-                        <option value="3">Etappe 3</option>
-                        <option value="4">Etappe 4</option>
-                        <option value="5">Etappe 5</option>
-                    </select>
-                </div>
-                <button onclick="applyFilters()">
-                    <i class="fas fa-search"></i> Filters toepassen
+            <div class="sidebar-tabs">
+                <button class="tab-button active" data-tab="layers">
+                    <i class="fas fa-layers"></i>
+                    Lagen
+                </button>
+                <button class="tab-button" data-tab="routes">
+                    <i class="fas fa-route"></i>
+                    Routes
+                </button>
+                <button class="tab-button" data-tab="tools">
+                    <i class="fas fa-tools"></i>
+                    Tools
+                </button>
+                <button class="tab-button" data-tab="search">
+                    <i class="fas fa-search"></i>
+                    Zoeken
                 </button>
             </div>
 
-            <div class="control-section">
-                <h3><i class="fas fa-ruler"></i> Afstand meten</h3>
-                <button id="measureBtn" onclick="toggleMeasure()">
-                    <i class="fas fa-ruler-combined"></i> Start meting
-                </button>
-                <button onclick="clearMeasurements()">
-                    <i class="fas fa-trash"></i> Wis metingen
-                </button>
-                <div id="distanceDisplay" class="distance-display">
-                    Totale afstand: 0.00 km
-                </div>
-            </div>
+            <div class="sidebar-content">
+                <!-- Lagen Tab -->
+                <div class="tab-panel active" id="layers-panel">
+                    <div class="control-section">
+                        <div class="section-title">
+                            <i class="fas fa-map"></i>
+                            Basiskaarten
+                        </div>
+                        <div class="layer-grid">
+                            <div class="layer-card active" data-layer="osm">
+                                <i class="fas fa-map-marked-alt"></i>
+                                <div class="layer-name">OpenStreetMap</div>
+                            </div>
+                            <div class="layer-card" data-layer="topo">
+                                <i class="fas fa-mountain"></i>
+                                <div class="layer-name">Topografisch</div>
+                            </div>
+                            <div class="layer-card" data-layer="satellite">
+                                <i class="fas fa-satellite"></i>
+                                <div class="layer-name">Satelliet</div>
+                            </div>
+                            <div class="layer-card" data-layer="terrain">
+                                <i class="fas fa-globe-europe"></i>
+                                <div class="layer-name">Terrein</div>
+                            </div>
+                        </div>
+                    </div>
 
-            <div class="control-section">
-                <h3><i class="fas fa-search"></i> Zoeken</h3>
-                <div class="control-group">
-                    <input type="text" id="searchInput" placeholder="Zoek locatie, plaats of route...">
-                    <button onclick="searchLocation()">
-                        <i class="fas fa-search"></i> Zoeken
-                    </button>
-                </div>
-            </div>
+                    <div class="control-section">
+                        <div class="section-title">
+                            <i class="fas fa-hiking"></i>
+                            Wandellagen
+                        </div>
+                        <div class="layer-grid">
+                            <div class="layer-card active" data-overlay="law">
+                                <i class="fas fa-route"></i>
+                                <div class="layer-name">LAW Paden</div>
+                            </div>
+                            <div class="layer-card active" data-overlay="waymarked">
+                                <i class="fas fa-sign"></i>
+                                <div class="layer-name">Waymarked</div>
+                            </div>
+                            <div class="layer-card" data-overlay="local">
+                                <i class="fas fa-walking"></i>
+                                <div class="layer-name">Lokale routes</div>
+                            </div>
+                            <div class="layer-card" data-overlay="cycling">
+                                <i class="fas fa-bicycle"></i>
+                                <div class="layer-name">Fietsroutes</div>
+                            </div>
+                        </div>
+                    </div>
 
-            <div class="legend">
-                <h3><i class="fas fa-list"></i> Legenda</h3>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #e74c3c;"></div>
-                    <span>LAW Paden</span>
+                    <div class="legend">
+                        <div class="legend-title">
+                            <i class="fas fa-list"></i>
+                            Legenda
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #dc2626;"></div>
+                            <span>LAW Paden (PDOK)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #2563eb;"></div>
+                            <span>Waymarked Trails</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #ea580c;"></div>
+                            <span>Lokale routes</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #7c3aed;"></div>
+                            <span>Meetlijn</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #3498db;"></div>
-                    <span>Waymarked Trails</span>
+
+                <!-- Routes Tab -->
+                <div class="tab-panel" id="routes-panel">
+                    <div class="control-section">
+                        <div class="section-title">
+                            <i class="fas fa-filter"></i>
+                            LAW Route Filters
+                        </div>
+                        <div class="filter-row">
+                            <select id="lawTypeFilter" class="select-field">
+                                <option value="">Alle route types</option>
+                                <option value="law">Lange Afstand Wandelpad</option>
+                                <option value="gr">Grote Routepaden (GR)</option>
+                                <option value="sp">Streekpaden</option>
+                                <option value="rp">Rondwandelingen</option>
+                            </select>
+                        </div>
+                        <div class="filter-row">
+                            <select id="provinceFilter" class="select-field">
+                                <option value="">Alle provincies</option>
+                                <option value="noord-holland">Noord-Holland</option>
+                                <option value="zuid-holland">Zuid-Holland</option>
+                                <option value="utrecht">Utrecht</option>
+                                <option value="gelderland">Gelderland</option>
+                                <option value="overijssel">Overijssel</option>
+                                <option value="noord-brabant">Noord-Brabant</option>
+                                <option value="limburg">Limburg</option>
+                                <option value="zeeland">Zeeland</option>
+                                <option value="friesland">Friesland</option>
+                                <option value="groningen">Groningen</option>
+                                <option value="drenthe">Drenthe</option>
+                                <option value="flevoland">Flevoland</option>
+                            </select>
+                        </div>
+                        <button class="button-primary" onclick="applyRouteFilters()">
+                            <i class="fas fa-filter"></i>
+                            Filters toepassen
+                        </button>
+                        <button class="button-secondary" onclick="clearRouteFilters()">
+                            <i class="fas fa-times"></i>
+                            Filters wissen
+                        </button>
+                    </div>
+
+                    <div class="control-section">
+                        <div class="section-title">
+                            <i class="fas fa-download"></i>
+                            Route Export
+                        </div>
+                        <button class="button-secondary" onclick="exportRoutes('gpx')">
+                            <i class="fas fa-file-export"></i>
+                            Exporteer als GPX
+                        </button>
+                        <button class="button-secondary" onclick="exportRoutes('kml')">
+                            <i class="fas fa-file-code"></i>
+                            Exporteer als KML
+                        </button>
+                    </div>
+
+                    <div class="control-section">
+                        <div class="section-title">
+                            <i class="fas fa-info-circle"></i>
+                            Route Status
+                        </div>
+                        <div class="legend-item">
+                            <div class="status-indicator status-online"></div>
+                            <span>LAW routes geladen</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="status-indicator status-loading"></div>
+                            <span>Waymarked trails laden...</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="status-indicator status-online"></div>
+                            <span>PDOK service beschikbaar</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #f39c12;"></div>
-                    <span>Lokale routes</span>
+
+                <!-- Tools Tab -->
+                <div class="tab-panel" id="tools-panel">
+                    <div class="control-section">
+                        <div class="section-title">
+                            <i class="fas fa-ruler"></i>
+                            Afstand meten
+                        </div>
+                        <button id="measureBtn" class="button-primary" onclick="toggleMeasure()">
+                            <i class="fas fa-ruler-combined"></i>
+                            Start meting
+                        </button>
+                        <button class="button-secondary" onclick="clearMeasurements()">
+                            <i class="fas fa-trash"></i>
+                            Wis metingen
+                        </button>
+                        <div id="distanceDisplay" class="distance-display">
+                            <div class="distance-value">0.00</div>
+                            <div class="distance-label">Kilometer</div>
+                        </div>
+                    </div>
+
+                    <div class="control-section">
+                        <div class="section-title">
+                            <i class="fas fa-map-pin"></i>
+                            Waypoints
+                        </div>
+                        <button class="button-secondary" onclick="addWaypoint()">
+                            <i class="fas fa-plus"></i>
+                            Waypoint toevoegen
+                        </button>
+                        <button class="button-secondary" onclick="clearWaypoints()">
+                            <i class="fas fa-times"></i>
+                            Waypoints wissen
+                        </button>
+                        <div id="waypointsList" style="margin-top: 16px;">
+                            <!-- Waypoints lijst wordt hier dynamisch toegevoegd -->
+                        </div>
+                    </div>
+
+                    <div class="control-section">
+                        <div class="section-title">
+                            <i class="fas fa-chart-line"></i>
+                            Hoogteprofiel
+                        </div>
+                        <button class="button-secondary" onclick="showElevationProfile()">
+                            <i class="fas fa-mountain"></i>
+                            Toon hoogteprofiel
+                        </button>
+                        <div class="legend-item">
+                            <i class="fas fa-info-circle" style="color: var(--text-muted);"></i>
+                            <span style="font-size: 12px; color: var(--text-muted);">Klik eerst een route aan</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background: #9b59b6;"></div>
-                    <span>Meetlijn</span>
+
+                <!-- Zoeken Tab -->
+                <div class="tab-panel" id="search-panel">
+                    <div class="control-section">
+                        <div class="section-title">
+                            <i class="fas fa-search"></i>
+                            Locatie zoeken
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Zoek naar plaats, adres of route</label>
+                            <div class="search-container">
+                                <input type="text" id="searchInput" class="input-field search-input" 
+                                       placeholder="Bijv. Amsterdam, LAW1, of Pieterpad...">
+                                <button class="search-button" onclick="searchLocation()">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="loading-spinner" id="searchSpinner"></div>
+                    </div>
+
+                    <div class="control-section">
+                        <div class="section-title">
+                            <i class="fas fa-history"></i>
+                            Recente zoekopdrachten
+                        </div>
+                        <div id="searchHistory">
+                            <!-- Zoekgeschiedenis wordt hier dynamisch toegevoegd -->
+                            <div class="legend-item" style="font-style: italic; color: var(--text-muted);">
+                                Nog geen zoekopdrachten
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-section">
+                        <div class="section-title">
+                            <i class="fas fa-bookmark"></i>
+                            Favorieten
+                        </div>
+                        <button class="button-secondary" onclick="addCurrentViewToFavorites()">
+                            <i class="fas fa-plus"></i>
+                            Huidige weergave opslaan
+                        </button>
+                        <div id="favoritesList" style="margin-top: 16px;">
+                            <!-- Favorieten lijst wordt hier dynamisch toegevoegd -->
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -361,7 +854,7 @@
 
     <div id="infoPanel" class="info-panel">
         <h4>Route informatie</h4>
-        <div id="routeInfo"></div>
+        <div id="routeInfo" class="info-content"></div>
     </div>
 
     <!-- Leaflet JS -->
@@ -377,6 +870,10 @@
         let lawLayer, waymarkedLayer, localTrailsLayer;
         let baseLayers = {};
         let overlayLayers = {};
+        let activeBaseLayer = 'osm';
+        let waypoints = [];
+        let searchHistory = [];
+        let favorites = [];
 
         // Kaart initialiseren
         function initMap() {
@@ -396,19 +893,28 @@
                 attribution: '© Esri'
             });
 
+            const terrainLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}', {
+                attribution: '© Esri'
+            });
+
             // Standaard OSM layer toevoegen
             osmLayer.addTo(map);
 
             // Base layers object
             baseLayers = {
-                'OpenStreetMap': osmLayer,
-                'Topografisch': topoLayer,
-                'Satelliet': satelliteLayer
+                'osm': osmLayer,
+                'topo': topoLayer,
+                'satellite': satelliteLayer,
+                'terrain': terrainLayer
             };
 
-            // LAW layer (simulatie met hiking routes)
-            lawLayer = L.layerGroup();
-            addLAWRoutes();
+            // LAW layer van PDOK
+            lawLayer = L.tileLayer.wms('https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0', {
+                layers: 'law_routes',
+                format: 'image/png',
+                transparent: true,
+                attribution: '© PDOK Wandelnet'
+            });
             lawLayer.addTo(map);
 
             // Waymarked trails layer
@@ -422,73 +928,92 @@
             localTrailsLayer = L.layerGroup();
             addLocalTrails();
 
+            // Fietsroutes layer
+            const cyclingLayer = L.tileLayer('https://tile.waymarkedtrails.org/cycling/{z}/{x}/{y}.png', {
+                attribution: '© Waymarked Trails',
+                opacity: 0.6
+            });
+
             // Overlay layers object
             overlayLayers = {
-                'LAW Paden': lawLayer,
-                'Waymarked Trails': waymarkedLayer,
-                'Lokale routes': localTrailsLayer
+                'law': lawLayer,
+                'waymarked': waymarkedLayer,
+                'local': localTrailsLayer,
+                'cycling': cyclingLayer
             };
 
             // Event listeners
             setupEventListeners();
+            setupTabNavigation();
+            loadStoredData();
         }
 
-        // LAW routes toevoegen (gesimuleerd)
-        function addLAWRoutes() {
-            const lawRoutes = [
-                {
-                    name: 'LAW 1 - Noordzeeroute',
-                    type: 'LAW',
-                    etappe: 1,
-                    coordinates: [[52.0907, 4.2026], [52.1580, 4.4970], [52.3676, 4.9041]],
-                    description: 'Lange afstand wandelroute langs de Nederlandse kust'
-                },
-                {
-                    name: 'LAW 2 - Pieterpad',
-                    type: 'LAW',
-                    etappe: 2,
-                    coordinates: [[53.2194, 6.5665], [52.7168, 6.8037], [52.1326, 5.2913]],
-                    description: 'Van Pieterburen naar Sint-Pietersberg'
-                },
-                {
-                    name: 'GR 5 - Via Hollandica',
-                    type: 'GR',
-                    etappe: 1,
-                    coordinates: [[51.9851, 4.3641], [52.0907, 4.2026], [52.3545, 4.8339]],
-                    description: 'Europese wandelroute door Nederland'
-                },
-                {
-                    name: 'SP 1 - Streekpad Waterland',
-                    type: 'SP',
-                    etappe: 3,
-                    coordinates: [[52.4584, 4.7595], [52.5015, 4.9406], [52.4339, 5.0621]],
-                    description: 'Streekpad door het Waterland'
-                }
-            ];
+        // Tab navigatie instellen
+        function setupTabNavigation() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabPanels = document.querySelectorAll('.tab-panel');
 
-            lawRoutes.forEach(route => {
-                const polyline = L.polyline(route.coordinates, {
-                    color: '#e74c3c',
-                    weight: 4,
-                    opacity: 0.8,
-                    routeData: route
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetTab = button.dataset.tab;
+                    
+                    // Update active button
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    
+                    // Update active panel
+                    tabPanels.forEach(panel => panel.classList.remove('active'));
+                    document.getElementById(targetTab + '-panel').classList.add('active');
                 });
-
-                polyline.bindPopup(`
-                    <div>
-                        <h4>${route.name}</h4>
-                        <p><strong>Type:</strong> ${route.type}</p>
-                        <p><strong>Etappe:</strong> ${route.etappe}</p>
-                        <p>${route.description}</p>
-                    </div>
-                `);
-
-                polyline.on('click', function(e) {
-                    showRouteInfo(route);
-                });
-
-                lawLayer.addLayer(polyline);
             });
+        }
+
+        // Layer kaarten event listeners
+        function setupLayerCards() {
+            // Base layer cards
+            document.querySelectorAll('[data-layer]').forEach(card => {
+                card.addEventListener('click', () => {
+                    const layerType = card.dataset.layer;
+                    switchBaseLayer(layerType);
+                    
+                    // Update UI
+                    document.querySelectorAll('[data-layer]').forEach(c => c.classList.remove('active'));
+                    card.classList.add('active');
+                });
+            });
+
+            // Overlay layer cards
+            document.querySelectorAll('[data-overlay]').forEach(card => {
+                card.addEventListener('click', () => {
+                    const overlayType = card.dataset.overlay;
+                    toggleOverlay(overlayType);
+                    card.classList.toggle('active');
+                });
+            });
+        }
+
+        // Base layer wisselen
+        function switchBaseLayer(layerType) {
+            // Verwijder huidige base layer
+            if (baseLayers[activeBaseLayer]) {
+                map.removeLayer(baseLayers[activeBaseLayer]);
+            }
+            
+            // Voeg nieuwe base layer toe
+            if (baseLayers[layerType]) {
+                baseLayers[layerType].addTo(map);
+                activeBaseLayer = layerType;
+            }
+        }
+
+        // Overlay toggle
+        function toggleOverlay(overlayType) {
+            const layer = overlayLayers[overlayType];
+            if (map.hasLayer(layer)) {
+                map.removeLayer(layer);
+            } else {
+                layer.addTo(map);
+            }
         }
 
         // Lokale trails toevoegen
@@ -503,20 +1028,25 @@
                     name: 'Duinpad Zandvoort',
                     coordinates: [[52.3676, 4.5309], [52.3584, 4.5198], [52.3421, 4.5067]],
                     description: 'Wandeling door de duinen van Zandvoort'
+                },
+                {
+                    name: 'Kinderdijk Molens Route',
+                    coordinates: [[51.8838, 4.6395], [51.8776, 4.6298], [51.8834, 4.6234]],
+                    description: 'Route langs de beroemde molens van Kinderdijk'
                 }
             ];
 
             localRoutes.forEach(route => {
                 const polyline = L.polyline(route.coordinates, {
-                    color: '#f39c12',
+                    color: '#ea580c',
                     weight: 3,
-                    opacity: 0.7
+                    opacity: 0.8
                 });
 
                 polyline.bindPopup(`
                     <div>
-                        <h4>${route.name}</h4>
-                        <p>${route.description}</p>
+                        <h4 style="margin-bottom: 8px;">${route.name}</h4>
+                        <p style="margin: 0; color: #64748b;">${route.description}</p>
                     </div>
                 `);
 
@@ -526,30 +1056,7 @@
 
         // Event listeners instellen
         function setupEventListeners() {
-            // Checkbox event listeners voor layers
-            document.getElementById('osmLayer').addEventListener('change', function() {
-                toggleBaseLayer('OpenStreetMap', this.checked);
-            });
-
-            document.getElementById('topoLayer').addEventListener('change', function() {
-                toggleBaseLayer('Topografisch', this.checked);
-            });
-
-            document.getElementById('satelliteLayer').addEventListener('change', function() {
-                toggleBaseLayer('Satelliet', this.checked);
-            });
-
-            document.getElementById('lawLayer').addEventListener('change', function() {
-                toggleOverlay('LAW Paden', this.checked);
-            });
-
-            document.getElementById('waymarkedLayer').addEventListener('change', function() {
-                toggleOverlay('Waymarked Trails', this.checked);
-            });
-
-            document.getElementById('localTrails').addEventListener('change', function() {
-                toggleOverlay('Lokale routes', this.checked);
-            });
+            setupLayerCards();
 
             // Zoek functionaliteit
             document.getElementById('searchInput').addEventListener('keypress', function(e) {
@@ -564,35 +1071,6 @@
                     addMeasurePoint(e.latlng);
                 }
             });
-        }
-
-        // Base layer toggle
-        function toggleBaseLayer(layerName, show) {
-            const layer = baseLayers[layerName];
-            if (show) {
-                // Verwijder andere base layers eerst
-                Object.values(baseLayers).forEach(l => map.removeLayer(l));
-                // Voeg geselecteerde layer toe
-                layer.addTo(map);
-                // Update checkboxes
-                document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                    if (cb.id.includes('Layer') && cb !== document.getElementById(layerName.toLowerCase().replace(' ', '') + 'Layer')) {
-                        if (cb.id === 'osmLayer' || cb.id === 'topoLayer' || cb.id === 'satelliteLayer') {
-                            cb.checked = false;
-                        }
-                    }
-                });
-            }
-        }
-
-        // Overlay toggle
-        function toggleOverlay(layerName, show) {
-            const layer = overlayLayers[layerName];
-            if (show) {
-                layer.addTo(map);
-            } else {
-                map.removeLayer(layer);
-            }
         }
 
         // Meten toggle
@@ -614,10 +1092,11 @@
         // Meetpunt toevoegen
         function addMeasurePoint(latlng) {
             const marker = L.circleMarker(latlng, {
-                radius: 5,
-                color: '#9b59b6',
-                fillColor: '#9b59b6',
-                fillOpacity: 0.8
+                radius: 6,
+                color: '#7c3aed',
+                fillColor: '#7c3aed',
+                fillOpacity: 0.8,
+                weight: 2
             }).addTo(map);
 
             measureMarkers.push(marker);
@@ -625,9 +1104,9 @@
             if (measureMarkers.length > 1) {
                 const prevMarker = measureMarkers[measureMarkers.length - 2];
                 const line = L.polyline([prevMarker.getLatLng(), latlng], {
-                    color: '#9b59b6',
+                    color: '#7c3aed',
                     weight: 3,
-                    dashArray: '5, 10'
+                    dashArray: '8, 12'
                 }).addTo(map);
 
                 measureMarkers.push(line);
@@ -641,8 +1120,8 @@
 
         // Distance display updaten
         function updateDistanceDisplay() {
-            document.getElementById('distanceDisplay').innerHTML = 
-                `Totale afstand: ${totalDistance.toFixed(2)} km`;
+            const displayEl = document.getElementById('distanceDisplay');
+            displayEl.querySelector('.distance-value').textContent = totalDistance.toFixed(2);
         }
 
         // Metingen wissen
@@ -655,112 +1134,156 @@
             updateDistanceDisplay();
         }
 
-        // Filters toepassen
-        function applyFilters() {
+        // Route filters toepassen
+        function applyRouteFilters() {
             const typeFilter = document.getElementById('lawTypeFilter').value;
-            const etappeFilter = document.getElementById('etappeFilter').value;
+            const provinceFilter = document.getElementById('provinceFilter').value;
 
-            // Verwijder huidige LAW layer
+            // Hier zou je normaal de WMS layer parameters aanpassen
+            // Voor demonstratie tonen we een melding
+            console.log('Filters toegepast:', { type: typeFilter, province: provinceFilter });
+            
+            // Update LAW layer met filters (simplified voor demo)
+            if (typeFilter || provinceFilter) {
+                // Rebuild LAW layer met nieuwe parameters
+                map.removeLayer(lawLayer);
+                
+                let cqlFilter = '';
+                if (typeFilter) cqlFilter += `route_type='${typeFilter}'`;
+                if (provinceFilter) {
+                    if (cqlFilter) cqlFilter += ' AND ';
+                    cqlFilter += `province='${provinceFilter}'`;
+                }
+
+                lawLayer = L.tileLayer.wms('https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0', {
+                    layers: 'law_routes',
+                    format: 'image/png',
+                    transparent: true,
+                    attribution: '© PDOK Wandelnet',
+                    cql_filter: cqlFilter
+                });
+                
+                lawLayer.addTo(map);
+            }
+        }
+
+        // Route filters wissen
+        function clearRouteFilters() {
+            document.getElementById('lawTypeFilter').value = '';
+            document.getElementById('provinceFilter').value = '';
+            
+            // Reset LAW layer
             map.removeLayer(lawLayer);
-            lawLayer.clearLayers();
-
-            // Voeg gefilterde routes toe
-            addFilteredLAWRoutes(typeFilter, etappeFilter);
+            lawLayer = L.tileLayer.wms('https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0', {
+                layers: 'law_routes',
+                format: 'image/png',
+                transparent: true,
+                attribution: '© PDOK Wandelnet'
+            });
             lawLayer.addTo(map);
         }
 
-        // Gefilterde LAW routes toevoegen
-        function addFilteredLAWRoutes(typeFilter, etappeFilter) {
-            const lawRoutes = [
-                {
-                    name: 'LAW 1 - Noordzeeroute',
-                    type: 'LAW',
-                    etappe: 1,
-                    coordinates: [[52.0907, 4.2026], [52.1580, 4.4970], [52.3676, 4.9041]],
-                    description: 'Lange afstand wandelroute langs de Nederlandse kust'
-                },
-                {
-                    name: 'LAW 2 - Pieterpad',
-                    type: 'LAW',
-                    etappe: 2,
-                    coordinates: [[53.2194, 6.5665], [52.7168, 6.8037], [52.1326, 5.2913]],
-                    description: 'Van Pieterburen naar Sint-Pietersberg'
-                },
-                {
-                    name: 'GR 5 - Via Hollandica',
-                    type: 'GR',
-                    etappe: 1,
-                    coordinates: [[51.9851, 4.3641], [52.0907, 4.2026], [52.3545, 4.8339]],
-                    description: 'Europese wandelroute door Nederland'
-                },
-                {
-                    name: 'SP 1 - Streekpad Waterland',
-                    type: 'SP',
-                    etappe: 3,
-                    coordinates: [[52.4584, 4.7595], [52.5015, 4.9406], [52.4339, 5.0621]],
-                    description: 'Streekpad door het Waterland'
-                }
-            ];
-
-            const filteredRoutes = lawRoutes.filter(route => {
-                const typeMatch = !typeFilter || route.type === typeFilter;
-                const etappeMatch = !etappeFilter || route.etappe.toString() === etappeFilter;
-                return typeMatch && etappeMatch;
-            });
-
-            filteredRoutes.forEach(route => {
-                const polyline = L.polyline(route.coordinates, {
-                    color: '#e74c3c',
-                    weight: 4,
-                    opacity: 0.8,
-                    routeData: route
-                });
-
-                polyline.bindPopup(`
-                    <div>
-                        <h4>${route.name}</h4>
-                        <p><strong>Type:</strong> ${route.type}</p>
-                        <p><strong>Etappe:</strong> ${route.etappe}</p>
-                        <p>${route.description}</p>
-                    </div>
-                `);
-
-                polyline.on('click', function(e) {
-                    showRouteInfo(route);
-                });
-
-                lawLayer.addLayer(polyline);
-            });
+        // Routes exporteren
+        function exportRoutes(format) {
+            // Simplified export functie
+            alert(`Export naar ${format.toUpperCase()} wordt voorbereid...`);
+            // Hier zou je de daadwerkelijke export logica implementeren
         }
 
-        // Route informatie tonen
-        function showRouteInfo(route) {
-            const infoPanel = document.getElementById('infoPanel');
-            const routeInfo = document.getElementById('routeInfo');
-            
-            routeInfo.innerHTML = `
-                <p><strong>Naam:</strong> ${route.name}</p>
-                <p><strong>Type:</strong> ${route.type}</p>
-                <p><strong>Etappe:</strong> ${route.etappe}</p>
-                <p><strong>Beschrijving:</strong> ${route.description}</p>
-            `;
-            
-            infoPanel.style.display = 'block';
-            
-            setTimeout(() => {
-                infoPanel.style.display = 'none';
-            }, 5000);
+        // Waypoint toevoegen
+        function addWaypoint() {
+            const center = map.getCenter();
+            const waypoint = {
+                id: Date.now(),
+                lat: center.lat,
+                lng: center.lng,
+                name: `Waypoint ${waypoints.length + 1}`,
+                description: 'Toegevoegd op ' + new Date().toLocaleString('nl-NL')
+            };
+
+            const marker = L.marker([center.lat, center.lng], {
+                icon: L.divIcon({
+                    className: 'waypoint-marker',
+                    html: `<div style="background: #ff7b54; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">${waypoints.length + 1}</div>`,
+                    iconSize: [24, 24]
+                })
+            }).addTo(map);
+
+            marker.bindPopup(`
+                <div>
+                    <h4>${waypoint.name}</h4>
+                    <p>${waypoint.description}</p>
+                    <button onclick="removeWaypoint(${waypoint.id})" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Verwijderen</button>
+                </div>
+            `);
+
+            waypoint.marker = marker;
+            waypoints.push(waypoint);
+            updateWaypointsList();
+        }
+
+        // Waypoint verwijderen
+        function removeWaypoint(id) {
+            const index = waypoints.findIndex(wp => wp.id === id);
+            if (index !== -1) {
+                map.removeLayer(waypoints[index].marker);
+                waypoints.splice(index, 1);
+                updateWaypointsList();
+            }
+        }
+
+        // Alle waypoints wissen
+        function clearWaypoints() {
+            waypoints.forEach(wp => map.removeLayer(wp.marker));
+            waypoints = [];
+            updateWaypointsList();
+        }
+
+        // Waypoints lijst updaten
+        function updateWaypointsList() {
+            const container = document.getElementById('waypointsList');
+            if (waypoints.length === 0) {
+                container.innerHTML = '<div style="font-style: italic; color: var(--text-muted); font-size: 12px;">Geen waypoints</div>';
+                return;
+            }
+
+            container.innerHTML = waypoints.map(wp => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--surface-elevated); border-radius: 6px; margin-bottom: 8px; font-size: 12px;">
+                    <span>${wp.name}</span>
+                    <button onclick="removeWaypoint(${wp.id})" style="background: none; border: none; color: var(--text-muted); cursor: pointer;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Hoogteprofiel tonen
+        function showElevationProfile() {
+            alert('Hoogteprofiel functionaliteit wordt binnenkort toegevoegd!');
         }
 
         // Locatie zoeken
         function searchLocation() {
-            const query = document.getElementById('searchInput').value;
+            const query = document.getElementById('searchInput').value.trim();
             if (!query) return;
 
+            const spinner = document.getElementById('searchSpinner');
+            spinner.style.display = 'block';
+
+            // Voeg toe aan zoekgeschiedenis
+            if (!searchHistory.includes(query)) {
+                searchHistory.unshift(query);
+                searchHistory = searchHistory.slice(0, 5); // Behoud laatste 5
+                updateSearchHistory();
+                saveStoredData();
+            }
+
             // Gebruik Nominatim API voor geocoding
-            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=nl&limit=1`)
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=nl&limit=3`)
                 .then(response => response.json())
                 .then(data => {
+                    spinner.style.display = 'none';
+                    
                     if (data.length > 0) {
                         const result = data[0];
                         const lat = parseFloat(result.lat);
@@ -769,18 +1292,183 @@
                         map.setView([lat, lon], 12);
                         
                         // Voeg marker toe
-                        L.marker([lat, lon])
-                            .addTo(map)
-                            .bindPopup(result.display_name)
-                            .openPopup();
+                        const marker = L.marker([lat, lon], {
+                            icon: L.divIcon({
+                                className: 'search-marker',
+                                html: '<div style="background: #ff7b54; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"><i class="fas fa-search" style="font-size: 14px;"></i></div>',
+                                iconSize: [32, 32]
+                            })
+                        }).addTo(map);
+
+                        marker.bindPopup(`
+                            <div>
+                                <h4>Zoekresultaat</h4>
+                                <p>${result.display_name}</p>
+                                <button onclick="addCurrentViewToFavorites('${result.display_name}')" style="background: var(--primary-green); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-top: 8px;">
+                                    <i class="fas fa-star"></i> Opslaan als favoriet
+                                </button>
+                            </div>
+                        `).openPopup();
+                        
+                        // Verwijder marker na 10 seconden
+                        setTimeout(() => {
+                            map.removeLayer(marker);
+                        }, 10000);
                     } else {
                         alert('Locatie niet gevonden');
                     }
                 })
                 .catch(error => {
+                    spinner.style.display = 'none';
                     console.error('Zoekfout:', error);
                     alert('Er is een fout opgetreden bij het zoeken');
                 });
+        }
+
+        // Zoekgeschiedenis updaten
+        function updateSearchHistory() {
+            const container = document.getElementById('searchHistory');
+            if (searchHistory.length === 0) {
+                container.innerHTML = '<div style="font-style: italic; color: var(--text-muted);">Nog geen zoekopdrachten</div>';
+                return;
+            }
+
+            container.innerHTML = searchHistory.map(query => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-subtle); cursor: pointer;" onclick="searchAgain('${query}')">
+                    <span style="font-size: 14px;">${query}</span>
+                    <i class="fas fa-redo" style="color: var(--text-muted); font-size: 12px;"></i>
+                </div>
+            `).join('');
+        }
+
+        // Opnieuw zoeken
+        function searchAgain(query) {
+            document.getElementById('searchInput').value = query;
+            searchLocation();
+        }
+
+        // Huidige weergave toevoegen aan favorieten
+        function addCurrentViewToFavorites(name = null) {
+            const center = map.getCenter();
+            const zoom = map.getZoom();
+            const favName = name || `Locatie ${favorites.length + 1}`;
+            
+            const favorite = {
+                id: Date.now(),
+                name: favName,
+                lat: center.lat,
+                lng: center.lng,
+                zoom: zoom,
+                created: new Date().toLocaleString('nl-NL')
+            };
+
+            favorites.push(favorite);
+            updateFavoritesList();
+            saveStoredData();
+        }
+
+        // Favorieten lijst updaten
+        function updateFavoritesList() {
+            const container = document.getElementById('favoritesList');
+            if (favorites.length === 0) {
+                container.innerHTML = '<div style="font-style: italic; color: var(--text-muted); font-size: 12px;">Nog geen favorieten</div>';
+                return;
+            }
+
+            container.innerHTML = favorites.map(fav => `
+                <div style="padding: 12px; background: var(--surface-elevated); border-radius: 8px; margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <strong style="font-size: 14px;">${fav.name}</strong>
+                        <button onclick="removeFavorite(${fav.id})" style="background: none; border: none; color: var(--text-muted); cursor: pointer;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">${fav.created}</div>
+                    <button onclick="goToFavorite(${fav.id})" style="background: var(--primary-green); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                        <i class="fas fa-map-marker-alt"></i> Ga naar locatie
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Ga naar favoriet
+        function goToFavorite(id) {
+            const favorite = favorites.find(fav => fav.id === id);
+            if (favorite) {
+                map.setView([favorite.lat, favorite.lng], favorite.zoom);
+            }
+        }
+
+        // Favoriet verwijderen
+        function removeFavorite(id) {
+            const index = favorites.findIndex(fav => fav.id === id);
+            if (index !== -1) {
+                favorites.splice(index, 1);
+                updateFavoritesList();
+                saveStoredData();
+            }
+        }
+
+        // Data opslaan in localStorage
+        function saveStoredData() {
+            const data = {
+                searchHistory,
+                favorites,
+                waypoints: waypoints.map(wp => ({
+                    id: wp.id,
+                    lat: wp.lat,
+                    lng: wp.lng,
+                    name: wp.name,
+                    description: wp.description
+                }))
+            };
+            localStorage.setItem('hikingWebGIS', JSON.stringify(data));
+        }
+
+        // Opgeslagen data laden
+        function loadStoredData() {
+            try {
+                const stored = localStorage.getItem('hikingWebGIS');
+                if (stored) {
+                    const data = JSON.parse(stored);
+                    
+                    if (data.searchHistory) {
+                        searchHistory = data.searchHistory;
+                        updateSearchHistory();
+                    }
+                    
+                    if (data.favorites) {
+                        favorites = data.favorites;
+                        updateFavoritesList();
+                    }
+                    
+                    if (data.waypoints) {
+                        data.waypoints.forEach(wp => {
+                            const marker = L.marker([wp.lat, wp.lng], {
+                                icon: L.divIcon({
+                                    className: 'waypoint-marker',
+                                    html: `<div style="background: #ff7b54; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">${waypoints.length + 1}</div>`,
+                                    iconSize: [24, 24]
+                                })
+                            }).addTo(map);
+
+                            marker.bindPopup(`
+                                <div>
+                                    <h4>${wp.name}</h4>
+                                    <p>${wp.description}</p>
+                                    <button onclick="removeWaypoint(${wp.id})" style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Verwijderen</button>
+                                </div>
+                            `);
+
+                            wp.marker = marker;
+                            waypoints.push(wp);
+                        });
+                        updateWaypointsList();
+                    }
+                }
+            } catch (error) {
+                console.error('Fout bij laden opgeslagen data:', error);
+            }
         }
 
         // Zoom naar Nederland
@@ -797,10 +1485,20 @@
                     
                     map.setView([lat, lon], 14);
                     
-                    L.marker([lat, lon])
-                        .addTo(map)
-                        .bindPopup('Uw huidige locatie')
-                        .openPopup();
+                    const marker = L.marker([lat, lon], {
+                        icon: L.divIcon({
+                            className: 'location-marker',
+                            html: '<div style="background: #10b981; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3), 0 2px 4px rgba(0,0,0,0.2);"><div style="width: 8px; height: 8px; background: white; border-radius: 50%;"></div></div>',
+                            iconSize: [20, 20]
+                        })
+                    }).addTo(map);
+
+                    marker.bindPopup('Uw huidige locatie').openPopup();
+                    
+                    // Verwijder marker na 15 seconden
+                    setTimeout(() => {
+                        map.removeLayer(marker);
+                    }, 15000);
                 }, function(error) {
                     alert('Locatie kon niet worden bepaald');
                 });
