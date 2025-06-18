@@ -1,7 +1,332 @@
-// Global variables
+// Global variables for route management
 let map;
 let measuring = false;
 let measureMarkers = [];
+let totalDistance = 0;
+let lawLayer, localTrailsLayer;
+let baseLayers = {};
+let overlayLayers = {};
+let activeBaseLayer = 'osm';
+let searchHistory = [];
+let favorites = [];
+let activeRoutes = []; // Track active routes
+let routeInfoLayer;
+
+// Route definitions
+const routeDefinitions = {
+    law: [
+        { value: 'LAW 1', name: 'LAW 1 - Noordzeeroute', filter: 'LAW 1' },
+        { value: 'LAW 2', name: 'LAW 2 - Pieterpad', filter: 'LAW 2' },
+        { value: 'LAW 3', name: 'LAW 3 - Pelgrimspad', filter: 'LAW 3' },
+        { value: 'LAW 4', name: 'LAW 4 - Zuiderzeepad', filter: 'LAW 4' },
+        { value: 'LAW 5', name: 'LAW 5 - Grenspad', filter: 'LAW 5' },
+        { value: 'LAW 6', name: 'LAW 6 - Krijtlandpad', filter: 'LAW 6' },
+        { value: 'LAW 7', name: 'LAW 7 - Boerenlandpad', filter: 'LAW 7' },
+        { value: 'LAW 8', name: 'LAW 8 - Waddenzeepad', filter: 'LAW 8' },
+        { value: 'LAW 9', name: 'LAW 9 - Kustpad', filter: 'LAW 9' },
+        { value: 'LAW 10', name: 'LAW 10 - Marskramerpad', filter: 'LAW 10' },
+        { value: 'LAW 11', name: 'LAW 11 - Veluwerandpad', filter: 'LAW 11' },
+        { value: 'LAW 12', name: 'LAW 12 - Maaspad', filter: 'LAW 12' },
+        { value: 'LAW 13', name: 'LAW 13 - Streek-en Landschapsenpad', filter: 'LAW 13' },
+        { value: 'LAW 14', name: 'LAW 14 - Lauwersmeerpad', filter: 'LAW 14' },
+        { value: 'LAW 15', name: 'LAW 15 - Smorenburgerpad', filter: 'LAW 15' },
+        { value: 'LAW 16', name: 'LAW 16 - Geuldal-Grenslandpad', filter: 'LAW 16' },
+        { value: 'LAW 17', name: 'LAW 17 - Deltapad', filter: 'LAW 17' },
+        { value: 'LAW 18', name: 'LAW 18 - Groot Frieslandpad', filter: 'LAW 18' },
+        { value: 'LAW 19', name: 'LAW 19 - Oer-IJ pad', filter: 'LAW 19' },
+        { value: 'LAW 20', name: 'LAW 20 - Heuvellandroute', filter: 'LAW 20' },
+        { value: 'LAW 21', name: 'LAW 21 - Kennemerland-Zaanse Schanspad', filter: 'LAW 21' }
+    ],
+    streekpaden: [
+        { value: 'SP1', name: 'Streekpad 1 - Waterland', filter: 'Waterland' },
+        { value: 'SP2', name: 'Streekpad 2 - Veluwe', filter: 'Veluwe' },
+        { value: 'SP3', name: 'Streekpad 3 - Utrechtse Heuvelrug', filter: 'Utrechtse Heuvelrug' }
+    ],
+    'ns-wandelingen': [
+        { value: 'NS1', name: 'NS-wandeling Amsterdam', filter: 'Amsterdam' },
+        { value: 'NS2', name: 'NS-wandeling Utrecht', filter: 'Utrecht' },
+        { value: 'NS3', name: 'NS-wandeling Den Haag', filter: 'Den Haag' }
+    ],
+    'ov-stappers': [
+        { value: 'OV1', name: 'OV-stapper Route 1', filter: 'Route 1' },
+        { value: 'OV2', name: 'OV-stapper Route 2', filter: 'Route 2' }
+    ],
+    'stad-te-voet': [
+        { value: 'STV1', name: 'Stad te voet Amsterdam', filter: 'Amsterdam' },
+        { value: 'STV2', name: 'Stad te voet Rotterdam', filter: 'Rotterdam' },
+        { value: 'STV3', name: 'Stad te voet Utrecht', filter: 'Utrecht' }
+    ]
+};
+
+// Load route options based on selected type
+function loadRouteOptions() {
+    const routeType = document.getElementById('routeTypeSelect').value;
+    const specificSelect = document.getElementById('specificRouteSelect');
+    const step2 = document.getElementById('step2');
+    const step3 = document.getElementById('step3');
+    
+    if (routeType && routeDefinitions[routeType]) {
+        // Show step 2
+        step2.style.display = 'block';
+        step2.classList.add('active');
+        
+        // Populate route options
+        specificSelect.innerHTML = '<option value="">-- Selecteer een route --</option>';
+        routeDefinitions[routeType].forEach(route => {
+            const option = document.createElement('option');
+            option.value = route.value;
+            option.textContent = route.name;
+            option.dataset.filter = route.filter;
+            option.dataset.type = routeType;
+            specificSelect.appendChild(option);
+        });
+        
+        // Enable step 3 when route is selected
+        specificSelect.onchange = function() {
+            if (this.value) {
+                step3.style.display = 'block';
+                step3.classList.add('active');
+            } else {
+                step3.style.display = 'none';
+                step3.classList.remove('active');
+            }
+        };
+    } else {
+        // Hide steps 2 and 3
+        step2.style.display = 'none';
+        step2.classList.remove('active');
+        step3.style.display = 'none';
+        step3.classList.remove('active');
+        specificSelect.innerHTML = '<option value="">-- Eerst route type kiezen --</option>';
+    }
+}
+
+// Show selected route on map
+function showSelectedRoute() {
+    const routeTypeSelect = document.getElementById('routeTypeSelect');
+    const specificSelect = document.getElementById('specificRouteSelect');
+    
+    const routeType = routeTypeSelect.value;
+    const selectedOption = specificSelect.options[specificSelect.selectedIndex];
+    
+    if (!routeType || !selectedOption.value) {
+        alert('Selecteer eerst een route type en specifieke route');
+        return;
+    }
+    
+    const routeName = selectedOption.textContent;
+    const routeFilter = selectedOption.dataset.filter;
+    const layerName = getLayerName(routeType);
+    
+    // Add route to active routes
+    const routeData = {
+        id: Date.now(),
+        name: routeName,
+        type: routeType,
+        filter: routeFilter,
+        layerName: layerName
+    };
+    
+    activeRoutes.push(routeData);
+    
+    // Add route to map
+    addRouteToMap(routeData);
+    
+    // Update UI
+    updateActiveRoutesDisplay();
+    updateRouteDetails(routeData);
+    
+    // Reset form
+    resetRouteForm();
+    
+    // Show success message
+    showMessage(`Route "${routeName}" toegevoegd aan kaart`, 'success');
+}
+
+// Add route to map with filtering
+function addRouteToMap(routeData) {
+    // Build CQL filter
+    let cqlFilter = `lawnaam ILIKE '%${routeData.filter}%'`;
+    
+    // Create WMS layer for this specific route
+    const wmsLayer = L.tileLayer.wms('https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0', {
+        layers: routeData.layerName,
+        format: 'image/png',
+        transparent: true,
+        attribution: '© PDOK Wandelnet',
+        opacity: 0.8,
+        zIndex: 10,
+        cql_filter: cqlFilter
+    });
+    
+    // Add to map
+    wmsLayer.addTo(map);
+    
+    // Store reference for removal later
+    routeData.layer = wmsLayer;
+}
+
+// Get PDOK layer name from route type
+function getLayerName(routeType) {
+    const layerMapping = {
+        'law': 'landelijke-wandelroutes',
+        'streekpaden': 'streekpaden',
+        'ns-wandelingen': 'ns-wandelingen',
+        'ov-stappers': 'ov-stappers',
+        'stad-te-voet': 'stad-te-voet'
+    };
+    return layerMapping[routeType] || 'landelijke-wandelroutes';
+}
+
+// Update active routes display
+function updateActiveRoutesDisplay() {
+    const container = document.getElementById('activeRoutesDisplay');
+    
+    if (activeRoutes.length === 0) {
+        container.innerHTML = '<div class="empty-state">Geen routes geselecteerd</div>';
+        return;
+    }
+    
+    container.innerHTML = activeRoutes.map(route => `
+        <div class="active-route-item">
+            <div class="active-route-info">
+                <h4>${route.name}</h4>
+                <p>${getDisplayName(route.type)}</p>
+            </div>
+            <button class="route-remove-btn" onclick="removeRoute(${route.id})" title="Verwijder route">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+// Update route details
+function updateRouteDetails(routeData) {
+    const container = document.getElementById('routeDetailsContainer');
+    
+    container.innerHTML = `
+        <div class="route-detail-item">
+            <div class="route-detail-header">
+                <h4>${routeData.name}</h4>
+                <span class="route-type-badge">${getDisplayName(routeData.type)}</span>
+            </div>
+            <div class="route-detail-info">
+                <div>
+                    <i class="fas fa-layer-group"></i>
+                    <span>PDOK Laag: ${routeData.layerName}</span>
+                </div>
+                <div>
+                    <i class="fas fa-filter"></i>
+                    <span>Filter: ${routeData.filter}</span>
+                </div>
+                <div>
+                    <i class="fas fa-info-circle"></i>
+                    <span>Klik op route lijnen voor meer details</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Remove specific route
+function removeRoute(routeId) {
+    const routeIndex = activeRoutes.findIndex(r => r.id === routeId);
+    if (routeIndex !== -1) {
+        const route = activeRoutes[routeIndex];
+        
+        // Remove from map
+        if (route.layer) {
+            map.removeLayer(route.layer);
+        }
+        
+        // Remove from array
+        activeRoutes.splice(routeIndex, 1);
+        
+        // Update UI
+        updateActiveRoutesDisplay();
+        
+        if (activeRoutes.length === 0) {
+            document.getElementById('routeDetailsContainer').innerHTML = 
+                '<div class="empty-state">Selecteer een route om details te zien</div>';
+        }
+        
+        showMessage(`Route "${route.name}" verwijderd`, 'info');
+    }
+}
+
+// Clear all routes
+function clearAllRoutes() {
+    // Remove all layers from map
+    activeRoutes.forEach(route => {
+        if (route.layer) {
+            map.removeLayer(route.layer);
+        }
+    });
+    
+    // Clear array
+    activeRoutes = [];
+    
+    // Update UI
+    updateActiveRoutesDisplay();
+    document.getElementById('routeDetailsContainer').innerHTML = 
+        '<div class="empty-state">Selecteer een route om details te zien</div>';
+    
+    // Reset form
+    resetRouteForm();
+    
+    showMessage('Alle routes verwijderd', 'info');
+}
+
+// Reset route selection form
+function resetRouteForm() {
+    document.getElementById('routeTypeSelect').value = '';
+    document.getElementById('specificRouteSelect').innerHTML = '<option value="">-- Eerst route type kiezen --</option>';
+    document.getElementById('step2').style.display = 'none';
+    document.getElementById('step3').style.display = 'none';
+    document.getElementById('step2').classList.remove('active');
+    document.getElementById('step3').classList.remove('active');
+}
+
+// Get display name for route type
+function getDisplayName(routeType) {
+    const displayNames = {
+        'law': 'Lange Afstand Wandelpad',
+        'streekpaden': 'Streekpad',
+        'ns-wandelingen': 'NS-wandeling',
+        'ov-stappers': 'OV-stapper',
+        'stad-te-voet': 'Stad te voet'
+    };
+    return displayNames[routeType] || routeType;
+}
+
+// Show message to user
+function showMessage(message, type = 'info') {
+    // Simple alert for now - could be replaced with toast notification
+    console.log(`${type.toUpperCase()}: ${message}`);
+    
+    // Show subtle notification
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        z-index: 10000;
+        font-size: 14px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 3000);
+} = [];
 let totalDistance = 0;
 let lawLayer, localTrailsLayer;
 let baseLayers = {};
@@ -48,26 +373,13 @@ function initMap() {
         'terrain': terrainLayer
     };
 
-    // LAW layers from PDOK WMS - START DISABLED
-    lawLayer = L.layerGroup();
-    // DON'T add LAW layers on startup
-    // addLAWLayers();
-    // lawLayer.addTo(map);
-
-    // Route info layer voor interactieve features
-    routeInfoLayer = L.layerGroup();
-    routeInfoLayer.addTo(map);
-
     // Local trails layer - START DISABLED  
     localTrailsLayer = L.layerGroup();
     addLocalTrails();
-    // DON'T add local trails on startup
 
     // Overlay layers object
     overlayLayers = {
-        'law': lawLayer,
-        'local': localTrailsLayer,
-        'routeInfo': routeInfoLayer
+        'local': localTrailsLayer
     };
 
     // Setup event listeners
@@ -75,6 +387,492 @@ function initMap() {
     setupTabNavigation();
     loadStoredData();
 }
+
+// Add local trails
+function addLocalTrails() {
+    const localRoutes = [
+        {
+            name: 'Boslus Veluwe',
+            coordinates: [[52.0880, 5.6673], [52.1015, 5.7234], [52.0854, 5.7891]],
+            description: 'Mooie bosroute door de Veluwe'
+        },
+        {
+            name: 'Duinpad Zandvoort',
+            coordinates: [[52.3676, 4.5309], [52.3584, 4.5198], [52.3421, 4.5067]],
+            description: 'Wandeling door de duinen van Zandvoort'
+        },
+        {
+            name: 'Kinderdijk Molens Route',
+            coordinates: [[51.8838, 4.6395], [51.8776, 4.6298], [51.8834, 4.6234]],
+            description: 'Route langs de beroemde molens van Kinderdijk'
+        }
+    ];
+
+    localRoutes.forEach(route => {
+        const polyline = L.polyline(route.coordinates, {
+            color: '#ea580c',
+            weight: 3,
+            opacity: 0.8
+        });
+
+        polyline.bindPopup(`
+            <div>
+                <h4 style="margin-bottom: 8px;">${route.name}</h4>
+                <p style="margin: 0; color: #64748b;">${route.description}</p>
+            </div>
+        `);
+
+        localTrailsLayer.addLayer(polyline);
+    });
+}
+
+// Setup tab navigation
+function setupTabNavigation() {
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabPanels = document.querySelectorAll('.tab-panel');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const targetTab = button.dataset.tab;
+            
+            // Update active button
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            
+            // Update active panel
+            tabPanels.forEach(panel => panel.classList.remove('active'));
+            document.getElementById(targetTab + '-panel').classList.add('active');
+        });
+    });
+}
+
+// Setup event listeners
+function setupEventListeners() {
+    setupLayerCards();
+
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            searchLocation();
+        }
+    });
+
+    // Map click event for measuring AND route info
+    map.on('click', function(e) {
+        if (measuring) {
+            addMeasurePoint(e.latlng);
+        } else {
+            // Check if any route layers are active and get route info
+            if (activeRoutes.length > 0) {
+                getRouteInfoAtPoint(e.latlng, e.containerPoint);
+            }
+        }
+    });
+}
+
+// Setup layer cards
+function setupLayerCards() {
+    // Base layer cards
+    document.querySelectorAll('[data-layer]').forEach(card => {
+        card.addEventListener('click', () => {
+            const layerType = card.dataset.layer;
+            switchBaseLayer(layerType);
+            
+            // Update UI
+            document.querySelectorAll('[data-layer]').forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+        });
+    });
+
+    // Overlay layer cards (only local trails now)
+    document.querySelectorAll('[data-overlay]').forEach(card => {
+        card.addEventListener('click', () => {
+            const overlayType = card.dataset.overlay;
+            if (overlayType === 'local') {
+                toggleOverlay(overlayType);
+                card.classList.toggle('active');
+            }
+        });
+    });
+}
+
+// Switch base layer
+function switchBaseLayer(layerType) {
+    // Remove current base layer
+    if (baseLayers[activeBaseLayer]) {
+        map.removeLayer(baseLayers[activeBaseLayer]);
+    }
+    
+    // Add new base layer
+    if (baseLayers[layerType]) {
+        baseLayers[layerType].addTo(map);
+        activeBaseLayer = layerType;
+    }
+}
+
+// Toggle overlay (simplified for local only)
+function toggleOverlay(overlayType) {
+    const layer = overlayLayers[overlayType];
+    if (map.hasLayer(layer)) {
+        map.removeLayer(layer);
+    } else {
+        layer.addTo(map);
+    }
+}
+
+// Get route info at clicked point using GetFeatureInfo
+function getRouteInfoAtPoint(latlng, point) {
+    // Only check if we have active routes
+    if (activeRoutes.length === 0) return;
+    
+    const bounds = map.getBounds();
+    const size = map.getSize();
+    
+    // Get the first active route for GetFeatureInfo
+    const activeRoute = activeRoutes[0];
+    
+    // Build GetFeatureInfo request
+    const params = {
+        request: 'GetFeatureInfo',
+        service: 'WMS',
+        srs: 'EPSG:4326',
+        version: '1.1.0',
+        format: 'image/png',
+        bbox: `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`,
+        height: size.y,
+        width: size.x,
+        layers: activeRoute.layerName,
+        query_layers: activeRoute.layerName,
+        info_format: 'application/json',
+        x: Math.round(point.x),
+        y: Math.round(point.y)
+    };
+    
+    const url = 'https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0?' + 
+                Object.keys(params).map(key => `${key}=${encodeURIComponent(params[key])}`).join('&');
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.features && data.features.length > 0) {
+                showRouteInfoPopup(data.features[0], latlng);
+            }
+        })
+        .catch(error => {
+            console.log('Geen route info beschikbaar op deze locatie');
+        });
+}
+
+// Show route info popup
+function showRouteInfoPopup(feature, latlng) {
+    const props = feature.properties;
+    
+    const popupContent = `
+        <div class="route-popup">
+            <h4>${props.lawnaam || props.routenaam || props.naam || 'Route'}</h4>
+            <div class="popup-details">
+                ${props.routetype ? `<p><strong>Type:</strong> ${props.routetype}</p>` : ''}
+                ${props.provincie ? `<p><strong>Provincie:</strong> ${props.provincie}</p>` : ''}
+                ${props.lengte_m ? `<p><strong>Lengte:</strong> ${(props.lengte_m / 1000).toFixed(1)} km</p>` : ''}
+                ${props.fuid ? `<p><strong>Route ID:</strong> ${props.fuid}</p>` : ''}
+                ${props.samenvatting ? `<p><strong>Beschrijving:</strong> ${props.samenvatting}</p>` : ''}
+            </div>
+        </div>
+    `;
+    
+    L.popup()
+        .setLatLng(latlng)
+        .setContent(popupContent)
+        .openOn(map);
+}
+
+// Measuring functions
+function toggleMeasure() {
+    measuring = !measuring;
+    const btn = document.getElementById('measureBtn');
+    
+    if (measuring) {
+        btn.innerHTML = '<i class="fas fa-stop"></i> Stop meting';
+        btn.classList.add('active');
+        map.getContainer().style.cursor = 'crosshair';
+    } else {
+        btn.innerHTML = '<i class="fas fa-ruler-combined"></i> Start meting';
+        btn.classList.remove('active');
+        map.getContainer().style.cursor = '';
+    }
+}
+
+function addMeasurePoint(latlng) {
+    const marker = L.circleMarker(latlng, {
+        radius: 6,
+        color: '#7c3aed',
+        fillColor: '#7c3aed',
+        fillOpacity: 0.8,
+        weight: 2
+    }).addTo(map);
+
+    measureMarkers.push(marker);
+
+    if (measureMarkers.length > 1) {
+        // Find previous marker (not a line)
+        let prevMarker = null;
+        for (let i = measureMarkers.length - 2; i >= 0; i--) {
+            if (measureMarkers[i].getLatLng) {
+                prevMarker = measureMarkers[i];
+                break;
+            }
+        }
+
+        if (prevMarker) {
+            const line = L.polyline([prevMarker.getLatLng(), latlng], {
+                color: '#7c3aed',
+                weight: 3,
+                dashArray: '8, 12'
+            }).addTo(map);
+
+            measureMarkers.push(line);
+
+            // Calculate distance
+            const distance = prevMarker.getLatLng().distanceTo(latlng) / 1000; // in km
+            totalDistance += distance;
+            updateDistanceDisplay();
+        }
+    }
+}
+
+function updateDistanceDisplay() {
+    const displayEl = document.getElementById('distanceDisplay');
+    displayEl.querySelector('.distance-value').textContent = totalDistance.toFixed(2);
+}
+
+function clearMeasurements() {
+    measureMarkers.forEach(item => {
+        map.removeLayer(item);
+    });
+    measureMarkers = [];
+    totalDistance = 0;
+    updateDistanceDisplay();
+}
+
+// Search functions
+function searchLocation() {
+    const query = document.getElementById('searchInput').value.trim();
+    if (!query) return;
+
+    const spinner = document.getElementById('searchSpinner');
+    spinner.style.display = 'block';
+
+    // Add to search history
+    if (!searchHistory.includes(query)) {
+        searchHistory.unshift(query);
+        searchHistory = searchHistory.slice(0, 5); // Keep last 5
+        updateSearchHistory();
+        saveStoredData();
+    }
+
+    // Use Nominatim API for geocoding
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=nl&limit=3`)
+        .then(response => response.json())
+        .then(data => {
+            spinner.style.display = 'none';
+            
+            if (data.length > 0) {
+                const result = data[0];
+                const lat = parseFloat(result.lat);
+                const lon = parseFloat(result.lon);
+                
+                map.setView([lat, lon], 12);
+                
+                // Add marker
+                const marker = L.marker([lat, lon], {
+                    icon: L.divIcon({
+                        className: 'search-marker',
+                        html: '<div style="background: #ff7b54; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"><i class="fas fa-search" style="font-size: 14px;"></i></div>',
+                        iconSize: [32, 32]
+                    })
+                }).addTo(map);
+
+                marker.bindPopup(`
+                    <div>
+                        <h4>Zoekresultaat</h4>
+                        <p>${result.display_name}</p>
+                        <button onclick="addCurrentViewToFavorites('${result.display_name}')" style="background: var(--primary-green); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-top: 8px;">
+                            <i class="fas fa-star"></i> Opslaan als favoriet
+                        </button>
+                    </div>
+                `).openPopup();
+                
+                // Remove marker after 10 seconds
+                setTimeout(() => {
+                    map.removeLayer(marker);
+                }, 10000);
+            } else {
+                alert('Locatie niet gevonden');
+            }
+        })
+        .catch(error => {
+            spinner.style.display = 'none';
+            console.error('Zoekfout:', error);
+            alert('Er is een fout opgetreden bij het zoeken');
+        });
+}
+
+function updateSearchHistory() {
+    const container = document.getElementById('searchHistory');
+    if (searchHistory.length === 0) {
+        container.innerHTML = '<div class="empty-state">Nog geen zoekopdrachten</div>';
+        return;
+    }
+
+    container.innerHTML = searchHistory.map(query => `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-subtle); cursor: pointer;" onclick="searchAgain('${query}')">
+            <span style="font-size: 14px;">${query}</span>
+            <i class="fas fa-redo" style="color: var(--text-muted); font-size: 12px;"></i>
+        </div>
+    `).join('');
+}
+
+function searchAgain(query) {
+    document.getElementById('searchInput').value = query;
+    searchLocation();
+}
+
+// Favorites functions
+function addCurrentViewToFavorites(name = null) {
+    const center = map.getCenter();
+    const zoom = map.getZoom();
+    const favName = name || `Locatie ${favorites.length + 1}`;
+    
+    const favorite = {
+        id: Date.now(),
+        name: favName,
+        lat: center.lat,
+        lng: center.lng,
+        zoom: zoom,
+        created: new Date().toLocaleString('nl-NL')
+    };
+
+    favorites.push(favorite);
+    updateFavoritesList();
+    saveStoredData();
+}
+
+function updateFavoritesList() {
+    const container = document.getElementById('favoritesList');
+    if (favorites.length === 0) {
+        container.innerHTML = '<div class="empty-state">Nog geen favorieten</div>';
+        return;
+    }
+
+    container.innerHTML = favorites.map(fav => `
+        <div style="padding: 12px; background: var(--surface-elevated); border-radius: 8px; margin-bottom: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <strong style="font-size: 14px;">${fav.name}</strong>
+                <button onclick="removeFavorite(${fav.id})" style="background: none; border: none; color: var(--text-muted); cursor: pointer;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">${fav.created}</div>
+            <button onclick="goToFavorite(${fav.id})" style="background: var(--primary-green); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                <i class="fas fa-map-marker-alt"></i> Ga naar locatie
+            </button>
+        </div>
+    `).join('');
+}
+
+function goToFavorite(id) {
+    const favorite = favorites.find(fav => fav.id === id);
+    if (favorite) {
+        map.setView([favorite.lat, favorite.lng], favorite.zoom);
+    }
+}
+
+function removeFavorite(id) {
+    const index = favorites.findIndex(fav => fav.id === id);
+    if (index !== -1) {
+        favorites.splice(index, 1);
+        updateFavoritesList();
+        saveStoredData();
+    }
+}
+
+// Data persistence
+function saveStoredData() {
+    const data = {
+        searchHistory,
+        favorites
+    };
+    localStorage.setItem('hikingWebGIS', JSON.stringify(data));
+}
+
+function loadStoredData() {
+    try {
+        const stored = localStorage.getItem('hikingWebGIS');
+        if (stored) {
+            const data = JSON.parse(stored);
+            
+            if (data.searchHistory) {
+                searchHistory = data.searchHistory;
+                updateSearchHistory();
+            }
+            
+            if (data.favorites) {
+                favorites = data.favorites;
+                updateFavoritesList();
+            }
+        }
+    } catch (error) {
+        console.error('Fout bij laden opgeslagen data:', error);
+    }
+}
+
+// Navigation functions
+function zoomToNetherlands() {
+    map.setView([52.1326, 5.2913], 7);
+}
+
+function getCurrentLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            
+            map.setView([lat, lon], 14);
+            
+            const marker = L.marker([lat, lon], {
+                icon: L.divIcon({
+                    className: 'location-marker',
+                    html: '<div style="background: #10b981; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3), 0 2px 4px rgba(0,0,0,0.2);"><div style="width: 8px; height: 8px; background: white; border-radius: 50%;"></div></div>',
+                    iconSize: [20, 20]
+                })
+            }).addTo(map);
+
+            marker.bindPopup('Uw huidige locatie').openPopup();
+            
+            // Remove marker after 15 seconds
+            setTimeout(() => {
+                map.removeLayer(marker);
+            }, 15000);
+        }, function(error) {
+            alert('Locatie kon niet worden bepaald');
+        });
+    } else {
+        alert('Geolocation wordt niet ondersteund door deze browser');
+    }
+}
+
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+    } else {
+        document.exitFullscreen();
+    }
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    initMap();
+});
 
 // Add LAW layers from PDOK
 function addLAWLayers() {
