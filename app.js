@@ -198,18 +198,20 @@ function setupEventListeners() {
     });
 }
 
-// Get route info at clicked point using GetFeatureInfo
+// Get route info at clicked point - only from active routes with better filtering
 function getRouteInfoAtPoint(latlng, point) {
     const bounds = map.getBounds();
     const size = map.getSize();
     
-    // Try to get info from all active routes
-    activeRoutes.forEach(route => {
+    // Only check routes that are currently active/visible
+    const promises = activeRoutes.map(route => {
+        // Build GetFeatureInfo request with the same filter as the displayed layer
+        const xmlFilter = `<Filter><PropertyIsEqualTo><PropertyName>lawnaam</PropertyName><Literal>${route.filter}</Literal></PropertyIsEqualTo></Filter>`;
+        
         const params = {
             request: 'GetFeatureInfo',
             service: 'WMS',
-            srs: 'EPSG:4326',
-            version: '1.1.0',
+            version: '1.3.0',
             format: 'image/png',
             bbox: `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`,
             height: size.y,
@@ -217,29 +219,47 @@ function getRouteInfoAtPoint(latlng, point) {
             layers: route.layerName,
             query_layers: route.layerName,
             info_format: 'application/json',
+            crs: 'EPSG:4326',
             x: Math.round(point.x),
-            y: Math.round(point.y)
+            y: Math.round(point.y),
+            filter: xmlFilter // Use same filter as displayed layer
         };
         
         const url = 'https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0?' + 
                     Object.keys(params).map(key => `${key}=${encodeURIComponent(params[key])}`).join('&');
         
-        fetch(url)
+        return fetch(url)
             .then(response => response.json())
             .then(data => {
                 if (data.features && data.features.length > 0) {
-                    const feature = data.features[0];
-                    showRouteInfoPopup(feature, latlng);
-                    highlightEtappe(feature, route);
+                    // Filter features to only include the specific route we're displaying
+                    const filteredFeatures = data.features.filter(feature => 
+                        feature.properties.lawnaam === route.filter
+                    );
+                    
+                    if (filteredFeatures.length > 0) {
+                        return { feature: filteredFeatures[0], route: route };
+                    }
                 }
+                return null;
             })
             .catch(error => {
                 console.log('Geen route info beschikbaar voor', route.name);
+                return null;
             });
+    });
+    
+    // Wait for all requests and show info for the first valid result
+    Promise.all(promises).then(results => {
+        const validResult = results.find(result => result !== null);
+        if (validResult) {
+            showRouteInfoPopup(validResult.feature, latlng, validResult.route);
+            highlightEtappe(validResult.feature, validResult.route);
+        }
     });
 }
 
-// Highlight the clicked etappe
+// Highlight the clicked etappe with longer duration and better styling
 function highlightEtappe(feature, route) {
     // Clear previous highlights
     highlightLayer.clearLayers();
@@ -257,52 +277,86 @@ function highlightEtappe(feature, route) {
         }
         
         if (coordinates && coordinates.length > 0) {
-            // Create highlight polyline
+            // Create main highlight polyline
             const highlightLine = L.polyline(coordinates, {
-                color: '#ffff00',        // Bright yellow
-                weight: 8,               // Thick line
+                color: '#fbbf24',        // Warm yellow/amber
+                weight: 12,              // Very thick line
                 opacity: 0.9,
-                dashArray: '10, 5',      // Dashed line
-                zIndex: 1000             // On top of everything
+                zIndex: 1000,
+                className: 'etappe-highlight-main'
             });
             
-            highlightLayer.addLayer(highlightLine);
+            // Create secondary glow effect
+            const glowLine = L.polyline(coordinates, {
+                color: '#fef3c7',        // Light yellow glow
+                weight: 20,              // Even thicker for glow
+                opacity: 0.4,
+                zIndex: 999,
+                className: 'etappe-highlight-glow'
+            });
             
-            // Add pulsing effect with circle markers at start/end
+            // Create animated dashed overlay
+            const dashLine = L.polyline(coordinates, {
+                color: '#dc2626',        // Red dash
+                weight: 4,
+                opacity: 0.8,
+                dashArray: '15, 10',
+                zIndex: 1001,
+                className: 'etappe-highlight-dash'
+            });
+            
+            highlightLayer.addLayer(glowLine);
+            highlightLayer.addLayer(highlightLine);
+            highlightLayer.addLayer(dashLine);
+            
+            // Add enhanced start/end markers
             if (coordinates.length >= 2) {
                 const startPoint = coordinates[0];
                 const endPoint = coordinates[coordinates.length - 1];
                 
-                // Start marker
+                // Start marker with custom icon
                 const startMarker = L.circleMarker(startPoint, {
-                    radius: 12,
-                    color: '#ff6b35',
-                    fillColor: '#ff6b35',
-                    fillOpacity: 0.8,
-                    weight: 3,
-                    className: 'pulse-marker'
+                    radius: 15,
+                    color: '#059669',
+                    fillColor: '#10b981',
+                    fillOpacity: 0.9,
+                    weight: 4,
+                    className: 'start-marker-pulse'
                 });
                 
-                // End marker  
+                startMarker.bindTooltip('Start etappe', {
+                    permanent: false,
+                    direction: 'top',
+                    className: 'marker-tooltip'
+                });
+                
+                // End marker
                 const endMarker = L.circleMarker(endPoint, {
-                    radius: 12,
+                    radius: 15,
                     color: '#dc2626',
-                    fillColor: '#dc2626', 
-                    fillOpacity: 0.8,
-                    weight: 3,
-                    className: 'pulse-marker'
+                    fillColor: '#ef4444',
+                    fillOpacity: 0.9,
+                    weight: 4,
+                    className: 'end-marker-pulse'
+                });
+                
+                endMarker.bindTooltip('Eind etappe', {
+                    permanent: false,
+                    direction: 'top',
+                    className: 'marker-tooltip'
                 });
                 
                 highlightLayer.addLayer(startMarker);
                 highlightLayer.addLayer(endMarker);
             }
             
-            console.log('Highlighted etappe:', feature.properties.etappnaam || feature.properties.etappe || 'Onbekende etappe');
+            console.log('✨ Highlighted etappe:', feature.properties.etappnaam || feature.properties.etappe || 'Onbekende etappe');
             
-            // Auto-remove highlight after 10 seconds
+            // Auto-remove highlight after 30 seconds (longer duration)
             setTimeout(() => {
                 clearEtappeHighlight();
-            }, 10000);
+                showNotification('Etappe highlight automatisch verwijderd', 'info');
+            }, 30000);
         }
     } else {
         // Fallback: create a WFS request to get the exact geometry of this etappe
@@ -347,42 +401,103 @@ function clearEtappeHighlight() {
     highlightLayer.clearLayers();
 }
 
-// Show route info popup with detailed information and highlight controls
-function showRouteInfoPopup(feature, latlng) {
+// Show route info popup with beautiful styling and enhanced information
+function showRouteInfoPopup(feature, latlng, route) {
     const props = feature.properties;
     
+    // Get route color based on route name for visual consistency
+    const routeColor = getRouteColor(route.filter);
+    
     const popupContent = `
-        <div class="route-popup" style="max-width: 300px;">
-            <h4 style="margin-bottom: 12px; color: var(--primary-green);">${props.lawnaam || 'LAW Route'}</h4>
-            <div class="popup-details" style="line-height: 1.4;">
-                ${props.routetype ? `<p><strong>Type:</strong> ${props.routetype}</p>` : ''}
-                ${props.provincie ? `<p><strong>Provincie:</strong> ${props.provincie}</p>` : ''}
-                ${props.lengte_m ? `<p><strong>Lengte:</strong> ${(props.lengte_m / 1000).toFixed(1)} km</p>` : ''}
-                ${props.etappe ? `<p><strong>Etappe:</strong> ${props.etappe}</p>` : ''}
-                ${props.etappnaam ? `<p><strong>Etappe naam:</strong> ${props.etappnaam}</p>` : ''}
-                ${props.van ? `<p><strong>Van:</strong> ${props.van}</p>` : ''}
-                ${props.naar ? `<p><strong>Naar:</strong> ${props.naar}</p>` : ''}
-                ${props.fuid ? `<p><strong>Route ID:</strong> ${props.fuid}</p>` : ''}
-                ${props.samenvatting ? `<p><strong>Beschrijving:</strong> ${props.samenvatting}</p>` : ''}
+        <div class="route-popup-modern">
+            <div class="popup-header" style="background: ${routeColor};">
+                <div class="route-icon">
+                    <i class="fas fa-route"></i>
+                </div>
+                <div class="route-title">
+                    <h3>${props.lawnaam || 'LAW Route'}</h3>
+                    <span class="route-badge">${route.name}</span>
+                </div>
             </div>
-            <div style="margin-top: 12px; display: flex; gap: 8px;">
-                <button onclick="clearEtappeHighlight()" style="flex: 1; background: #64748b; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;">
-                    <i class="fas fa-eye-slash"></i> Verberg highlight
+            
+            <div class="popup-content">
+                ${props.etappe || props.etappnaam ? `
+                    <div class="etappe-section">
+                        <div class="section-icon"><i class="fas fa-map-signs"></i></div>
+                        <div class="section-content">
+                            <h4>Etappe Informatie</h4>
+                            ${props.etappe ? `<p><strong>Etappe:</strong> ${props.etappe}</p>` : ''}
+                            ${props.etappnaam ? `<p><strong>Naam:</strong> ${props.etappnaam}</p>` : ''}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                ${props.van || props.naar ? `
+                    <div class="location-section">
+                        <div class="section-icon"><i class="fas fa-map-marker-alt"></i></div>
+                        <div class="section-content">
+                            <h4>Route Traject</h4>
+                            ${props.van ? `<p><strong>Van:</strong> ${props.van}</p>` : ''}
+                            ${props.naar ? `<p><strong>Naar:</strong> ${props.naar}</p>` : ''}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <div class="details-section">
+                    <div class="section-icon"><i class="fas fa-info-circle"></i></div>
+                    <div class="section-content">
+                        <h4>Route Details</h4>
+                        ${props.provincie ? `<p><strong>Provincie:</strong> ${props.provincie}</p>` : ''}
+                        ${props.lengte_m ? `<p><strong>Lengte:</strong> ${(props.lengte_m / 1000).toFixed(1)} km</p>` : ''}
+                        ${props.routetype ? `<p><strong>Type:</strong> ${props.routetype}</p>` : ''}
+                    </div>
+                </div>
+                
+                ${props.samenvatting ? `
+                    <div class="description-section">
+                        <div class="section-icon"><i class="fas fa-file-text"></i></div>
+                        <div class="section-content">
+                            <h4>Beschrijving</h4>
+                            <p class="description-text">${props.samenvatting}</p>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+            
+            <div class="popup-actions">
+                <button class="action-btn secondary" onclick="clearEtappeHighlight()">
+                    <i class="fas fa-eye-slash"></i>
+                    Verberg highlight
                 </button>
-            </div>
-            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b;">
-                💡 Etappe wordt 10 seconden gehighlight in <span style="color: #ffff00; background: #333; padding: 1px 4px;">geel</span>
+                <div class="highlight-info">
+                    <i class="fas fa-lightbulb"></i>
+                    Etappe blijft <span class="highlight-duration">30 sec</span> zichtbaar
+                </div>
             </div>
         </div>
     `;
     
     L.popup({
-        maxWidth: 350,
-        className: 'route-info-popup'
+        maxWidth: 400,
+        className: 'modern-route-popup',
+        closeButton: true,
+        autoClose: false,
+        keepInView: true
     })
         .setLatLng(latlng)
         .setContent(popupContent)
         .openOn(map);
+}
+
+// Get color for route based on route name
+function getRouteColor(routeName) {
+    const colors = {
+        'Marskramerpad': 'linear-gradient(135deg, #dc2626, #991b1b)',
+        'Trekvogelpad': 'linear-gradient(135deg, #2563eb, #1d4ed8)', 
+        'Zuiderzeepad': 'linear-gradient(135deg, #059669, #047857)',
+        'Pelgrimspad': 'linear-gradient(135deg, #7c3aed, #6d28d9)'
+    };
+    return colors[routeName] || 'linear-gradient(135deg, #64748b, #475569)';
 }
 
 // Setup layer cards
