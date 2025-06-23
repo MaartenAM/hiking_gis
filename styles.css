@@ -5,6 +5,8 @@
     --light-green: #6da583;
     --orange: #ff7b54;
     --orange-hover: #e66a47;
+    --camping-color: #f59e0b;
+    --camping-hover: #d97706;
     --background: #f8fafc;
     --surface: #ffffff;
     --surface-elevated: #f1f5f9;
@@ -306,6 +308,12 @@ body {
     letter-spacing: -0.01em;
 }
 
+/* Camping Layer Card Styling */
+#camping-layer-card.active {
+    background: linear-gradient(135deg, var(--camping-color), var(--camping-hover));
+    border-color: var(--camping-color);
+}
+
 /* Search */
 .search-container {
     position: relative;
@@ -375,6 +383,100 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.05em;
     font-weight: 500;
+}
+
+/* Camping Statistics */
+.camping-stats {
+    background: linear-gradient(135deg, var(--surface-elevated), var(--surface));
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.stats-item {
+    text-align: center;
+    padding: 16px;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+}
+
+.stats-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--camping-color);
+    margin-bottom: 4px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.stats-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+}
+
+/* Camping List */
+.camping-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.camping-item {
+    padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.camping-item:hover {
+    background: var(--surface-elevated);
+    border-color: var(--camping-color);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.camping-item h4 {
+    font-size: 14px;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.camping-item h4 i {
+    color: var(--camping-color);
+    font-size: 12px;
+}
+
+.camping-item p {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 2px 0;
+}
+
+.camping-item .camping-distance {
+    font-size: 11px;
+    color: var(--camping-color);
+    font-weight: 600;
+    background: rgba(245, 158, 11, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-top: 4px;
 }
 
 /* Legend */
@@ -748,7 +850,8 @@ body {
     font-size: 12px;
     cursor: pointer;
     margin-top: 8px;
-    display: flex;
+    margin-right: 8px;
+    display: inline-flex;
     align-items: center;
     gap: 6px;
     transition: background 0.2s ease;
@@ -756,6 +859,57 @@ body {
 
 .popup-button:hover {
     background: var(--orange-hover);
+}
+
+/* Camping popup styling */
+.camping-popup {
+    min-width: 280px;
+    max-width: 350px;
+}
+
+.camping-popup h4 {
+    margin: 0 0 12px 0;
+    color: var(--camping-color);
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.camping-popup p {
+    margin: 6px 0;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.camping-popup strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.camping-facilities {
+    background: var(--surface-elevated);
+    padding: 8px;
+    border-radius: var(--radius-sm);
+    margin: 8px 0;
+    font-size: 12px;
+}
+
+.camping-popup .popup-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.camping-popup .popup-button {
+    background: var(--camping-color);
+    font-size: 11px;
+    padding: 6px 10px;
+}
+
+.camping-popup .popup-button:hover {
+    background: var(--camping-hover);
 }
 
 /* Map */
@@ -850,6 +1004,19 @@ body {
 
 .sidebar-content::-webkit-scrollbar-thumb:hover {
     background: var(--text-muted);
+}
+
+.camping-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.camping-list::-webkit-scrollbar-track {
+    background: var(--surface-elevated);
+}
+
+.camping-list::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
 }
 
 /* Subtle kilometer marker tooltips */
@@ -1085,256 +1252,69 @@ body {
     }
 }
 
-/* Improved general styling alignment */
-.sidebar-header {
-    padding: 20px 24px 16px;
-    border-bottom: 1px solid var(--border-subtle);
-    background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
-    color: white;
-    box-shadow: var(--shadow-sm);
+/* Camping marker animations */
+.camping-marker {
+    animation: campingBounce 0.8s ease-out;
 }
 
-.sidebar-title {
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: -0.025em;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 6px;
-}
-
-.sidebar-subtitle {
-    font-size: 13px;
-    opacity: 0.9;
-    font-weight: 400;
-}
-
-.section-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    letter-spacing: -0.015em;
-}
-
-.section-title i {
-    color: var(--accent-green);
-    font-size: 14px;
-}
-
-/* Improved route info panel */
-.route-info-card {
-    background: linear-gradient(135deg, var(--surface), var(--surface-elevated));
-    border: 1px solid var(--border);
-    border-radius: var(--radius-xl);
-    padding: 20px;
-    margin-bottom: 16px;
-    box-shadow: var(--shadow-lg);
-    backdrop-filter: blur(10px);
-}
-
-.route-info-header {
-    background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
-    color: white;
-    padding: 18px;
-    border-radius: var(--radius-lg);
-    margin-bottom: 18px;
-    box-shadow: var(--shadow-md);
-}
-
-.route-info-title {
-    font-size: 17px;
-    font-weight: 600;
-    margin-bottom: 6px;
-}
-
-.route-info-badge {
-    background: rgba(255,255,255,0.25);
-    padding: 3px 10px;
-    border-radius: 12px;
-    display: inline-block;
-    font-size: 11px;
-    font-weight: 500;
-}
-
-.route-info-section {
-    margin-bottom: 18px;
-    padding: 14px;
-    background: linear-gradient(135deg, var(--surface-elevated), var(--surface));
-    border-radius: var(--radius-lg);
-    border-left: 4px solid var(--accent-green);
-    box-shadow: var(--shadow-sm);
-    transition: all 0.2s ease;
-}
-
-.route-info-section:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-}
-
-.route-info-section h4 {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--accent-green);
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.route-info-section p {
-    font-size: 12px;
-    color: var(--text-secondary);
-    margin: 3px 0;
-    line-height: 1.4;
-}
-
-.highlight-btn {
-    background: linear-gradient(135deg, var(--orange), var(--orange-hover));
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: var(--radius-lg);
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    box-shadow: var(--shadow-sm);
-}
-
-.highlight-btn:hover {
-    background: linear-gradient(135deg, var(--orange-hover), #d55a3a);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-}
-
-.highlight-timer {
-    font-size: 10px;
-    color: var(--text-muted);
-}
-
-/* Responsive */, 105, 0.3) !important;
-}
-
-.start-tooltip::before {
-    border-top-color: #059669 !important;
-}
-
-.end-tooltip {
-    background: linear-gradient(135deg, #dc2626, #ef4444) !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 8px !important;
-    font-size: 12px !important;
-    font-weight: 700 !important;
-    padding: 8px 12px !important;
-    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3) !important;
-}
-
-.end-tooltip::before {
-    border-top-color: #dc2626 !important;
-}
-
-/* Highlight route animation */
-.highlight-route {
-    animation: routePulse 2s ease-in-out infinite alternate;
-}
-
-@keyframes routePulse {
+@keyframes campingBounce {
     0% {
-        opacity: 0.8;
-    }
-    100% {
-        opacity: 1;
-    }
-}
-
-/* Kilometer marker animation */
-.km-marker {
-    animation: kmBounce 1s ease-out;
-}
-
-@keyframes kmBounce {
-    0% {
-        transform: scale(0);
+        transform: scale(0) translateY(-20px);
         opacity: 0;
     }
     50% {
-        transform: scale(1.2);
+        transform: scale(1.2) translateY(-10px);
         opacity: 0.8;
     }
     100% {
-        transform: scale(1);
+        transform: scale(1) translateY(0);
         opacity: 1;
     }
 }
 
-/* Improved route info panel */
-.route-info-card {
-    background: linear-gradient(135deg, var(--surface), var(--surface-elevated));
-    border: 1px solid var(--border);
-    border-radius: var(--radius-xl);
-    padding: 24px;
-    margin-bottom: 16px;
-    box-shadow: var(--shadow-lg);
-    backdrop-filter: blur(10px);
-}
-
-.route-info-header {
-    background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
-    color: white;
-    padding: 20px;
-    border-radius: var(--radius-lg);
-    margin-bottom: 20px;
-    box-shadow: var(--shadow-md);
-}
-
-.route-info-section {
-    margin-bottom: 20px;
-    padding: 16px;
-    background: linear-gradient(135deg, var(--surface-elevated), var(--surface));
-    border-radius: var(--radius-lg);
-    border-left: 4px solid var(--accent-green);
-    box-shadow: var(--shadow-sm);
-    transition: all 0.2s ease;
-}
-
-.route-info-section:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-}
-
-.highlight-btn {
-    background: linear-gradient(135deg, var(--orange), var(--orange-hover));
-    color: white;
-    border: none;
-    padding: 10px 18px;
-    border-radius: var(--radius-lg);
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
-    transition: all 0.3s ease;
+/* Loading states */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
     display: flex;
     align-items: center;
-    gap: 8px;
-    box-shadow: var(--shadow-sm);
+    justify-content: center;
+    z-index: 10000;
+    backdrop-filter: blur(4px);
 }
 
-.highlight-btn:hover {
-    background: linear-gradient(135deg, var(--orange-hover), #d55a3a);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+.loading-content {
+    text-align: center;
+    padding: 40px;
+    background: var(--surface);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl);
+    border: 1px solid var(--border);
 }
 
-.highlight-btn.active {
-    background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
+.loading-spinner-large {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top: 3px solid var(--camping-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 16px;
+}
+
+.loading-text {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.loading-detail {
+    font-size: 12px;
+    color: var(--text-muted);
 }
 
 /* Responsive */
@@ -1347,7 +1327,7 @@ body {
         grid-template-columns: 1fr;
     }
     
-    .trace-stats {
+    .trace-stats, .stats-grid {
         grid-template-columns: 1fr;
         gap: 12px;
     }
@@ -1398,7 +1378,12 @@ body {
         padding: 16px;
     }
     
-    .trace-stats {
+    .trace-stats, .stats-grid {
         grid-template-columns: 1fr;
+    }
+
+    .camping-popup {
+        min-width: 250px;
+        max-width: 280px;
     }
 }
