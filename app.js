@@ -592,89 +592,41 @@ async function loadOSMCampings() {
     }
 }
 
-// Improved OSM to GeoJSON conversion
-function convertOSMToGeoJSON(osmData) {
-    const features = [];
-    
-    osmData.elements.forEach(element => {
-        let lat, lon;
-        
-        // Handle different element types
-        if (element.type === 'node' && element.lat && element.lon) {
-            lat = element.lat;
-            lon = element.lon;
-        } else if (element.type === 'way' && element.center) {
-            lat = element.center.lat;
-            lon = element.center.lon;
-        } else if (element.type === 'relation' && element.center) {
-            lat = element.center.lat;
-            lon = element.center.lon;
-        } else {
-            return; // Skip this element
-        }
-        
-        if (!element.tags) return; // Skip elements without tags
-        
-        const properties = {
-            name: element.tags.name || element.tags['name:nl'] || 'Naamloze camping',
-            type: element.tags.tourism || 'camp_site',
-            website: element.tags.website || element.tags['contact:website'] || null,
-            phone: element.tags.phone || element.tags['contact:phone'] || null,
-            email: element.tags.email || element.tags['contact:email'] || null,
-            address: formatOSMAddress(element.tags),
-            description: element.tags.description || createDescription(element.tags),
-            facilities: extractOSMFacilities(element.tags),
-            stars: element.tags.stars ? parseInt(element.tags.stars) : null,
-            fee: element.tags.fee || null,
-            opening_hours: element.tags.opening_hours || null,
-            source: 'OpenStreetMap',
-            osm_id: element.id,
-            osm_type: element.type
-        };
-        
-        features.push({
-            type: "Feature",
-            geometry: {
-                type: "Point",
-                coordinates: [lon, lat]
-            },
-            properties: properties
-        });
-    });
-    
-    console.log(`Converted ${features.length} OSM elements to GeoJSON features`);
-    
-    return {
-        type: "FeatureCollection",
-        features: features
+// Remove all the complex camping functions - keeping it simple
+// Only keep essential functions below:
+
+// Get total camping count (simplified)
+function getTotalCampingCount() {
+    return campingLayer ? campingLayer.getLayers().length : 0;
+}
+
+// Zoom to specific camping (simplified)
+function zoomToCamping(lat, lng) {
+    map.setView([lat, lng], 14);
+    showNotification('Ingezoomd op camping', 'info');
+}
+
+// Format camping type voor weergave (simplified)
+function formatCampingType(type) {
+    const types = {
+        'camp_site': 'Camping',
+        'caravan_site': 'Camperplaats', 
+        'wilderness_hut': 'Natuurkampeerterrein'
     };
+    return types[type] || 'Camping';
 }
 
-// Create description from OSM tags
-function createDescription(tags) {
-    const parts = [];
+// Fit map to all campings (simplified)
+function fitToCampings() {
+    if (!campingVisible || campingLayer.getLayers().length === 0) {
+        showNotification('Geen zichtbare campings om naar te zoomen', 'warning');
+        return;
+    }
     
-    if (tags.operator) parts.push(`Beheerd door ${tags.operator}`);
-    if (tags.capacity) parts.push(`${tags.capacity} plaatsen`);
-    if (tags.caravans === 'yes') parts.push('Caravans welkom');
-    if (tags.tents === 'yes') parts.push('Tenten welkom');
-    if (tags.motor_vehicle === 'yes') parts.push('Campers welkom');
-    if (tags.fee === 'no') parts.push('Gratis');
-    
-    return parts.length > 0 ? parts.join(', ') : null;
-}
-
-// Improved facility extraction
-function extractOSMFacilities(tags) {
-    const facilities = [];
-    
-    // Sanitair
-    if (tags.toilets === 'yes') facilities.push('toiletten');
-    if (tags.shower === 'yes') facilities.push('douches');
-    if (tags.drinking_water === 'yes') facilities.push('drinkwater');
-    
-    // Voorzieningen
-    if (tags.electricity === 'yes') facilities.push('elektriciteit');
+    const group = new L.featureGroup(campingLayer.getLayers());
+    map.fitBounds(group.getBounds().pad(0.1));
+    showNotification('Ingezoomd op alle zichtbare campings', 'success');
+}elektriciteit');
     if (tags.internet_access === 'wifi' || tags.internet_access === 'yes') facilities.push('wifi');
     if (tags.shop === 'yes' || tags.shop) facilities.push('winkel');
     if (tags.restaurant === 'yes' || tags.amenity === 'restaurant') facilities.push('restaurant');
