@@ -13,9 +13,7 @@ let highlightLayer;
 // Camping variables
 let campingLayer;
 let campingsData = null;
-let osmCampingsData = null;
 let campingVisible = false;
-let currentCampingSource = 'geojson';
 let loadingOverlay = null;
 
 // Route measuring functionality
@@ -25,7 +23,7 @@ let routeMeasureMarkers = [];
 let routeMeasureLines = [];
 let routeMeasureDistance = 0;
 
-// Route definitions - alleen de 4 gewenste LAW routes
+// Route definitions
 const routeDefinitions = {
     law: [
         { value: 'LAW 10', name: 'LAW 10 - Marskramerpad', filter: 'Marskramerpad' },
@@ -35,7 +33,7 @@ const routeDefinitions = {
     ]
 };
 
-// Custom WMS Layer class to handle PDOK XML filtering
+// Custom WMS Layer class
 L.TileLayer.PDOKFilter = L.TileLayer.WMS.extend({
     initialize: function (url, options) {
         L.TileLayer.WMS.prototype.initialize.call(this, url, options);
@@ -75,12 +73,11 @@ L.TileLayer.PDOKFilter = L.TileLayer.WMS.extend({
     }
 });
 
-// Helper function to create PDOK filtered layer
 L.tileLayer.pdokFilter = function (url, options) {
     return new L.TileLayer.PDOKFilter(url, options);
 };
 
-// Camping icon definition
+// Camping icon
 const campingIcon = L.icon({
     iconUrl: 'data:image/svg+xml;base64,' + btoa(`
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
@@ -91,8 +88,7 @@ const campingIcon = L.icon({
     `),
     iconSize: [24, 24],
     iconAnchor: [12, 24],
-    popupAnchor: [0, -24],
-    className: 'camping-marker'
+    popupAnchor: [0, -24]
 });
 
 // Initialize map
@@ -140,211 +136,6 @@ function initMap() {
 // Initialize camping layer
 function initCampingLayer() {
     campingLayer = L.layerGroup();
-    campingLayer.addTo(map);
-    campingVisible = true;
-    
-    // Update zoom level display
-    map.on('zoomend', updateZoomDisplay);
-    map.on('moveend', updateZoomDisplay);
-    
-    updateZoomDisplay();
-}
-
-// Update zoom level display
-function updateZoomDisplay() {
-    const zoomEl = document.getElementById('currentZoom');
-    if (zoomEl) {
-        zoomEl.textContent = map.getZoom();
-    }
-}
-
-// Load campings in current map view (simplified approach)
-function loadCampingsInView() {
-    const zoom = map.getZoom();
-    
-    if (zoom < 10) {
-        showNotification('Zoom meer in (niveau 10+) voor betere resultaten', 'warning');
-    }
-    
-    showLoadingOverlay('Campings zoeken in huidige gebied...');
-    
-    // Get current map bounds
-    const bounds = map.getBounds();
-    const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
-    
-    // Use a more reliable Overpass query with increased timeout
-    const overpassQuery = `
-        [out:json][timeout:30];
-        (
-            node["tourism"="camp_site"](${bbox});
-            node["tourism"="caravan_site"](${bbox});
-            node["tourism"="alpine_hut"](${bbox});
-            way["tourism"="camp_site"](${bbox});
-            way["tourism"="caravan_site"](${bbox});
-            relation["tourism"="camp_site"](${bbox});
-        );
-        out center meta;
-    `;
-
-    // Try multiple Overpass servers for better reliability
-    const overpassServers = [
-        'https://overpass-api.de/api/interpreter',
-        'https://overpass.kumi.systems/api/interpreter',
-        'https://overpass.openstreetmap.ru/api/interpreter'
-    ];
-
-    tryOverpassServers(overpassServers, overpassQuery, 0);
-}
-
-async function tryOverpassServers(servers, query, serverIndex) {
-    if (serverIndex >= servers.length) {
-        // All servers failed, use sample data
-        console.log('All Overpass servers failed, using sample data');
-        loadSampleCampingsInView();
-        return;
-    }
-
-    try {
-        updateLoadingOverlay(`Proberen server ${serverIndex + 1}/${servers.length}...`);
-        
-        const response = await fetch(servers[serverIndex], {
-            method: 'POST',
-            body: query,
-            headers: {
-                'Content-Type': 'text/plain'
-            },
-            signal: AbortSignal.timeout(25000) // 25 second timeout
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Server responded with ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (!data.elements || data.elements.length === 0) {
-            throw new Error('No data returned');
-        }
-        
-        console.log(`Successfully loaded ${data.elements.length} elements from server ${serverIndex + 1}`);
-        
-        // Convert and display the data
-        const geojsonData = convertOSMToGeoJSON(data);
-        displayCampings(geojsonData);
-        
-        hideLoadingOverlay();
-        showNotification(`${geojsonData.features.length} campings gevonden!`, 'success');
-        
-    } catch (error) {
-        console.log(`Server ${serverIndex + 1} failed:`, error.message);
-        
-        // Try next server
-        setTimeout(() => {
-            tryOverpassServers(servers, query, serverIndex + 1);
-        }, 1000);
-    }
-}
-
-// Load sample campings in current view as fallback
-function loadSampleCampingsInView() {
-    hideLoadingOverlay();
-    
-    const bounds = map.getBounds();
-    const sampleData = createSampleCampingData();
-    
-    // Filter sample data to current view
-    const filteredFeatures = sampleData.features.filter(feature => {
-        const lat = feature.geometry.coordinates[1];
-        const lng = feature.geometry.coordinates[0];
-        return bounds.contains([lat, lng]);
-    });
-    
-    const viewData = {
-        type: "FeatureCollection",
-        features: filteredFeatures
-    };
-    
-    displayCampings(viewData);
-    showNotification(`${filteredFeatures.length} sample campings getoond (OSM servers niet beschikbaar)`, 'warning');
-}
-
-// Display campings on map
-function displayCampings(geojsonData) {
-    // Clear existing camping markers
-    campingLayer.clearLayers();
-    
-    // Store the data
-    campingsData = geojsonData;
-    
-    // Add all campings to map
-    geojsonData.features.forEach(camping => {
-        addCampingMarker(camping);
-    });
-    
-    // Update statistics and list
-    updateCampingStats();
-    updateCampingList();
-}
-
-// Simplified camping data management
-function updateCampingStats() {
-    const count = campingLayer.getLayers().length;
-    const visibleEl = document.getElementById('visibleCampings');
-    if (visibleEl) {
-        visibleEl.textContent = count;
-    }
-}
-
-// Simplified camping list
-function updateCampingList() {
-    const container = document.getElementById('campingList');
-    if (!container || !campingsData) return;
-    
-    const campings = campingsData.features;
-    
-    if (campings.length === 0) {
-        container.innerHTML = '<div class="empty-state">Geen campings gevonden in dit gebied</div>';
-        return;
-    }
-    
-    // Show max 15 campings in list
-    container.innerHTML = campings.slice(0, 15).map(camping => {
-        const props = camping.properties;
-        return `
-            <div class="camping-item" onclick="zoomToCamping(${camping.geometry.coordinates[1]}, ${camping.geometry.coordinates[0]})">
-                <h4><i class="fas fa-campground"></i> ${props.name}</h4>
-                <p><strong>Type:</strong> ${formatCampingType(props.type)}</p>
-                ${props.description ? `<p>${props.description.substring(0, 100)}...</p>` : ''}
-            </div>
-        `;
-    }).join('') + (campings.length > 15 ? `<div class="empty-state">... en ${campings.length - 15} meer op de kaart</div>` : '');
-}
-
-// Simplified type filtering
-function filterCampingsByType() {
-    if (!campingsData) return;
-    
-    const selectedType = document.getElementById('campingType').value;
-    
-    // Clear current markers
-    campingLayer.clearLayers();
-    
-    // Filter and add markers
-    const filteredCampings = campingsData.features.filter(camping => {
-        return !selectedType || camping.properties.type === selectedType;
-    });
-    
-    filteredCampings.forEach(camping => {
-        addCampingMarker(camping);
-    });
-    
-    // Update stats
-    const visibleEl = document.getElementById('visibleCampings');
-    if (visibleEl) {
-        visibleEl.textContent = filteredCampings.length;
-    }
-    
-    showNotification(`${filteredCampings.length} campings na filtering`, 'info');
 }
 
 // Setup tab navigation
@@ -465,9 +256,9 @@ function switchBaseLayer(layerType) {
     }
 }
 
-// ============ CAMPING FUNCTIONALITY ============
+// ============ SIMPLIFIED CAMPING FUNCTIONALITY ============
 
-// Toggle camping layer zichtbaarheid
+// Toggle camping layer visibility
 function toggleCampingLayer() {
     campingVisible = !campingVisible;
     const card = document.getElementById('camping-layer-card');
@@ -475,87 +266,100 @@ function toggleCampingLayer() {
     if (campingVisible) {
         campingLayer.addTo(map);
         card.classList.add('active');
-        showNotification('Campings zichtbaar', 'success');
         
-        if (campingsData || osmCampingsData) {
-            filterCampingsByDistance();
+        if (campingLayer.getLayers().length === 0) {
+            loadAndShowCampings();
         } else {
-            loadCampingData();
+            showNotification('Campings zichtbaar', 'success');
+            updateCampingCount();
         }
     } else {
         map.removeLayer(campingLayer);
         card.classList.remove('active');
         showNotification('Campings verborgen', 'info');
+        updateCampingCount();
     }
 }
 
-// Switch camping source
-function switchCampingSource() {
-    const source = document.getElementById('campingSource').value;
-    currentCampingSource = source;
+// Load and show campings
+function loadAndShowCampings() {
+    showLoadingOverlay('Campings laden...');
     
-    if (campingVisible) {
-        loadCampingData();
-    }
-    
-    showNotification(`Camping bron gewijzigd naar: ${source === 'geojson' ? 'GeoJSON' : source === 'osm' ? 'OpenStreetMap' : 'Beide'}`, 'info');
+    loadLocalGeoJSON()
+        .then(success => {
+            if (!success) {
+                return loadFromOSMAPI();
+            }
+            return true;
+        })
+        .then(() => {
+            hideLoadingOverlay();
+            
+            if (!campingVisible) {
+                toggleCampingLayer();
+            }
+        })
+        .catch(error => {
+            console.error('Error loading campings:', error);
+            hideLoadingOverlay();
+            showNotification('Fout bij laden campings', 'error');
+        });
 }
 
-// Laad camping data
-async function loadCampingData() {
-    showLoadingOverlay('Camping data laden...');
-    
-    try {
-        campingLayer.clearLayers();
-        
-        if (currentCampingSource === 'geojson' || currentCampingSource === 'both') {
-            await loadGeoJSONCampings();
-        }
-        
-        if (currentCampingSource === 'osm' || currentCampingSource === 'both') {
-            await loadOSMCampings();
-        }
-        
-        updateCampingStats();
-        updateCampingList();
-        
-        if (campingVisible) {
-            filterCampingsByDistance();
-        }
-        
-        hideLoadingOverlay();
-        showNotification(`Camping data geladen! ${getTotalCampingCount()} campings beschikbaar`, 'success');
-        
-    } catch (error) {
-        console.error('Fout bij laden camping data:', error);
-        hideLoadingOverlay();
-        showNotification('Fout bij laden camping data', 'error');
-    }
-}
-
-// Laad GeoJSON camping data
-async function loadGeoJSONCampings() {
+// Load local GeoJSON file
+async function loadLocalGeoJSON() {
     try {
         const response = await fetch('./data/campings.geojson');
-        if (response.ok) {
-            campingsData = await response.json();
-            console.log(`${campingsData.features.length} campings geladen uit GeoJSON`);
-        } else {
-            console.log('Geen lokaal GeoJSON bestand gevonden, gebruik sample data');
-            campingsData = createSampleCampingData();
+        
+        if (!response.ok) {
+            console.log('Local GeoJSON not found, will try OSM API');
+            return false;
         }
+        
+        const geojsonData = await response.json();
+        
+        campingLayer.clearLayers();
+        
+        geojsonData.features.forEach(feature => {
+            const coords = feature.geometry.coordinates;
+            const props = feature.properties;
+            
+            const popupContent = `
+                <div class="camping-popup">
+                    <h4><i class="fas fa-campground"></i> ${props.name || 'Camping'}</h4>
+                    ${props.operator ? `<p><strong>Beheerder:</strong> ${props.operator}</p>` : ''}
+                    ${props.access ? `<p><strong>Toegang:</strong> ${props.access}</p>` : ''}
+                    <p style="font-size: 10px; color: #666;">OSM ID: ${props.osm_id}</p>
+                </div>
+            `;
+            
+            const marker = L.marker([coords[1], coords[0]], {
+                icon: campingIcon,
+                zIndex: 1000
+            }).bindPopup(popupContent);
+            
+            campingLayer.addLayer(marker);
+        });
+        
+        console.log(`Loaded ${geojsonData.features.length} campings from local GeoJSON`);
+        showNotification(`${geojsonData.features.length} campings geladen uit lokaal bestand`, 'success');
+        updateCampingCount();
+        
+        return true;
+        
     } catch (error) {
-        console.log('GeoJSON laden mislukt, gebruik sample data:', error);
-        campingsData = createSampleCampingData();
+        console.log('Failed to load local GeoJSON:', error);
+        return false;
     }
 }
 
-// Laad OSM camping data via Overpass API
-async function loadOSMCampings() {
-    const bbox = '3.3,50.7,7.2,53.5';
+// Load from OSM API as fallback
+async function loadFromOSMAPI() {
+    const bounds = map.getBounds();
+    const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
     
     const overpassQuery = `
-        [out:json][timeout:25];
+        [out:json][timeout:30];
         (
             node["tourism"="camp_site"](${bbox});
             node["tourism"="caravan_site"](${bbox});
@@ -564,16 +368,15 @@ async function loadOSMCampings() {
         );
         out center;
     `;
-    
+
     try {
-        updateLoadingOverlay('OSM camping data ophalen...');
+        updateLoadingOverlay('OSM campings ophalen...');
         
         const response = await fetch('https://overpass-api.de/api/interpreter', {
             method: 'POST',
             body: overpassQuery,
-            headers: {
-                'Content-Type': 'text/plain'
-            }
+            headers: { 'Content-Type': 'text/plain' },
+            signal: AbortSignal.timeout(25000)
         });
         
         if (!response.ok) {
@@ -581,396 +384,112 @@ async function loadOSMCampings() {
         }
         
         const data = await response.json();
-        osmCampingsData = convertOSMToGeoJSON(data);
         
-        console.log(`${osmCampingsData.features.length} campings geladen uit OSM`);
+        campingLayer.clearLayers();
+        
+        data.elements.forEach(element => {
+            let lat, lon;
+            
+            if (element.type === 'node' && element.lat && element.lon) {
+                lat = element.lat;
+                lon = element.lon;
+            } else if ((element.type === 'way' || element.type === 'relation') && element.center) {
+                lat = element.center.lat;
+                lon = element.center.lon;
+            } else {
+                return;
+            }
+            
+            if (!element.tags) return;
+            
+            const name = element.tags.name || element.tags['name:nl'] || 'Camping';
+            const type = element.tags.tourism || 'camp_site';
+            
+            const popupContent = `
+                <div class="camping-popup">
+                    <h4><i class="fas fa-campground"></i> ${name}</h4>
+                    <p><strong>Type:</strong> ${type === 'camp_site' ? 'Camping' : 'Camperplaats'}</p>
+                    ${element.tags.website ? `<p><a href="${element.tags.website}" target="_blank">Website</a></p>` : ''}
+                    ${element.tags.phone ? `<p><a href="tel:${element.tags.phone}">📞 ${element.tags.phone}</a></p>` : ''}
+                    <p style="font-size: 10px; color: #666;">Bron: OpenStreetMap</p>
+                </div>
+            `;
+            
+            const marker = L.marker([lat, lon], {
+                icon: campingIcon,
+                zIndex: 1000
+            }).bindPopup(popupContent);
+            
+            campingLayer.addLayer(marker);
+        });
+        
+        console.log(`Loaded ${data.elements.length} campings from OSM API`);
+        showNotification(`${data.elements.length} campings geladen van OpenStreetMap`, 'success');
+        updateCampingCount();
+        
+        return true;
         
     } catch (error) {
-        console.error('OSM camping data laden mislukt:', error);
-        osmCampingsData = { type: "FeatureCollection", features: [] };
-        showNotification('OSM data laden mislukt, gebruik alleen lokale data', 'warning');
+        console.error('OSM API failed:', error);
+        showSampleCampings();
+        return true;
     }
 }
 
-// Remove all the complex camping functions - keeping it simple
-// Only keep essential functions below:
-
-// Get total camping count (simplified)
-function getTotalCampingCount() {
-    return campingLayer ? campingLayer.getLayers().length : 0;
-}
-
-// Zoom to specific camping (simplified)
-function zoomToCamping(lat, lng) {
-    map.setView([lat, lng], 14);
-    showNotification('Ingezoomd op camping', 'info');
-}
-
-// Format camping type voor weergave (simplified)
-function formatCampingType(type) {
-    const types = {
-        'camp_site': 'Camping',
-        'caravan_site': 'Camperplaats', 
-        'wilderness_hut': 'Natuurkampeerterrein'
-    };
-    return types[type] || 'Camping';
-}
-
-// Fit map to all campings (simplified)
-function fitToCampings() {
-    if (!campingVisible || campingLayer.getLayers().length === 0) {
-        showNotification('Geen zichtbare campings om naar te zoomen', 'warning');
-        return;
-    }
+// Show sample campings as fallback
+function showSampleCampings() {
+    campingLayer.clearLayers();
     
-    const group = new L.featureGroup(campingLayer.getLayers());
-    map.fitBounds(group.getBounds().pad(0.1));
-    showNotification('Ingezoomd op alle zichtbare campings', 'success');
-}elektriciteit');
-    if (tags.internet_access === 'wifi' || tags.internet_access === 'yes') facilities.push('wifi');
-    if (tags.shop === 'yes' || tags.shop) facilities.push('winkel');
-    if (tags.restaurant === 'yes' || tags.amenity === 'restaurant') facilities.push('restaurant');
-    if (tags.bar === 'yes' || tags.amenity === 'bar') facilities.push('bar');
+    const sampleCampings = [
+        { name: "Camping De Berekuil", coords: [52.1326, 5.2913] },
+        { name: "Camping Vliegenbos", coords: [52.3676, 4.9041] },
+        { name: "De Kwakkenberg", coords: [51.9851, 5.9699] },
+        { name: "Camping Scholtenhagen", coords: [52.4114, 6.5665] }
+    ];
     
-    // Recreatie
-    if (tags.playground === 'yes') facilities.push('speeltuin');
-    if (tags.swimming_pool === 'yes') facilities.push('zwembad');
-    if (tags.sauna === 'yes') facilities.push('sauna');
-    
-    // Services
-    if (tags.laundry === 'yes') facilities.push('wasserette');
-    if (tags.bicycle_rental === 'yes') facilities.push('fietsverhuur');
-    
-    return facilities;
-}
-
-// Format OSM address
-function formatOSMAddress(tags) {
-    const parts = [];
-    if (tags['addr:street']) parts.push(tags['addr:street']);
-    if (tags['addr:housenumber']) parts.push(tags['addr:housenumber']);
-    if (tags['addr:postcode']) parts.push(tags['addr:postcode']);
-    if (tags['addr:city']) parts.push(tags['addr:city']);
-    
-    return parts.length > 0 ? parts.join(', ') : null;
-}
-
-// Extract facilities from OSM tags
-function extractOSMFacilities(tags) {
-    const facilities = [];
-    
-    if (tags.toilets === 'yes') facilities.push('toiletten');
-    if (tags.shower === 'yes') facilities.push('douches');
-    if (tags.drinking_water === 'yes') facilities.push('drinkwater');
-    if (tags.electricity === 'yes') facilities.push('elektriciteit');
-    if (tags.internet_access) facilities.push('wifi');
-    if (tags.shop) facilities.push('winkel');
-    if (tags.restaurant === 'yes') facilities.push('restaurant');
-    if (tags.playground === 'yes') facilities.push('speeltuin');
-    
-    return facilities;
-}
-
-// Maak sample camping data voor demonstratie
-function createSampleCampingData() {
-    return {
-        "type": "FeatureCollection",
-        "features": [
-            {
-                "type": "Feature",
-                "geometry": {"type": "Point", "coordinates": [5.2913, 52.1326]},
-                "properties": {
-                    "name": "Camping De Berekuil",
-                    "type": "camp_site",
-                    "website": "https://www.deberekuil.nl",
-                    "phone": "030-1234567",
-                    "facilities": ["douches", "toiletten", "wifi", "restaurant"],
-                    "description": "Kleinschalige familiecamping in bosrijke omgeving",
-                    "source": "Sample"
-                }
-            },
-            {
-                "type": "Feature", 
-                "geometry": {"type": "Point", "coordinates": [4.9041, 52.3676]},
-                "properties": {
-                    "name": "Camping Vliegenbos",
-                    "type": "camp_site",
-                    "website": "https://www.campingvliegenbos.nl",
-                    "phone": "020-6368855",
-                    "facilities": ["douches", "toiletten", "wifi", "fietsverhuur"],
-                    "description": "Natuurcamping nabij Amsterdam centrum",
-                    "source": "Sample"
-                }
-            },
-            {
-                "type": "Feature",
-                "geometry": {"type": "Point", "coordinates": [5.9699, 51.9851]},
-                "properties": {
-                    "name": "De Kwakkenberg",
-                    "type": "wilderness_hut",
-                    "website": "https://www.natuurmonumenten.nl",
-                    "phone": "024-3771234",
-                    "facilities": ["basis_sanitair", "vuurplaats"],
-                    "description": "Natuurkampeerterrein van Natuurmonumenten",
-                    "source": "Sample"
-                }
-            },
-            {
-                "type": "Feature",
-                "geometry": {"type": "Point", "coordinates": [6.5665, 52.4114]},
-                "properties": {
-                    "name": "Camping De Scholtenhagen",
-                    "type": "camp_site",
-                    "website": "https://www.scholtenhagen.nl",
-                    "phone": "0521-515555",
-                    "facilities": ["zwembad", "restaurant", "wifi", "speeltuin"],
-                    "description": "Vakantiepark met vele faciliteiten",
-                    "source": "Sample"
-                }
-            },
-            {
-                "type": "Feature",
-                "geometry": {"type": "Point", "coordinates": [4.6351, 51.7817]},
-                "properties": {
-                    "name": "Camping Biesbosch",
-                    "type": "camp_site",
-                    "phone": "0162-681238",
-                    "facilities": ["kanoverhuur", "drinkwater", "toiletten"],
-                    "description": "Natuurcamping in de Biesbosch",
-                    "source": "Sample"
-                }
-            },
-            {
-                "type": "Feature",
-                "geometry": {"type": "Point", "coordinates": [5.8713, 51.9851]},
-                "properties": {
-                    "name": "Camperpark Arnhem",
-                    "type": "caravan_site",
-                    "website": "https://www.camperpark-arnhem.nl",
-                    "phone": "026-3851234",
-                    "facilities": ["camperservice", "elektriciteit", "wifi"],
-                    "description": "Moderne camperplaats nabij Arnhem",
-                    "source": "Sample"
-                }
-            }
-        ]
-    };
-}
-
-// Get total camping count
-function getTotalCampingCount() {
-    let count = 0;
-    if (campingsData) count += campingsData.features.length;
-    if (osmCampingsData) count += osmCampingsData.features.length;
-    return count;
-}
-
-// Update camping statistics
-function updateCampingStats() {
-    const totalCount = getTotalCampingCount();
-    const totalEl = document.getElementById('totalCampings');
-    if (totalEl) {
-        totalEl.textContent = totalCount;
-    }
-}
-
-// Update camping list in sidebar
-function updateCampingList() {
-    const container = document.getElementById('campingList');
-    if (!container) return;
-    
-    const allCampings = [];
-    
-    if (campingsData) {
-        allCampings.push(...campingsData.features);
-    }
-    if (osmCampingsData) {
-        allCampings.push(...osmCampingsData.features);
-    }
-    
-    if (allCampings.length === 0) {
-        container.innerHTML = '<div class="empty-state">Geen campings geladen</div>';
-        return;
-    }
-    
-    container.innerHTML = allCampings.slice(0, 10).map(camping => {
-        const props = camping.properties;
-        return `
-            <div class="camping-item" onclick="zoomToCamping(${camping.geometry.coordinates[1]}, ${camping.geometry.coordinates[0]})">
-                <h4><i class="fas fa-campground"></i> ${props.name}</h4>
-                <p><strong>Type:</strong> ${formatCampingType(props.type)}</p>
-                ${props.description ? `<p>${props.description}</p>` : ''}
-                ${props.source ? `<p style="font-size: 10px; color: var(--text-muted);">Bron: ${props.source}</p>` : ''}
+    sampleCampings.forEach(camping => {
+        const popupContent = `
+            <div class="camping-popup">
+                <h4><i class="fas fa-campground"></i> ${camping.name}</h4>
+                <p><strong>Type:</strong> Camping</p>
+                <p style="font-size: 10px; color: #666;">Sample data</p>
             </div>
         `;
-    }).join('') + (allCampings.length > 10 ? `<div class="empty-state">... en ${allCampings.length - 10} meer</div>` : '');
+        
+        const marker = L.marker(camping.coords, {
+            icon: campingIcon,
+            zIndex: 1000
+        }).bindPopup(popupContent);
+        
+        campingLayer.addLayer(marker);
+    });
+    
+    showNotification(`${sampleCampings.length} sample campings getoond`, 'warning');
+    updateCampingCount();
 }
 
-// Zoom to specific camping
-function zoomToCamping(lat, lng) {
-    map.setView([lat, lng], 14);
-    showNotification('Ingezoomd op camping', 'info');
-}
-
-// Filter campings op afstand van actieve routes
-function filterCampingsByDistance() {
-    if (!campingVisible) return;
-    
-    const radiusEl = document.getElementById('campingRadius');
-    const typeEl = document.getElementById('campingType');
-    
-    if (!radiusEl || !typeEl) return;
-    
-    const radius = parseFloat(radiusEl.value);
-    const selectedType = typeEl.value;
-    
+// Clear all campings
+function clearCampings() {
     campingLayer.clearLayers();
-    let visibleCount = 0;
     
-    const allCampings = [];
-    if (campingsData) allCampings.push(...campingsData.features);
-    if (osmCampingsData) allCampings.push(...osmCampingsData.features);
-    
-    allCampings.forEach(camping => {
-        const campingLatLng = L.latLng(camping.geometry.coordinates[1], camping.geometry.coordinates[0]);
-        
-        if (selectedType && camping.properties.type !== selectedType) {
-            return;
-        }
-        
-        if (radius === 0 || activeRoutes.length === 0) {
-            addCampingMarker(camping);
-            visibleCount++;
-        } else {
-            let nearRoute = false;
-            
-            for (let route of activeRoutes) {
-                if (isCampingNearRoute(campingLatLng, route, radius * 1000)) {
-                    nearRoute = true;
-                    break;
-                }
-            }
-            
-            if (nearRoute) {
-                addCampingMarker(camping);
-                visibleCount++;
-            }
-        }
-    });
-    
-    const visibleEl = document.getElementById('visibleCampings');
-    if (visibleEl) {
-        visibleEl.textContent = visibleCount;
-    }
-}
-
-// Check of camping binnen radius van route ligt
-function isCampingNearRoute(campingLatLng, route, radiusMeters) {
-    const routeBounds = route.layer.getBounds();
-    const routeCenter = routeBounds.getCenter();
-    const distance = campingLatLng.distanceTo(routeCenter);
-    
-    return distance <= radiusMeters;
-}
-
-// Filter campings op type
-function filterCampingsByType() {
-    filterCampingsByDistance();
-}
-
-// Voeg camping marker toe aan kaart
-function addCampingMarker(camping) {
-    const coords = camping.geometry.coordinates;
-    const props = camping.properties;
-    
-    const marker = L.marker([coords[1], coords[0]], {
-        icon: campingIcon,
-        zIndex: 1000
-    });
-    
-    const popupContent = createCampingPopupContent(props);
-    marker.bindPopup(popupContent);
-    campingLayer.addLayer(marker);
-}
-
-// Create camping popup content
-function createCampingPopupContent(props) {
-    return `
-        <div class="camping-popup">
-            <h4><i class="fas fa-campground"></i> ${props.name}</h4>
-            <p><strong>Type:</strong> ${formatCampingType(props.type)}</p>
-            
-            ${props.price_range ? `
-                <p><strong>Prijs:</strong> ${props.price_range}</p>
-            ` : ''}
-            
-            ${props.address ? `
-                <p><strong>Adres:</strong> ${props.address}</p>
-            ` : ''}
-            
-            ${props.facilities && props.facilities.length > 0 ? `
-                <div class="camping-facilities">
-                    <strong>Faciliteiten:</strong> ${props.facilities.join(', ')}
-                </div>
-            ` : ''}
-            
-            ${props.description ? `
-                <p style="margin: 8px 0; font-style: italic; font-size: 12px;">
-                    ${props.description}
-                </p>
-            ` : ''}
-            
-            <div class="popup-buttons">
-                ${props.website ? `
-                    <button class="popup-button" onclick="window.open('${props.website}', '_blank')">
-                        <i class="fas fa-globe"></i> Website
-                    </button>
-                ` : ''}
-                ${props.phone ? `
-                    <button class="popup-button" onclick="window.open('tel:${props.phone}', '_blank')">
-                        <i class="fas fa-phone"></i> Bellen
-                    </button>
-                ` : ''}
-                ${props.email ? `
-                    <button class="popup-button" onclick="window.open('mailto:${props.email}', '_blank')">
-                        <i class="fas fa-envelope"></i> E-mail
-                    </button>
-                ` : ''}
-            </div>
-            
-            ${props.source ? `
-                <p style="font-size: 10px; color: var(--text-muted); margin-top: 8px; text-align: center;">
-                    Bron: ${props.source}
-                </p>
-            ` : ''}
-        </div>
-    `;
-}
-
-// Format camping type voor weergave
-function formatCampingType(type) {
-    const types = {
-        'camp_site': 'Camping',
-        'caravan_site': 'Camperplaats', 
-        'wilderness_hut': 'Natuurkampeerterrein',
-        'camping': 'Camping',
-        'camperplaats': 'Camperplaats',
-        'natuurkampeerterrein': 'Natuurkampeerterrein',
-        'boerderijcamping': 'Boerderijcamping'
-    };
-    return types[type] || type;
-}
-
-// Fit map to all campings
-function fitToCampings() {
-    if (!campingVisible || campingLayer.getLayers().length === 0) {
-        showNotification('Geen zichtbare campings om naar te zoomen', 'warning');
-        return;
+    if (campingVisible) {
+        const card = document.getElementById('camping-layer-card');
+        card.classList.remove('active');
+        map.removeLayer(campingLayer);
+        campingVisible = false;
     }
     
-    const group = new L.featureGroup(campingLayer.getLayers());
-    map.fitBounds(group.getBounds().pad(0.1));
-    showNotification('Ingezoomd op alle zichtbare campings', 'success');
+    updateCampingCount();
+    showNotification('Campings verwijderd', 'info');
+}
+
+// Update camping count display
+function updateCampingCount() {
+    const count = campingVisible ? campingLayer.getLayers().length : 0;
+    const countEl = document.getElementById('campingCount');
+    if (countEl) {
+        countEl.textContent = count;
+    }
 }
 
 // Show/hide loading overlay
@@ -1004,9 +523,8 @@ function hideLoadingOverlay() {
     }
 }
 
-// ============ EXISTING ROUTE FUNCTIONALITY ============
+// ============ ROUTE FUNCTIONALITY ============
 
-// Route selection functions
 function loadRouteOptions() {
     const routeType = document.getElementById('routeTypeSelect').value;
     const specificSelect = document.getElementById('specificRouteSelect');
@@ -1040,7 +558,6 @@ function loadRouteOptions() {
     }
 }
 
-// Show selected route
 function showSelectedRoute() {
     const routeTypeSelect = document.getElementById('routeTypeSelect');
     const specificSelect = document.getElementById('specificRouteSelect');
@@ -1078,18 +595,12 @@ function showSelectedRoute() {
     updateActiveRoutesDisplay();
     updateRouteDetails(routeData);
     resetRouteForm();
-    
-    if (campingVisible) {
-        filterCampingsByDistance();
-    }
 }
 
-// Add route to map
 function addRouteToMap(routeData) {
     const xmlFilter = `<Filter><PropertyIsEqualTo><PropertyName>lawnaam</PropertyName><Literal>${routeData.filter}</Literal></PropertyIsEqualTo></Filter>`;
     
     console.log('Adding route:', routeData.name);
-    console.log('XML Filter:', xmlFilter);
     
     const wmsLayer = L.tileLayer.pdokFilter('https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0', {
         layers: routeData.layerName,
@@ -1106,7 +617,6 @@ function addRouteToMap(routeData) {
     showNotification(`Route "${routeData.name}" toegevoegd`, 'success');
 }
 
-// Show route info in sidebar panel
 function showRouteInfoInPanel(feature, latlng) {
     const props = feature.properties;
     
@@ -1139,63 +649,20 @@ function showRouteInfoInPanel(feature, latlng) {
                 ${props.lengte_m ? `<p><strong>Lengte:</strong> ${(props.lengte_m / 1000).toFixed(1)} km</p>` : ''}
             </div>
             
-            ${props.samenvatting ? `
-                <div class="route-description">
-                    <h4 style="margin: 0 0 8px 0; font-size: 14px; color: var(--text-primary);">📄 Beschrijving</h4>
-                    <p style="margin: 0; font-size: 13px; line-height: 1.4;">${props.samenvatting}</p>
-                </div>
-            ` : ''}
-            
-            <div class="route-trace-section">
-                <h4><i class="fas fa-ruler-horizontal"></i> Route Afstand Meten</h4>
-                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
-                    Klik op punten langs de route om exact de afstand te meten
-                </p>
-                <button class="trace-btn" onclick="startRouteMeasuring()" id="measureRouteBtn">
-                    <i class="fas fa-crosshairs"></i>
-                    Start Route Meting
-                </button>
-                <div class="trace-progress" id="routeMeasureDisplay" style="display: none;">
-                    <div class="trace-stats">
-                        <div class="trace-stat">
-                            <span class="trace-value" id="routeMeasureDistance">0.0</span>
-                            <span class="trace-label">km gemeten</span>
-                        </div>
-                        <div class="trace-stat">
-                            <span class="trace-value" id="routeMeasurePoints">0</span>
-                            <span class="trace-label">meetpunten</span>
-                        </div>
-                    </div>
-                    <button class="clear-measure-btn" onclick="clearRouteMeasurements()">
-                        <i class="fas fa-trash"></i>
-                        Wis metingen
-                    </button>
-                </div>
-            </div>
-            
             <div class="route-info-actions">
                 <button class="highlight-btn" onclick="clearEtappeHighlight()">
                     <i class="fas fa-eye-slash"></i>
                     Verberg highlight
                 </button>
-                <div class="highlight-timer">
-                    Klik elders om te verbergen
-                </div>
             </div>
         </div>
     `;
     
     document.getElementById('routeInfoPanel').innerHTML = panelContent;
-    
-    window.currentRouteCoords = feature.geometry.coordinates;
-    window.currentRouteGeometry = feature.geometry;
-    
     switchToRouteInfoTab();
-    
-    showNotification(`Etappe informatie geladen: ${props.etappnaam || props.etappe || 'Route segment'}`, 'success');
+    showNotification(`Etappe informatie geladen`, 'success');
 }
 
-// Switch to Route Info tab
 function switchToRouteInfoTab() {
     document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
@@ -1204,7 +671,6 @@ function switchToRouteInfoTab() {
     document.getElementById('info-panel').classList.add('active');
 }
 
-// Highlight the clicked etappe with kilometer markers
 function highlightEtappe(feature, route) {
     highlightLayer.clearLayers();
     
@@ -1220,337 +686,25 @@ function highlightEtappe(feature, route) {
         if (coordinates && coordinates.length > 0) {
             const highlightLine = L.polyline(coordinates, {
                 color: '#f59e0b',
-                weight: 12,
-                opacity: 0.9,
-                zIndex: 1000,
-                className: 'highlight-route'
+                weight: 8,
+                opacity: 0.8,
+                zIndex: 1000
             });
             
-            const shadowLine = L.polyline(coordinates, {
-                color: '#92400e',
-                weight: 14,
-                opacity: 0.3,
-                zIndex: 999
-            });
-            
-            highlightLayer.addLayer(shadowLine);
             highlightLayer.addLayer(highlightLine);
-            
-            addKilometerMarkers(coordinates);
-            
-            if (coordinates.length >= 2) {
-                const startPoint = coordinates[0];
-                const endPoint = coordinates[coordinates.length - 1];
-                
-                const startMarker = L.circleMarker(startPoint, {
-                    radius: 14,
-                    color: '#ffffff',
-                    fillColor: '#059669',
-                    fillOpacity: 1,
-                    weight: 3,
-                    zIndex: 1002
-                }).bindTooltip('🚶‍♂️ START', { 
-                    permanent: false, 
-                    direction: 'top',
-                    className: 'start-tooltip'
-                });
-                
-                const endMarker = L.circleMarker(endPoint, {
-                    radius: 14,
-                    color: '#ffffff',
-                    fillColor: '#dc2626',
-                    fillOpacity: 1,
-                    weight: 3,
-                    zIndex: 1002
-                }).bindTooltip('🏁 FINISH', { 
-                    permanent: false, 
-                    direction: 'top',
-                    className: 'end-tooltip'
-                });
-                
-                highlightLayer.addLayer(startMarker);
-                highlightLayer.addLayer(endMarker);
-            }
-            
-            console.log('✨ Highlighted etappe:', feature.properties.etappnaam || feature.properties.etappe || 'Onbekende etappe');
         }
     }
 }
 
-// Add kilometer markers along the route
-function addKilometerMarkers(coordinates) {
-    if (coordinates.length < 2) return;
-    
-    let totalDistance = 0;
-    let kmCount = 1;
-    
-    for (let i = 1; i < coordinates.length; i++) {
-        const prevPoint = L.latLng(coordinates[i-1]);
-        const currentPoint = L.latLng(coordinates[i]);
-        const segmentDistance = prevPoint.distanceTo(currentPoint);
-        
-        totalDistance += segmentDistance;
-        
-        while (kmCount * 1000 <= totalDistance) {
-            const kmPosition = interpolatePosition(coordinates, kmCount * 1000);
-            
-            if (kmPosition) {
-                const kmMarker = L.circleMarker(kmPosition, {
-                    radius: 8,
-                    color: '#059669',
-                    fillColor: '#ffffff',
-                    fillOpacity: 0.95,
-                    weight: 2,
-                    zIndex: 1001,
-                    className: 'km-marker'
-                }).bindTooltip(`${kmCount}`, { 
-                    permanent: true, 
-                    direction: 'center',
-                    className: 'km-tooltip-subtle',
-                    offset: [0, 0]
-                });
-                
-                highlightLayer.addLayer(kmMarker);
-            }
-            
-            kmCount++;
-        }
-    }
-}
-
-// Interpolate position along route for exact kilometer marks
-function interpolatePosition(coordinates, targetDistance) {
-    let currentDistance = 0;
-    
-    for (let i = 1; i < coordinates.length; i++) {
-        const prevPoint = L.latLng(coordinates[i-1]);
-        const currentPoint = L.latLng(coordinates[i]);
-        const segmentDistance = prevPoint.distanceTo(currentPoint);
-        
-        if (currentDistance + segmentDistance >= targetDistance) {
-            const remainingDistance = targetDistance - currentDistance;
-            const ratio = remainingDistance / segmentDistance;
-            
-            const lat = coordinates[i-1][0] + (coordinates[i][0] - coordinates[i-1][0]) * ratio;
-            const lng = coordinates[i-1][1] + (coordinates[i][1] - coordinates[i-1][1]) * ratio;
-            
-            return [lat, lng];
-        }
-        
-        currentDistance += segmentDistance;
-    }
-    
-    return null;
-}
-
-// Start route measuring
-function startRouteMeasuring() {
-    if (!window.currentRouteCoords) {
-        showNotification('Geen route geselecteerd om te meten', 'error');
-        return;
-    }
-    
-    if (isRouteMeasuring) {
-        stopRouteMeasuring();
-        return;
-    }
-    
-    isRouteMeasuring = true;
-    routeMeasurePoints = [];
-    routeMeasureMarkers = [];
-    routeMeasureLines = [];
-    routeMeasureDistance = 0;
-    
-    const measureBtn = document.getElementById('measureRouteBtn');
-    const measureDisplay = document.getElementById('routeMeasureDisplay');
-    
-    if (measureBtn) {
-        measureBtn.innerHTML = '<i class="fas fa-stop"></i> Stop Meting';
-        measureBtn.classList.add('active');
-    }
-    if (measureDisplay) {
-        measureDisplay.style.display = 'block';
-    }
-    
-    map.getContainer().style.cursor = 'crosshair';
-    
-    showNotification('Klik op punten langs de route om afstand te meten', 'info');
-}
-
-// Stop route measuring
-function stopRouteMeasuring() {
-    isRouteMeasuring = false;
-    
-    const measureBtn = document.getElementById('measureRouteBtn');
-    
-    if (measureBtn) {
-        measureBtn.innerHTML = '<i class="fas fa-crosshairs"></i> Start Route Meting';
-        measureBtn.classList.remove('active');
-    }
-    
-    map.getContainer().style.cursor = '';
-    
-    showNotification('Route meting gestopt', 'info');
-}
-
-// Add route measure point
-function addRouteMeasurePoint(latlng) {
-    if (!isRouteMeasuring) return;
-    
-    const closestPoint = findClosestPointOnRoute(latlng);
-    if (!closestPoint) return;
-    
-    routeMeasurePoints.push(closestPoint);
-    
-    const marker = L.circleMarker(closestPoint, {
-        radius: 6,
-        color: '#ffffff',
-        fillColor: '#f59e0b',
-        fillOpacity: 1,
-        weight: 2,
-        zIndex: 1002
-    }).bindTooltip(`Punt ${routeMeasurePoints.length}`, {
-        permanent: true,
-        direction: 'top',
-        className: 'measure-point-tooltip'
-    });
-    
-    marker.addTo(map);
-    routeMeasureMarkers.push(marker);
-    
-    if (routeMeasurePoints.length > 1) {
-        const prevPoint = routeMeasurePoints[routeMeasurePoints.length - 2];
-        const currentPoint = closestPoint;
-        
-        const line = L.polyline([prevPoint, currentPoint], {
-            color: '#f59e0b',
-            weight: 4,
-            opacity: 0.8,
-            dashArray: '8, 8'
-        });
-        
-        line.addTo(map);
-        routeMeasureLines.push(line);
-        
-        const segmentDistance = L.latLng(prevPoint).distanceTo(L.latLng(currentPoint));
-        routeMeasureDistance += segmentDistance;
-        
-        const midLat = (prevPoint[0] + currentPoint[0]) / 2;
-        const midLng = (prevPoint[1] + currentPoint[1]) / 2;
-        
-        const distanceLabel = L.marker([midLat, midLng], {
-            icon: L.divIcon({
-                className: 'distance-label',
-                html: `<div class="distance-text">${(segmentDistance / 1000).toFixed(1)}km</div>`,
-                iconSize: [60, 20],
-                iconAnchor: [30, 10]
-            }),
-            zIndex: 1003
-        });
-        
-        distanceLabel.addTo(map);
-        routeMeasureMarkers.push(distanceLabel);
-    }
-    
-    updateRouteMeasureDisplay();
-}
-
-// Find closest point on route
-function findClosestPointOnRoute(clickedLatLng) {
-    if (!window.currentRouteCoords) return null;
-    
-    let coordinates;
-    if (window.currentRouteGeometry.type === 'LineString') {
-        coordinates = window.currentRouteCoords.map(coord => [coord[1], coord[0]]);
-    } else if (window.currentRouteGeometry.type === 'MultiLineString') {
-        coordinates = window.currentRouteCoords[0].map(coord => [coord[1], coord[0]]);
-    }
-    
-    if (!coordinates || coordinates.length < 2) return null;
-    
-    let closestPoint = null;
-    let minDistance = Infinity;
-    
-    for (let i = 0; i < coordinates.length - 1; i++) {
-        const segmentStart = L.latLng(coordinates[i]);
-        const segmentEnd = L.latLng(coordinates[i + 1]);
-        
-        const closestOnSegment = getClosestPointOnLineSegment(clickedLatLng, segmentStart, segmentEnd);
-        const distance = clickedLatLng.distanceTo(closestOnSegment);
-        
-        if (distance < minDistance) {
-            minDistance = distance;
-            closestPoint = [closestOnSegment.lat, closestOnSegment.lng];
-        }
-    }
-    
-    return minDistance < 100 ? closestPoint : null;
-}
-
-// Get closest point on line segment
-function getClosestPointOnLineSegment(point, lineStart, lineEnd) {
-    const A = point.lat - lineStart.lat;
-    const B = point.lng - lineStart.lng;
-    const C = lineEnd.lat - lineStart.lat;
-    const D = lineEnd.lng - lineStart.lng;
-    
-    const dot = A * C + B * D;
-    const lenSq = C * C + D * D;
-    
-    if (lenSq === 0) return lineStart;
-    
-    let param = dot / lenSq;
-    
-    if (param < 0) return lineStart;
-    if (param > 1) return lineEnd;
-    
-    return L.latLng(
-        lineStart.lat + param * C,
-        lineStart.lng + param * D
-    );
-}
-
-// Update route measure display
-function updateRouteMeasureDisplay() {
-    const distanceEl = document.getElementById('routeMeasureDistance');
-    const pointsEl = document.getElementById('routeMeasurePoints');
-    
-    if (distanceEl && pointsEl) {
-        distanceEl.textContent = (routeMeasureDistance / 1000).toFixed(1);
-        pointsEl.textContent = routeMeasurePoints.length;
-    }
-}
-
-// Clear route measurements
-function clearRouteMeasurements() {
-    routeMeasureMarkers.forEach(marker => map.removeLayer(marker));
-    routeMeasureLines.forEach(line => map.removeLayer(line));
-    
-    routeMeasurePoints = [];
-    routeMeasureMarkers = [];
-    routeMeasureLines = [];
-    routeMeasureDistance = 0;
-    
-    updateRouteMeasureDisplay();
-    showNotification('Route metingen gewist', 'info');
-}
-
-// Clear etappe highlight
 function clearEtappeHighlight() {
     highlightLayer.clearLayers();
-    if (isRouteMeasuring) {
-        stopRouteMeasuring();
-        clearRouteMeasurements();
-    }
     document.getElementById('routeInfoPanel').innerHTML = '<div class="empty-state">Geen etappe geselecteerd</div>';
 }
 
-// Get layer name
 function getLayerName(routeType) {
     return 'landelijke-wandelroutes';
 }
 
-// Update active routes display
 function updateActiveRoutesDisplay() {
     const container = document.getElementById('activeRoutesDisplay');
     
@@ -1572,7 +726,6 @@ function updateActiveRoutesDisplay() {
     `).join('');
 }
 
-// Update route details
 function updateRouteDetails(routeData) {
     const container = document.getElementById('routeDetailsContainer');
     
@@ -1580,17 +733,12 @@ function updateRouteDetails(routeData) {
         <div class="route-detail-item">
             <div class="route-detail-header">
                 <h4>${routeData.name}</h4>
-                <span class="route-type-badge">Lange Afstand Wandelpad</span>
-            </div>
-            <div class="route-detail-info">
-                <div><i class="fas fa-layer-group"></i><span>PDOK Laag: ${routeData.layerName}</span></div>
-                <div><i class="fas fa-filter"></i><span>Filter: ${routeData.filter}</span></div>
+                <span class="route-type-badge">LAW</span>
             </div>
         </div>
     `;
 }
 
-// Remove route
 function removeRoute(routeId) {
     const routeIndex = activeRoutes.findIndex(r => r.id === routeId);
     if (routeIndex !== -1) {
@@ -1603,10 +751,6 @@ function removeRoute(routeId) {
         activeRoutes.splice(routeIndex, 1);
         updateActiveRoutesDisplay();
         
-        if (campingVisible) {
-            filterCampingsByDistance();
-        }
-        
         if (activeRoutes.length === 0) {
             document.getElementById('routeDetailsContainer').innerHTML = 
                 '<div class="empty-state">Selecteer een route om details te zien</div>';
@@ -1614,7 +758,6 @@ function removeRoute(routeId) {
     }
 }
 
-// Clear all routes
 function clearAllRoutes() {
     activeRoutes.forEach(route => {
         if (route.layer) {
@@ -1627,13 +770,8 @@ function clearAllRoutes() {
     document.getElementById('routeDetailsContainer').innerHTML = 
         '<div class="empty-state">Selecteer een route om details te zien</div>';
     resetRouteForm();
-    
-    if (campingVisible) {
-        filterCampingsByDistance();
-    }
 }
 
-// Reset form
 function resetRouteForm() {
     document.getElementById('routeTypeSelect').value = '';
     document.getElementById('specificRouteSelect').innerHTML = '<option value="">-- Eerst route type kiezen --</option>';
@@ -1641,7 +779,8 @@ function resetRouteForm() {
     document.getElementById('step3').style.display = 'none';
 }
 
-// Show notification
+// ============ TOOLS & UTILITY FUNCTIONS ============
+
 function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     const bgColor = type === 'success' ? '#10b981' : 
@@ -1671,7 +810,6 @@ function showNotification(message, type = 'info') {
     }, type === 'error' ? 5000 : 3000);
 }
 
-// Measuring functions
 function toggleMeasure() {
     measuring = !measuring;
     const btn = document.getElementById('measureBtn');
@@ -1739,7 +877,6 @@ function clearMeasurements() {
     updateDistanceDisplay();
 }
 
-// Search functions
 function searchLocation() {
     const query = document.getElementById('searchInput').value.trim();
     if (!query) return;
@@ -1770,7 +907,6 @@ function searchLocation() {
         });
 }
 
-// Navigation functions
 function zoomToNetherlands() {
     map.setView([52.1326, 5.2913], 7);
 }
@@ -1805,7 +941,6 @@ function toggleFullscreen() {
     }
 }
 
-// Placeholder functions for favorites/history
 function addCurrentViewToFavorites() {
     alert('Favorieten functionaliteit beschikbaar');
 }
@@ -1814,6 +949,14 @@ function updateSearchHistory() {}
 function updateFavoritesList() {}
 function saveStoredData() {}
 function loadStoredData() {}
+
+// Route measuring stubs (for compatibility)
+function startRouteMeasuring() {
+    showNotification('Route meting functionaliteit beschikbaar in volledige versie', 'info');
+}
+
+function addRouteMeasurePoint() {}
+function clearRouteMeasurements() {}
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
