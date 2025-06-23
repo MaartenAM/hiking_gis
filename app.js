@@ -258,7 +258,7 @@ function switchBaseLayer(layerType) {
 
 // ============ SIMPLIFIED CAMPING FUNCTIONALITY ============
 
-// Toggle camping layer visibility (simplified - just on/off)
+// Toggle camping layer visibility (GeoJSON only)
 function toggleCampingLayer() {
     campingVisible = !campingVisible;
     const card = document.getElementById('camping-layer-card');
@@ -266,7 +266,7 @@ function toggleCampingLayer() {
     if (campingVisible) {
         // Auto-load campings if not loaded yet
         if (campingLayer.getLayers().length === 0) {
-            loadAndShowCampings();
+            loadGeoJSONOnly();
         } else {
             campingLayer.addTo(map);
             card.classList.add('active');
@@ -279,19 +279,41 @@ function toggleCampingLayer() {
     }
 }
 
-// Load and show campings (simplified - no complex UI updates)
-function loadAndShowCampings() {
+// Load only GeoJSON file (no API fallback)
+function loadGeoJSONOnly() {
     showLoadingOverlay('Campings laden...');
     
-    loadLocalGeoJSON()
-        .then(success => {
-            if (!success) {
-                return loadFromOSMAPI();
+    fetch('./data/campings.geojson')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('GeoJSON bestand niet gevonden');
             }
-            return true;
+            return response.json();
         })
-        .then(() => {
-            hideLoadingOverlay();
+        .then(geojsonData => {
+            campingLayer.clearLayers();
+            
+            geojsonData.features.forEach(feature => {
+                const coords = feature.geometry.coordinates;
+                const props = feature.properties;
+                
+                const popupContent = `
+                    <div class="camping-popup">
+                        <h4><i class="fas fa-campground"></i> ${props.name || 'Camping'}</h4>
+                        ${props.operator ? `<p><strong>Beheerder:</strong> ${props.operator}</p>` : ''}
+                        ${props.access ? `<p><strong>Toegang:</strong> ${props.access}</p>` : ''}
+                        ${props.house ? `<p><strong>Accommodatie:</strong> ${props.house}</p>` : ''}
+                        <p style="font-size: 10px; color: #666;">OSM ID: ${props.osm_id}</p>
+                    </div>
+                `;
+                
+                const marker = L.marker([coords[1], coords[0]], {
+                    icon: campingIcon,
+                    zIndex: 1000
+                }).bindPopup(popupContent);
+                
+                campingLayer.addLayer(marker);
+            });
             
             // Show campings
             campingLayer.addTo(map);
@@ -301,11 +323,15 @@ function loadAndShowCampings() {
             if (card) {
                 card.classList.add('active');
             }
+            
+            hideLoadingOverlay();
+            console.log(`Loaded ${geojsonData.features.length} campings from GeoJSON`);
+            showNotification(`${geojsonData.features.length} campings geladen`, 'success');
         })
         .catch(error => {
-            console.error('Error loading campings:', error);
             hideLoadingOverlay();
-            showNotification('Fout bij laden campings', 'error');
+            console.error('Failed to load GeoJSON:', error);
+            showNotification('GeoJSON bestand niet gevonden in data/campings.geojson', 'error');
         });
 }
 
@@ -612,6 +638,7 @@ function addRouteToMap(routeData) {
     showNotification(`Route "${routeData.name}" toegevoegd`, 'success');
 }
 
+// Remove all API-related functions and restore full route functionality
 function showRouteInfoInPanel(feature, latlng) {
     const props = feature.properties;
     
@@ -644,18 +671,60 @@ function showRouteInfoInPanel(feature, latlng) {
                 ${props.lengte_m ? `<p><strong>Lengte:</strong> ${(props.lengte_m / 1000).toFixed(1)} km</p>` : ''}
             </div>
             
+            ${props.samenvatting ? `
+                <div class="route-description">
+                    <h4 style="margin: 0 0 8px 0; font-size: 14px; color: var(--text-primary);">📄 Beschrijving</h4>
+                    <p style="margin: 0; font-size: 13px; line-height: 1.4;">${props.samenvatting}</p>
+                </div>
+            ` : ''}
+            
+            <div class="route-trace-section">
+                <h4><i class="fas fa-ruler-horizontal"></i> Route Afstand Meten</h4>
+                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
+                    Klik op punten langs de route om exact de afstand te meten
+                </p>
+                <button class="trace-btn" onclick="startRouteMeasuring()" id="measureRouteBtn">
+                    <i class="fas fa-crosshairs"></i>
+                    Start Route Meting
+                </button>
+                <div class="trace-progress" id="routeMeasureDisplay" style="display: none;">
+                    <div class="trace-stats">
+                        <div class="trace-stat">
+                            <span class="trace-value" id="routeMeasureDistance">0.0</span>
+                            <span class="trace-label">km gemeten</span>
+                        </div>
+                        <div class="trace-stat">
+                            <span class="trace-value" id="routeMeasurePoints">0</span>
+                            <span class="trace-label">meetpunten</span>
+                        </div>
+                    </div>
+                    <button class="clear-measure-btn" onclick="clearRouteMeasurements()">
+                        <i class="fas fa-trash"></i>
+                        Wis metingen
+                    </button>
+                </div>
+            </div>
+            
             <div class="route-info-actions">
                 <button class="highlight-btn" onclick="clearEtappeHighlight()">
                     <i class="fas fa-eye-slash"></i>
                     Verberg highlight
                 </button>
+                <div class="highlight-timer">
+                    Klik elders om te verbergen
+                </div>
             </div>
         </div>
     `;
     
     document.getElementById('routeInfoPanel').innerHTML = panelContent;
+    
+    // Store current route coordinates for tracing
+    window.currentRouteCoords = feature.geometry.coordinates;
+    window.currentRouteGeometry = feature.geometry;
+    
     switchToRouteInfoTab();
-    showNotification(`Etappe informatie geladen`, 'success');
+    showNotification(`Etappe informatie geladen: ${props.etappnaam || props.etappe || 'Route segment'}`, 'success');
 }
 
 function switchToRouteInfoTab() {
