@@ -33,10 +33,6 @@
                     <i class="fas fa-route"></i>
                     <span>Routes</span>
                 </button>
-                <button class="tab-button" data-tab="camping">
-                    <i class="fas fa-campground"></i>
-                    <span>Camping</span>
-                </button>
                 <button class="tab-button" data-tab="info">
                     <i class="fas fa-info-circle"></i>
                     <span>Info</span>
@@ -176,81 +172,7 @@
                 </div>
 
                 <!-- Camping Tab -->
-                <div class="tab-panel" id="camping-panel">
-                    <div class="control-section">
-                        <div class="section-title">
-                            <i class="fas fa-campground"></i>
-                            Camping Instellingen
-                        </div>
-                        
-                        <div class="control-group">
-                            <label class="control-label">Camping Bron</label>
-                            <select id="campingSource" class="select-field" onchange="switchCampingSource()">
-                                <option value="geojson">GeoJSON Bestand</option>
-                                <option value="osm">OpenStreetMap (Live)</option>
-                                <option value="both">Beide Bronnen</option>
-                            </select>
-                        </div>
-
-                        <div class="control-group">
-                            <label class="control-label">Zoekradius vanaf route (km)</label>
-                            <select id="campingRadius" class="select-field" onchange="filterCampingsByDistance()">
-                                <option value="1">1 km</option>
-                                <option value="2">2 km</option>
-                                <option value="5" selected>5 km</option>
-                                <option value="10">10 km</option>
-                                <option value="20">20 km</option>
-                                <option value="0">Alle campings</option>
-                            </select>
-                        </div>
-
-                        <div class="control-group">
-                            <label class="control-label">Camping Type</label>
-                            <select id="campingType" class="select-field" onchange="filterCampingsByType()">
-                                <option value="">Alle types</option>
-                                <option value="camp_site">Camping</option>
-                                <option value="caravan_site">Camperplaats</option>
-                                <option value="wilderness_hut">Natuurkampeerterrein</option>
-                            </select>
-                        </div>
-
-                        <div class="control-group">
-                            <button class="button-primary" onclick="loadCampingData()">
-                                <i class="fas fa-download"></i>
-                                Laad Camping Data
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="control-section">
-                        <div class="section-title">
-                            <i class="fas fa-chart-bar"></i>
-                            Statistieken
-                        </div>
-                        <div id="campingStats" class="camping-stats">
-                            <div class="stats-grid">
-                                <div class="stats-item">
-                                    <span class="stats-value" id="totalCampings">0</span>
-                                    <span class="stats-label">totaal geladen</span>
-                                </div>
-                                <div class="stats-item">
-                                    <span class="stats-value" id="visibleCampings">0</span>
-                                    <span class="stats-label">zichtbaar</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="control-section">
-                        <div class="section-title">
-                            <i class="fas fa-list"></i>
-                            Camping Lijst
-                        </div>
-                        <div id="campingList" class="camping-list">
-                            <div class="empty-state">Geen campings geladen</div>
-                        </div>
-                    </div>
-                </div>
+                <!-- VERWIJDERD - Camping functionaliteit nu alleen via Lagen tab -->
 
                 <!-- Route Info Tab -->
                 <div class="tab-panel" id="info-panel">
