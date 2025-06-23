@@ -40,13 +40,6 @@ let campingsData = null;
 let campingVisible = false;
 let loadingOverlay = null;
 
-// Route measuring functionality
-let isRouteMeasuring = false;
-let routeMeasurePoints = [];
-let routeMeasureMarkers = [];
-let routeMeasureLines = [];
-let routeMeasureDistance = 0;
-
 // Route definitions
 const routeDefinitions = {
     law: [
@@ -705,19 +698,11 @@ function showRouteInfoInPanel(feature, latlng) {
                     <i class="fas fa-eye-slash"></i>
                     Verberg highlight
                 </button>
-                <div class="highlight-timer">
-                    Klik elders om te verbergen
-                </div>
             </div>
         </div>
     `;
     
     document.getElementById('routeInfoPanel').innerHTML = panelContent;
-    
-    // Store current route coordinates for reference
-    window.currentRouteCoords = feature.geometry.coordinates;
-    window.currentRouteGeometry = feature.geometry;
-    
     switchToRouteInfoTab();
     showNotification(`Etappe informatie geladen: ${props.etappnaam || props.etappe || 'Route segment'}`, 'success');
 }
