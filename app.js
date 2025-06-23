@@ -1,4 +1,28 @@
-// Global variables
+map.on('click', function(e) {
+        if (measuring) {
+            addMeasurePoint(e.latlng);
+        } else {
+            // Only check for route info - no route measuring
+            if (activeRoutes.length > 0) {
+                let foundRoute = false;
+                
+                activeRoutes.forEach(route => {
+                    const bounds = map.getBounds();
+                    const size = map.getSize();
+                    
+                    const params = {
+                        request: 'GetFeatureInfo',
+                        service: 'WMS',
+                        srs: 'EPSG:4326',
+                        version: '1.1.0',
+                        format: 'image/png',
+                        bbox: `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`,
+                        height: size.y,
+                        width: size.x,
+                        layers: route.layerName,
+                        query_layers: route.layerName,
+                        info_format: 'application/json',
+                        x: Math.// Global variables
 let map;
 let measuring = false;
 let measureMarkers = [];
@@ -172,9 +196,8 @@ function setupEventListeners() {
     map.on('click', function(e) {
         if (measuring) {
             addMeasurePoint(e.latlng);
-        } else if (isRouteMeasuring) {
-            addRouteMeasurePoint(e.latlng);
         } else {
+            // Only check for route info - no route measuring
             if (activeRoutes.length > 0) {
                 let foundRoute = false;
                 
@@ -638,7 +661,6 @@ function addRouteToMap(routeData) {
     showNotification(`Route "${routeData.name}" toegevoegd`, 'success');
 }
 
-// Remove all API-related functions and restore full route functionality
 function showRouteInfoInPanel(feature, latlng) {
     const props = feature.properties;
     
@@ -678,33 +700,6 @@ function showRouteInfoInPanel(feature, latlng) {
                 </div>
             ` : ''}
             
-            <div class="route-trace-section">
-                <h4><i class="fas fa-ruler-horizontal"></i> Route Afstand Meten</h4>
-                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
-                    Klik op punten langs de route om exact de afstand te meten
-                </p>
-                <button class="trace-btn" onclick="startRouteMeasuring()" id="measureRouteBtn">
-                    <i class="fas fa-crosshairs"></i>
-                    Start Route Meting
-                </button>
-                <div class="trace-progress" id="routeMeasureDisplay" style="display: none;">
-                    <div class="trace-stats">
-                        <div class="trace-stat">
-                            <span class="trace-value" id="routeMeasureDistance">0.0</span>
-                            <span class="trace-label">km gemeten</span>
-                        </div>
-                        <div class="trace-stat">
-                            <span class="trace-value" id="routeMeasurePoints">0</span>
-                            <span class="trace-label">meetpunten</span>
-                        </div>
-                    </div>
-                    <button class="clear-measure-btn" onclick="clearRouteMeasurements()">
-                        <i class="fas fa-trash"></i>
-                        Wis metingen
-                    </button>
-                </div>
-            </div>
-            
             <div class="route-info-actions">
                 <button class="highlight-btn" onclick="clearEtappeHighlight()">
                     <i class="fas fa-eye-slash"></i>
@@ -719,7 +714,7 @@ function showRouteInfoInPanel(feature, latlng) {
     
     document.getElementById('routeInfoPanel').innerHTML = panelContent;
     
-    // Store current route coordinates for tracing
+    // Store current route coordinates for reference
     window.currentRouteCoords = feature.geometry.coordinates;
     window.currentRouteGeometry = feature.geometry;
     
@@ -735,6 +730,7 @@ function switchToRouteInfoTab() {
     document.getElementById('info-panel').classList.add('active');
 }
 
+// Enhanced route highlighting with clear start/end and kilometer markers
 function highlightEtappe(feature, route) {
     highlightLayer.clearLayers();
     
@@ -748,22 +744,154 @@ function highlightEtappe(feature, route) {
         }
         
         if (coordinates && coordinates.length > 0) {
+            // Main highlight line - thicker and more visible
             const highlightLine = L.polyline(coordinates, {
                 color: '#f59e0b',
                 weight: 8,
-                opacity: 0.8,
-                zIndex: 1000
+                opacity: 0.9,
+                zIndex: 1000,
+                className: 'highlight-route'
             });
             
+            // Add a subtle shadow line for depth
+            const shadowLine = L.polyline(coordinates, {
+                color: '#92400e',
+                weight: 10,
+                opacity: 0.3,
+                zIndex: 999
+            });
+            
+            highlightLayer.addLayer(shadowLine);
             highlightLayer.addLayer(highlightLine);
+            
+            // Add kilometer markers every 1km
+            addKilometerMarkers(coordinates);
+            
+            // Enhanced start and end markers
+            if (coordinates.length >= 2) {
+                const startPoint = coordinates[0];
+                const endPoint = coordinates[coordinates.length - 1];
+                
+                // START marker - Large green circle with flag icon
+                const startMarker = L.circleMarker(startPoint, {
+                    radius: 18,
+                    color: '#ffffff',
+                    fillColor: '#059669',
+                    fillOpacity: 1,
+                    weight: 4,
+                    zIndex: 1003
+                }).bindTooltip('🚩 START', { 
+                    permanent: true, 
+                    direction: 'top',
+                    className: 'start-tooltip',
+                    offset: [0, -25]
+                });
+                
+                // END marker - Large red circle with finish flag
+                const endMarker = L.circleMarker(endPoint, {
+                    radius: 18,
+                    color: '#ffffff',
+                    fillColor: '#dc2626',
+                    fillOpacity: 1,
+                    weight: 4,
+                    zIndex: 1003
+                }).bindTooltip('🏁 FINISH', { 
+                    permanent: true, 
+                    direction: 'top',
+                    className: 'end-tooltip',
+                    offset: [0, -25]
+                });
+                
+                highlightLayer.addLayer(startMarker);
+                highlightLayer.addLayer(endMarker);
+            }
+            
+            console.log('✨ Route highlighted with km markers:', feature.properties.etappnaam || feature.properties.etappe || 'Route');
         }
     }
 }
 
+// Add prominent kilometer markers every 1km
+function addKilometerMarkers(coordinates) {
+    if (coordinates.length < 2) return;
+    
+    let totalDistance = 0;
+    let kmCount = 1;
+    
+    for (let i = 1; i < coordinates.length; i++) {
+        const prevPoint = L.latLng(coordinates[i-1]);
+        const currentPoint = L.latLng(coordinates[i]);
+        const segmentDistance = prevPoint.distanceTo(currentPoint);
+        
+        totalDistance += segmentDistance;
+        
+        // Check if we've passed a kilometer mark
+        while (kmCount * 1000 <= totalDistance) {
+            // Calculate the exact position for this kilometer mark
+            const kmPosition = interpolatePosition(coordinates, kmCount * 1000);
+            
+            if (kmPosition) {
+                // Create prominent kilometer marker
+                const kmMarker = L.circleMarker(kmPosition, {
+                    radius: 12,
+                    color: '#ffffff',
+                    fillColor: '#3b82f6',
+                    fillOpacity: 1,
+                    weight: 3,
+                    zIndex: 1002,
+                    className: 'km-marker'
+                }).bindTooltip(`${kmCount}km`, { 
+                    permanent: true, 
+                    direction: 'center',
+                    className: 'km-tooltip-prominent',
+                    offset: [0, 0]
+                });
+                
+                highlightLayer.addLayer(kmMarker);
+            }
+            
+            kmCount++;
+        }
+    }
+    
+    console.log(`Added ${kmCount - 1} kilometer markers`);
+}
+
+// Interpolate position along route for exact kilometer marks
+function interpolatePosition(coordinates, targetDistance) {
+    let currentDistance = 0;
+    
+    for (let i = 1; i < coordinates.length; i++) {
+        const prevPoint = L.latLng(coordinates[i-1]);
+        const currentPoint = L.latLng(coordinates[i]);
+        const segmentDistance = prevPoint.distanceTo(currentPoint);
+        
+        if (currentDistance + segmentDistance >= targetDistance) {
+            // The target distance is within this segment
+            const remainingDistance = targetDistance - currentDistance;
+            const ratio = remainingDistance / segmentDistance;
+            
+            // Interpolate between the two points
+            const lat = coordinates[i-1][0] + (coordinates[i][0] - coordinates[i-1][0]) * ratio;
+            const lng = coordinates[i-1][1] + (coordinates[i][1] - coordinates[i-1][1]) * ratio;
+            
+            return [lat, lng];
+        }
+        
+        currentDistance += segmentDistance;
+    }
+    
+    return null;
+}
+
+// Clear etappe highlight (simplified - no route measuring)
 function clearEtappeHighlight() {
     highlightLayer.clearLayers();
     document.getElementById('routeInfoPanel').innerHTML = '<div class="empty-state">Geen etappe geselecteerd</div>';
 }
+
+// Remove all route measuring functionality
+// (All route measuring functions removed for cleaner code)
 
 function getLayerName(routeType) {
     return 'landelijke-wandelroutes';
@@ -1014,13 +1142,23 @@ function updateFavoritesList() {}
 function saveStoredData() {}
 function loadStoredData() {}
 
-// Route measuring stubs (for compatibility)
-function startRouteMeasuring() {
-    showNotification('Route meting functionaliteit beschikbaar in volledige versie', 'info');
-}
+// Route measuring stubs removed - full functionality restored above
 
-function addRouteMeasurePoint() {}
-function clearRouteMeasurements() {}
+// Remove all API-related functions - only keep simple functions
+function clearCampings() {
+    campingLayer.clearLayers();
+    
+    if (campingVisible) {
+        const card = document.getElementById('camping-layer-card');
+        if (card) {
+            card.classList.remove('active');
+        }
+        map.removeLayer(campingLayer);
+        campingVisible = false;
+    }
+    
+    showNotification('Campings verwijderd', 'info');
+}
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
