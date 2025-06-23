@@ -136,13 +136,13 @@ function initMap() {
     highlightLayer = L.layerGroup();
     highlightLayer.addTo(map);
 
-    // Initialize camping layer
-    initCampingLayer();
-
     // Setup event listeners
     setupEventListeners();
     setupTabNavigation();
     loadStoredData();
+    
+    // Initialize camping layer after everything else is set up
+    initCampingLayer();
 }
 
 // Initialize camping layer
@@ -992,7 +992,18 @@ function loadStoredData() {}
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     initMap();
-});bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`,
+});
+
+// Additional missing functions that were referenced but not defined
+
+// Switch camping source (called from HTML)
+window.switchCampingSource = switchCampingSource;
+window.loadCampingData = loadCampingData;
+window.toggleCampingLayer = toggleCampingLayer;
+window.filterCampingsByDistance = filterCampingsByDistance;
+window.filterCampingsByType = filterCampingsByType;
+window.fitToCampings = fitToCampings;
+window.zoomToCamping = zoomToCamping;bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`,
                         height: size.y,
                         width: size.x,
                         layers: route.layerName,
