@@ -258,30 +258,28 @@ function switchBaseLayer(layerType) {
 
 // ============ SIMPLIFIED CAMPING FUNCTIONALITY ============
 
-// Toggle camping layer visibility
+// Toggle camping layer visibility (simplified - just on/off)
 function toggleCampingLayer() {
     campingVisible = !campingVisible;
     const card = document.getElementById('camping-layer-card');
     
     if (campingVisible) {
-        campingLayer.addTo(map);
-        card.classList.add('active');
-        
+        // Auto-load campings if not loaded yet
         if (campingLayer.getLayers().length === 0) {
             loadAndShowCampings();
         } else {
+            campingLayer.addTo(map);
+            card.classList.add('active');
             showNotification('Campings zichtbaar', 'success');
-            updateCampingCount();
         }
     } else {
         map.removeLayer(campingLayer);
         card.classList.remove('active');
         showNotification('Campings verborgen', 'info');
-        updateCampingCount();
     }
 }
 
-// Load and show campings
+// Load and show campings (simplified - no complex UI updates)
 function loadAndShowCampings() {
     showLoadingOverlay('Campings laden...');
     
@@ -295,8 +293,13 @@ function loadAndShowCampings() {
         .then(() => {
             hideLoadingOverlay();
             
-            if (!campingVisible) {
-                toggleCampingLayer();
+            // Show campings
+            campingLayer.addTo(map);
+            campingVisible = true;
+            
+            const card = document.getElementById('camping-layer-card');
+            if (card) {
+                card.classList.add('active');
             }
         })
         .catch(error => {
@@ -468,28 +471,20 @@ function showSampleCampings() {
     updateCampingCount();
 }
 
-// Clear all campings
+// Remove camping count and other complex functions - keep it simple
 function clearCampings() {
     campingLayer.clearLayers();
     
     if (campingVisible) {
         const card = document.getElementById('camping-layer-card');
-        card.classList.remove('active');
+        if (card) {
+            card.classList.remove('active');
+        }
         map.removeLayer(campingLayer);
         campingVisible = false;
     }
     
-    updateCampingCount();
     showNotification('Campings verwijderd', 'info');
-}
-
-// Update camping count display
-function updateCampingCount() {
-    const count = campingVisible ? campingLayer.getLayers().length : 0;
-    const countEl = document.getElementById('campingCount');
-    if (countEl) {
-        countEl.textContent = count;
-    }
 }
 
 // Show/hide loading overlay
