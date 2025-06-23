@@ -140,10 +140,211 @@ function initMap() {
 // Initialize camping layer
 function initCampingLayer() {
     campingLayer = L.layerGroup();
+    campingLayer.addTo(map);
+    campingVisible = true;
     
-    setTimeout(() => {
-        loadCampingData();
-    }, 1000);
+    // Update zoom level display
+    map.on('zoomend', updateZoomDisplay);
+    map.on('moveend', updateZoomDisplay);
+    
+    updateZoomDisplay();
+}
+
+// Update zoom level display
+function updateZoomDisplay() {
+    const zoomEl = document.getElementById('currentZoom');
+    if (zoomEl) {
+        zoomEl.textContent = map.getZoom();
+    }
+}
+
+// Load campings in current map view (simplified approach)
+function loadCampingsInView() {
+    const zoom = map.getZoom();
+    
+    if (zoom < 10) {
+        showNotification('Zoom meer in (niveau 10+) voor betere resultaten', 'warning');
+    }
+    
+    showLoadingOverlay('Campings zoeken in huidige gebied...');
+    
+    // Get current map bounds
+    const bounds = map.getBounds();
+    const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
+    
+    // Use a more reliable Overpass query with increased timeout
+    const overpassQuery = `
+        [out:json][timeout:30];
+        (
+            node["tourism"="camp_site"](${bbox});
+            node["tourism"="caravan_site"](${bbox});
+            node["tourism"="alpine_hut"](${bbox});
+            way["tourism"="camp_site"](${bbox});
+            way["tourism"="caravan_site"](${bbox});
+            relation["tourism"="camp_site"](${bbox});
+        );
+        out center meta;
+    `;
+
+    // Try multiple Overpass servers for better reliability
+    const overpassServers = [
+        'https://overpass-api.de/api/interpreter',
+        'https://overpass.kumi.systems/api/interpreter',
+        'https://overpass.openstreetmap.ru/api/interpreter'
+    ];
+
+    tryOverpassServers(overpassServers, overpassQuery, 0);
+}
+
+async function tryOverpassServers(servers, query, serverIndex) {
+    if (serverIndex >= servers.length) {
+        // All servers failed, use sample data
+        console.log('All Overpass servers failed, using sample data');
+        loadSampleCampingsInView();
+        return;
+    }
+
+    try {
+        updateLoadingOverlay(`Proberen server ${serverIndex + 1}/${servers.length}...`);
+        
+        const response = await fetch(servers[serverIndex], {
+            method: 'POST',
+            body: query,
+            headers: {
+                'Content-Type': 'text/plain'
+            },
+            signal: AbortSignal.timeout(25000) // 25 second timeout
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Server responded with ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.elements || data.elements.length === 0) {
+            throw new Error('No data returned');
+        }
+        
+        console.log(`Successfully loaded ${data.elements.length} elements from server ${serverIndex + 1}`);
+        
+        // Convert and display the data
+        const geojsonData = convertOSMToGeoJSON(data);
+        displayCampings(geojsonData);
+        
+        hideLoadingOverlay();
+        showNotification(`${geojsonData.features.length} campings gevonden!`, 'success');
+        
+    } catch (error) {
+        console.log(`Server ${serverIndex + 1} failed:`, error.message);
+        
+        // Try next server
+        setTimeout(() => {
+            tryOverpassServers(servers, query, serverIndex + 1);
+        }, 1000);
+    }
+}
+
+// Load sample campings in current view as fallback
+function loadSampleCampingsInView() {
+    hideLoadingOverlay();
+    
+    const bounds = map.getBounds();
+    const sampleData = createSampleCampingData();
+    
+    // Filter sample data to current view
+    const filteredFeatures = sampleData.features.filter(feature => {
+        const lat = feature.geometry.coordinates[1];
+        const lng = feature.geometry.coordinates[0];
+        return bounds.contains([lat, lng]);
+    });
+    
+    const viewData = {
+        type: "FeatureCollection",
+        features: filteredFeatures
+    };
+    
+    displayCampings(viewData);
+    showNotification(`${filteredFeatures.length} sample campings getoond (OSM servers niet beschikbaar)`, 'warning');
+}
+
+// Display campings on map
+function displayCampings(geojsonData) {
+    // Clear existing camping markers
+    campingLayer.clearLayers();
+    
+    // Store the data
+    campingsData = geojsonData;
+    
+    // Add all campings to map
+    geojsonData.features.forEach(camping => {
+        addCampingMarker(camping);
+    });
+    
+    // Update statistics and list
+    updateCampingStats();
+    updateCampingList();
+}
+
+// Simplified camping data management
+function updateCampingStats() {
+    const count = campingLayer.getLayers().length;
+    const visibleEl = document.getElementById('visibleCampings');
+    if (visibleEl) {
+        visibleEl.textContent = count;
+    }
+}
+
+// Simplified camping list
+function updateCampingList() {
+    const container = document.getElementById('campingList');
+    if (!container || !campingsData) return;
+    
+    const campings = campingsData.features;
+    
+    if (campings.length === 0) {
+        container.innerHTML = '<div class="empty-state">Geen campings gevonden in dit gebied</div>';
+        return;
+    }
+    
+    // Show max 15 campings in list
+    container.innerHTML = campings.slice(0, 15).map(camping => {
+        const props = camping.properties;
+        return `
+            <div class="camping-item" onclick="zoomToCamping(${camping.geometry.coordinates[1]}, ${camping.geometry.coordinates[0]})">
+                <h4><i class="fas fa-campground"></i> ${props.name}</h4>
+                <p><strong>Type:</strong> ${formatCampingType(props.type)}</p>
+                ${props.description ? `<p>${props.description.substring(0, 100)}...</p>` : ''}
+            </div>
+        `;
+    }).join('') + (campings.length > 15 ? `<div class="empty-state">... en ${campings.length - 15} meer op de kaart</div>` : '');
+}
+
+// Simplified type filtering
+function filterCampingsByType() {
+    if (!campingsData) return;
+    
+    const selectedType = document.getElementById('campingType').value;
+    
+    // Clear current markers
+    campingLayer.clearLayers();
+    
+    // Filter and add markers
+    const filteredCampings = campingsData.features.filter(camping => {
+        return !selectedType || camping.properties.type === selectedType;
+    });
+    
+    filteredCampings.forEach(camping => {
+        addCampingMarker(camping);
+    });
+    
+    // Update stats
+    const visibleEl = document.getElementById('visibleCampings');
+    if (visibleEl) {
+        visibleEl.textContent = filteredCampings.length;
+    }
+    
+    showNotification(`${filteredCampings.length} campings na filtering`, 'info');
 }
 
 // Setup tab navigation
@@ -391,42 +592,104 @@ async function loadOSMCampings() {
     }
 }
 
-// Converteer OSM data naar GeoJSON format
+// Improved OSM to GeoJSON conversion
 function convertOSMToGeoJSON(osmData) {
     const features = [];
     
     osmData.elements.forEach(element => {
-        if (element.lat && element.lon && element.tags) {
-            const properties = {
-                name: element.tags.name || 'Naamloze camping',
-                type: element.tags.tourism || 'camp_site',
-                website: element.tags.website || element.tags['contact:website'] || null,
-                phone: element.tags.phone || element.tags['contact:phone'] || null,
-                email: element.tags.email || element.tags['contact:email'] || null,
-                address: formatOSMAddress(element.tags),
-                description: element.tags.description || null,
-                facilities: extractOSMFacilities(element.tags),
-                stars: element.tags.stars ? parseInt(element.tags.stars) : null,
-                fee: element.tags.fee || null,
-                internet_access: element.tags.internet_access || null,
-                source: 'OSM'
-            };
-            
-            features.push({
-                type: "Feature",
-                geometry: {
-                    type: "Point",
-                    coordinates: [element.lon, element.lat]
-                },
-                properties: properties
-            });
+        let lat, lon;
+        
+        // Handle different element types
+        if (element.type === 'node' && element.lat && element.lon) {
+            lat = element.lat;
+            lon = element.lon;
+        } else if (element.type === 'way' && element.center) {
+            lat = element.center.lat;
+            lon = element.center.lon;
+        } else if (element.type === 'relation' && element.center) {
+            lat = element.center.lat;
+            lon = element.center.lon;
+        } else {
+            return; // Skip this element
         }
+        
+        if (!element.tags) return; // Skip elements without tags
+        
+        const properties = {
+            name: element.tags.name || element.tags['name:nl'] || 'Naamloze camping',
+            type: element.tags.tourism || 'camp_site',
+            website: element.tags.website || element.tags['contact:website'] || null,
+            phone: element.tags.phone || element.tags['contact:phone'] || null,
+            email: element.tags.email || element.tags['contact:email'] || null,
+            address: formatOSMAddress(element.tags),
+            description: element.tags.description || createDescription(element.tags),
+            facilities: extractOSMFacilities(element.tags),
+            stars: element.tags.stars ? parseInt(element.tags.stars) : null,
+            fee: element.tags.fee || null,
+            opening_hours: element.tags.opening_hours || null,
+            source: 'OpenStreetMap',
+            osm_id: element.id,
+            osm_type: element.type
+        };
+        
+        features.push({
+            type: "Feature",
+            geometry: {
+                type: "Point",
+                coordinates: [lon, lat]
+            },
+            properties: properties
+        });
     });
+    
+    console.log(`Converted ${features.length} OSM elements to GeoJSON features`);
     
     return {
         type: "FeatureCollection",
         features: features
     };
+}
+
+// Create description from OSM tags
+function createDescription(tags) {
+    const parts = [];
+    
+    if (tags.operator) parts.push(`Beheerd door ${tags.operator}`);
+    if (tags.capacity) parts.push(`${tags.capacity} plaatsen`);
+    if (tags.caravans === 'yes') parts.push('Caravans welkom');
+    if (tags.tents === 'yes') parts.push('Tenten welkom');
+    if (tags.motor_vehicle === 'yes') parts.push('Campers welkom');
+    if (tags.fee === 'no') parts.push('Gratis');
+    
+    return parts.length > 0 ? parts.join(', ') : null;
+}
+
+// Improved facility extraction
+function extractOSMFacilities(tags) {
+    const facilities = [];
+    
+    // Sanitair
+    if (tags.toilets === 'yes') facilities.push('toiletten');
+    if (tags.shower === 'yes') facilities.push('douches');
+    if (tags.drinking_water === 'yes') facilities.push('drinkwater');
+    
+    // Voorzieningen
+    if (tags.electricity === 'yes') facilities.push('elektriciteit');
+    if (tags.internet_access === 'wifi' || tags.internet_access === 'yes') facilities.push('wifi');
+    if (tags.shop === 'yes' || tags.shop) facilities.push('winkel');
+    if (tags.restaurant === 'yes' || tags.amenity === 'restaurant') facilities.push('restaurant');
+    if (tags.bar === 'yes' || tags.amenity === 'bar') facilities.push('bar');
+    
+    // Recreatie
+    if (tags.playground === 'yes') facilities.push('speeltuin');
+    if (tags.swimming_pool === 'yes') facilities.push('zwembad');
+    if (tags.sauna === 'yes') facilities.push('sauna');
+    
+    // Services
+    if (tags.laundry === 'yes') facilities.push('wasserette');
+    if (tags.bicycle_rental === 'yes') facilities.push('fietsverhuur');
+    
+    return facilities;
 }
 
 // Format OSM address
@@ -463,52 +726,78 @@ function createSampleCampingData() {
         "features": [
             {
                 "type": "Feature",
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [5.2913, 52.1326]
-                },
+                "geometry": {"type": "Point", "coordinates": [5.2913, 52.1326]},
                 "properties": {
                     "name": "Camping De Berekuil",
                     "type": "camp_site",
                     "website": "https://www.deberekuil.nl",
                     "phone": "030-1234567",
                     "facilities": ["douches", "toiletten", "wifi", "restaurant"],
-                    "price_range": "€15-25 per nacht",
                     "description": "Kleinschalige familiecamping in bosrijke omgeving",
                     "source": "Sample"
                 }
             },
             {
                 "type": "Feature", 
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [4.9041, 52.3676]
-                },
+                "geometry": {"type": "Point", "coordinates": [4.9041, 52.3676]},
                 "properties": {
                     "name": "Camping Vliegenbos",
                     "type": "camp_site",
                     "website": "https://www.campingvliegenbos.nl",
                     "phone": "020-6368855",
-                    "facilities": ["douches", "toiletten", "wifi", "verhuur_fietsen"],
-                    "price_range": "€20-30 per nacht",
+                    "facilities": ["douches", "toiletten", "wifi", "fietsverhuur"],
                     "description": "Natuurcamping nabij Amsterdam centrum",
                     "source": "Sample"
                 }
             },
             {
                 "type": "Feature",
-                "geometry": {
-                    "type": "Point", 
-                    "coordinates": [5.9699, 51.9851]
-                },
+                "geometry": {"type": "Point", "coordinates": [5.9699, 51.9851]},
                 "properties": {
                     "name": "De Kwakkenberg",
                     "type": "wilderness_hut",
                     "website": "https://www.natuurmonumenten.nl",
                     "phone": "024-3771234",
                     "facilities": ["basis_sanitair", "vuurplaats"],
-                    "price_range": "€10-15 per nacht",
                     "description": "Natuurkampeerterrein van Natuurmonumenten",
+                    "source": "Sample"
+                }
+            },
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [6.5665, 52.4114]},
+                "properties": {
+                    "name": "Camping De Scholtenhagen",
+                    "type": "camp_site",
+                    "website": "https://www.scholtenhagen.nl",
+                    "phone": "0521-515555",
+                    "facilities": ["zwembad", "restaurant", "wifi", "speeltuin"],
+                    "description": "Vakantiepark met vele faciliteiten",
+                    "source": "Sample"
+                }
+            },
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [4.6351, 51.7817]},
+                "properties": {
+                    "name": "Camping Biesbosch",
+                    "type": "camp_site",
+                    "phone": "0162-681238",
+                    "facilities": ["kanoverhuur", "drinkwater", "toiletten"],
+                    "description": "Natuurcamping in de Biesbosch",
+                    "source": "Sample"
+                }
+            },
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [5.8713, 51.9851]},
+                "properties": {
+                    "name": "Camperpark Arnhem",
+                    "type": "caravan_site",
+                    "website": "https://www.camperpark-arnhem.nl",
+                    "phone": "026-3851234",
+                    "facilities": ["camperservice", "elektriciteit", "wifi"],
+                    "description": "Moderne camperplaats nabij Arnhem",
                     "source": "Sample"
                 }
             }
