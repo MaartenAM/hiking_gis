@@ -109,8 +109,8 @@ function initMap() {
             zIndex: 1
         });
 
-        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: '© Esri',
+        const satelliteLayer = L.tileLayer('https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_ortho25/EPSG:3857/{z}/{x}/{y}.jpeg', {
+            attribution: '© PDOK Luchtfoto',
             zIndex: 1
         });
 
@@ -460,7 +460,53 @@ function loadGeoJSONOnly() {
         });
 }
 
-// ============ ROUTE FUNCTIONALITY ============
+// Simplified route adding function
+function addLAWRoute(routeValue, routeFilter) {
+    const routeName = `${routeValue} - ${routeFilter}`;
+    const layerName = 'landelijke-wandelroutes';
+    
+    // Check if route already exists
+    const existingRoute = activeRoutes.find(route => route.filter === routeFilter);
+    if (existingRoute) {
+        showNotification(`Route "${routeName}" is al toegevoegd!`, 'warning');
+        return;
+    }
+    
+    const routeData = {
+        id: Date.now(),
+        name: routeName,
+        type: 'law',
+        filter: routeFilter,
+        layerName: layerName,
+        value: routeValue
+    };
+    
+    // Add visual feedback
+    const routeCard = document.querySelector(`[data-route="${routeValue}"]`);
+    if (routeCard) {
+        routeCard.classList.add('added');
+        routeCard.classList.add('route-card-added');
+        
+        // Update action text
+        const action = routeCard.querySelector('.route-card-action');
+        if (action) {
+            action.innerHTML = '<i class="fas fa-check"></i> Toegevoegd';
+        }
+        
+        setTimeout(() => {
+            routeCard.classList.remove('route-card-added');
+        }, 600);
+    }
+    
+    activeRoutes.push(routeData);
+    addRouteToMap(routeData);
+    updateActiveRoutesDisplay();
+    
+    // Close sidebar on mobile
+    if (isMobile) {
+        setTimeout(() => closeSidebar(), 1000);
+    }
+}
 
 function loadRouteOptions() {
     const routeType = document.getElementById('routeTypeSelect').value;
@@ -739,7 +785,16 @@ function updateActiveRoutesDisplay() {
     const container = document.getElementById('activeRoutesDisplay');
     
     if (activeRoutes.length === 0) {
-        container.innerHTML = '<div class="empty-state">Geen routes geselecteerd</div>';
+        container.innerHTML = '<div class="empty-state">Klik op een route card hierboven om deze toe te voegen</div>';
+        
+        // Reset all route cards
+        document.querySelectorAll('.route-card').forEach(card => {
+            card.classList.remove('added');
+            const action = card.querySelector('.route-card-action');
+            if (action) {
+                action.innerHTML = '<i class="fas fa-plus"></i> Toevoegen';
+            }
+        });
         return;
     }
     
@@ -747,9 +802,9 @@ function updateActiveRoutesDisplay() {
         <div class="active-route-item">
             <div class="active-route-info">
                 <h4>${route.name}</h4>
-                <p>Lange Afstand Wandelpad</p>
+                <p>Lange Afstand Wandelpad • Klik op route voor details</p>
             </div>
-            <button class="route-remove-btn" onclick="removeRoute(${route.id})">
+            <button class="route-remove-btn" onclick="removeRoute(${route.id})" title="Route verwijderen">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -761,12 +816,24 @@ function removeRoute(routeId) {
     if (routeIndex !== -1) {
         const route = activeRoutes[routeIndex];
         
+        // Remove visual feedback from route card
+        const routeCard = document.querySelector(`[data-route="${route.value}"]`);
+        if (routeCard) {
+            routeCard.classList.remove('added');
+            const action = routeCard.querySelector('.route-card-action');
+            if (action) {
+                action.innerHTML = '<i class="fas fa-plus"></i> Toevoegen';
+            }
+        }
+        
         if (route.layer) {
             map.removeLayer(route.layer);
         }
         
         activeRoutes.splice(routeIndex, 1);
         updateActiveRoutesDisplay();
+        
+        showNotification(`Route "${route.name}" verwijderd`, 'info');
     }
 }
 
