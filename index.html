@@ -7,6 +7,8 @@
     
     <!-- External Libraries -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.Default.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     
@@ -87,6 +89,10 @@
                             <div class="layer-card" id="camping-layer-card" onclick="toggleCampingLayer()">
                                 <i class="fas fa-campground"></i>
                                 <div class="layer-name">Campings</div>
+                            </div>
+                            <div class="layer-card" id="vrienden-layer-card" onclick="toggleVriendenLayer()">
+                                <i class="fas fa-bicycle"></i>
+                                <div class="layer-name">Vrienden o/d Fiets</div>
                             </div>
                         </div>
                     </div>
@@ -255,6 +261,10 @@
                             <i class="fas fa-campground"></i>
                             Zoom naar campings
                         </button>
+                        <button class="button-secondary" onclick="fitToVrienden()">
+                            <i class="fas fa-bicycle"></i>
+                            Zoom naar Vrienden o/d Fiets
+                        </button>
                     </div>
                 </div>
 
@@ -320,6 +330,7 @@
 
     <!-- External Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/leaflet.markercluster.min.js"></script>
     
     <!-- Custom Scripts -->
     <script src="app.js"></script>
