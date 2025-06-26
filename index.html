@@ -7,6 +7,8 @@
     
     <!-- External Libraries -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.Default.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     
@@ -328,6 +330,31 @@
 
     <!-- External Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+        // Load MarkerCluster dynamically and initialize when ready
+        function loadMarkerCluster() {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/leaflet.markercluster.min.js';
+            script.onload = function() {
+                console.log('MarkerCluster library loaded successfully');
+                if (typeof initMap === 'function') {
+                    // Reinitialize clustering if map is already loaded
+                    if (map && typeof initializeClustering === 'function') {
+                        initializeClustering();
+                    }
+                }
+            };
+            script.onerror = function() {
+                console.warn('MarkerCluster library failed to load, using simple layers');
+            };
+            document.head.appendChild(script);
+        }
+        
+        // Load clustering library after page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadMarkerCluster();
+        });
+    </script>
     
     <!-- Custom Scripts -->
     <script src="app.js"></script>
