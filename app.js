@@ -967,19 +967,43 @@ function resetRouteForm() {
 
 // ============ TOOLS & UTILITY FUNCTIONS ============
 
-function toggleMeasure() {
+// Toggle measure from map control button
+function toggleMeasureFromMap() {
     measuring = !measuring;
-    const btn = document.getElementById('measureBtn');
+    const btn = document.getElementById('measureControlBtn');
     
     if (measuring) {
-        btn.innerHTML = '<i class="fas fa-stop"></i> Stop meting';
         btn.classList.add('active');
+        btn.title = 'Stop meting - Klik punten op de kaart';
+        btn.innerHTML = '<i class="fas fa-stop"></i>';
         map.getContainer().style.cursor = 'crosshair';
+        showNotification('Afstand meten geactiveerd - Klik punten op de kaart', 'info');
+        
+        // Update sidebar button if it exists
+        const sidebarBtn = document.getElementById('measureBtn');
+        if (sidebarBtn) {
+            sidebarBtn.innerHTML = '<i class="fas fa-stop"></i> Stop meting';
+            sidebarBtn.classList.add('active');
+        }
     } else {
-        btn.innerHTML = '<i class="fas fa-ruler-combined"></i> Start meting';
         btn.classList.remove('active');
+        btn.title = 'Afstand meten';
+        btn.innerHTML = '<i class="fas fa-ruler-combined"></i>';
         map.getContainer().style.cursor = '';
+        showNotification('Afstand meten gestopt', 'info');
+        
+        // Update sidebar button if it exists
+        const sidebarBtn = document.getElementById('measureBtn');
+        if (sidebarBtn) {
+            sidebarBtn.innerHTML = '<i class="fas fa-ruler-combined"></i> Start meting';
+            sidebarBtn.classList.remove('active');
+        }
     }
+}
+
+// Legacy function for sidebar (if needed)
+function toggleMeasure() {
+    toggleMeasureFromMap();
 }
 
 function addMeasurePoint(latlng) {
@@ -1032,6 +1056,25 @@ function clearMeasurements() {
     measureMarkers = [];
     totalDistance = 0;
     updateDistanceDisplay();
+    
+    // Reset map control button
+    const mapBtn = document.getElementById('measureControlBtn');
+    if (mapBtn) {
+        mapBtn.classList.remove('active');
+        mapBtn.title = 'Afstand meten';
+        mapBtn.innerHTML = '<i class="fas fa-ruler-combined"></i>';
+    }
+    
+    // Reset sidebar button if it exists
+    const sidebarBtn = document.getElementById('measureBtn');
+    if (sidebarBtn) {
+        sidebarBtn.innerHTML = '<i class="fas fa-ruler-combined"></i> Start meting';
+        sidebarBtn.classList.remove('active');
+    }
+    
+    measuring = false;
+    map.getContainer().style.cursor = '';
+    showNotification('Alle metingen gewist', 'success');
 }
 
 function searchLocation() {
