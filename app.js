@@ -1008,12 +1008,22 @@ function toggleMeasure() {
 
 function addMeasurePoint(latlng) {
     const marker = L.circleMarker(latlng, {
-        radius: 6,
-        color: '#7c3aed',
-        fillColor: '#7c3aed',
-        fillOpacity: 0.8,
-        weight: 2
+        radius: 8,
+        color: '#ffffff',
+        fillColor: '#f59e0b',
+        fillOpacity: 1,
+        weight: 3,
+        zIndex: 1001
     }).addTo(map);
+
+    // Add point number
+    const pointNumber = measureMarkers.filter(item => item.getLatLng).length + 1;
+    marker.bindTooltip(`${pointNumber}`, { 
+        permanent: true, 
+        direction: 'center',
+        className: 'measure-point-tooltip',
+        offset: [0, 0]
+    });
 
     measureMarkers.push(marker);
 
@@ -1027,17 +1037,72 @@ function addMeasurePoint(latlng) {
         }
 
         if (prevMarker) {
+            const segmentDistance = prevMarker.getLatLng().distanceTo(latlng);
             const line = L.polyline([prevMarker.getLatLng(), latlng], {
-                color: '#7c3aed',
-                weight: 3,
-                dashArray: '8, 12'
+                color: '#f59e0b',
+                weight: 4,
+                opacity: 0.8,
+                zIndex: 1000
             }).addTo(map);
 
             measureMarkers.push(line);
 
-            const distance = prevMarker.getLatLng().distanceTo(latlng) / 1000;
-            totalDistance += distance;
+            // Add segment distance label in the middle of the line
+            const midPoint = [
+                (prevMarker.getLatLng().lat + latlng.lat) / 2,
+                (prevMarker.getLatLng().lng + latlng.lng) / 2
+            ];
+            
+            const segmentDistanceKm = segmentDistance / 1000;
+            const distanceText = segmentDistanceKm < 1 ? 
+                `${Math.round(segmentDistance)} m` : 
+                `${segmentDistanceKm.toFixed(2)} km`;
+
+            const distanceLabel = L.marker(midPoint, {
+                icon: L.divIcon({
+                    className: 'distance-label',
+                    html: `<div class="distance-text">${distanceText}</div>`,
+                    iconSize: [60, 20],
+                    iconAnchor: [30, 10]
+                }),
+                zIndex: 1002
+            }).addTo(map);
+
+            measureMarkers.push(distanceLabel);
+
+            totalDistance += segmentDistance / 1000;
             updateDistanceDisplay();
+            updateTotalDistanceOnMap();
+        }
+    } else {
+        // First point - show starting indicator
+        updateTotalDistanceOnMap();
+    }
+}
+
+function updateTotalDistanceOnMap() {
+    // Remove existing total distance marker
+    if (window.totalDistanceMarker) {
+        map.removeLayer(window.totalDistanceMarker);
+    }
+    
+    if (measureMarkers.length > 0) {
+        // Get last point position
+        const lastMarker = measureMarkers.filter(item => item.getLatLng).pop();
+        if (lastMarker) {
+            const totalText = totalDistance < 1 ? 
+                `Totaal: ${Math.round(totalDistance * 1000)} m` : 
+                `Totaal: ${totalDistance.toFixed(2)} km`;
+
+            window.totalDistanceMarker = L.marker(lastMarker.getLatLng(), {
+                icon: L.divIcon({
+                    className: 'total-distance-label',
+                    html: `<div class="total-distance-text">${totalText}</div>`,
+                    iconSize: [120, 30],
+                    iconAnchor: [60, -20]
+                }),
+                zIndex: 1003
+            }).addTo(map);
         }
     }
 }
