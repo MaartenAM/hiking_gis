@@ -957,48 +957,30 @@ function addCurrentViewToFavorites() {
 
 function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
-    const colors = {
-        'success': { bg: 'linear-gradient(135deg, #059669, #10b981)', shadow: '0 0 20px rgba(16, 185, 129, 0.3)' },
-        'error': { bg: 'linear-gradient(135deg, #dc2626, #ef4444)', shadow: '0 0 20px rgba(239, 68, 68, 0.3)' },
-        'warning': { bg: 'linear-gradient(135deg, #d97706, #f59e0b)', shadow: '0 0 20px rgba(245, 158, 11, 0.3)' },
-        'info': { bg: 'linear-gradient(135deg, #0369a1, #0284c7)', shadow: '0 0 20px rgba(2, 132, 199, 0.3)' }
-    };
-    
-    const color = colors[type] || colors.info;
+    const bgColor = type === 'success' ? '#10b981' : 
+                   type === 'error' ? '#ef4444' : 
+                   type === 'warning' ? '#f59e0b' : '#3b82f6';
     
     notification.style.cssText = `
         position: fixed;
         top: 20px;
         right: 20px;
-        background: ${color.bg};
+        background: ${bgColor};
         color: white;
-        padding: 16px 24px;
-        border-radius: 16px;
+        padding: 12px 20px;
+        border-radius: 8px;
         z-index: 10000;
         font-size: 14px;
-        font-weight: 600;
         max-width: 300px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.2), ${color.shadow};
-        backdrop-filter: blur(16px);
-        border: 1px solid rgba(255,255,255,0.2);
-        transform: translateX(400px);
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     `;
     notification.textContent = message;
     document.body.appendChild(notification);
     
-    // Trigger animation
-    requestAnimationFrame(() => {
-        notification.style.transform = 'translateX(0)';
-    });
-    
     setTimeout(() => {
-        notification.style.transform = 'translateX(400px)';
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 400);
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
     }, type === 'error' ? 5000 : 3000);
 }
 
