@@ -68,8 +68,8 @@
                                 <div class="layer-name">Topografisch</div>
                             </div>
                             <div class="layer-card" data-layer="satellite">
-                                <i class="fas fa-satellite"></i>
-                                <div class="layer-name">Satelliet</div>
+                                <i class="fas fa-camera"></i>
+                                <div class="layer-name">Luchtfoto</div>
                             </div>
                             <div class="layer-card" data-layer="terrain">
                                 <i class="fas fa-globe-europe"></i>
@@ -111,40 +111,68 @@
                     <div class="control-section">
                         <div class="section-title">
                             <i class="fas fa-route"></i>
-                            Route Selectie
+                            LAW Routes Toevoegen
                         </div>
                         
-                        <!-- Stap 1: Kies route type -->
-                        <div class="step-container">
-                            <div class="step-number">1</div>
-                            <div class="step-content">
-                                <label class="control-label">Kies LAW route:</label>
-                                <select id="routeTypeSelect" class="select-field" onchange="loadRouteOptions()">
-                                    <option value="">-- Selecteer LAW routes --</option>
-                                    <option value="law">Lange Afstand Wandelpaden (LAW)</option>
-                                </select>
+                        <div class="route-cards-grid">
+                            <div class="route-card" onclick="addLAWRoute('LAW 10', 'Marskramerpad')" data-route="LAW 10">
+                                <div class="route-card-header">
+                                    <i class="fas fa-hiking"></i>
+                                    <div class="route-number">LAW 10</div>
+                                </div>
+                                <div class="route-card-content">
+                                    <h4>Marskramerpad</h4>
+                                    <p>Lange afstand wandelroute door Nederland</p>
+                                </div>
+                                <div class="route-card-action">
+                                    <i class="fas fa-plus"></i>
+                                    Toevoegen
+                                </div>
                             </div>
-                        </div>
-
-                        <!-- Stap 2: Kies specifieke route -->
-                        <div class="step-container" id="step2" style="display: none;">
-                            <div class="step-number">2</div>
-                            <div class="step-content">
-                                <label class="control-label">Selecteer route:</label>
-                                <select id="specificRouteSelect" class="select-field">
-                                    <option value="">-- Eerst route type kiezen --</option>
-                                </select>
+                            
+                            <div class="route-card" onclick="addLAWRoute('LAW 5', 'Trekvogelpad')" data-route="LAW 5">
+                                <div class="route-card-header">
+                                    <i class="fas fa-hiking"></i>
+                                    <div class="route-number">LAW 5</div>
+                                </div>
+                                <div class="route-card-content">
+                                    <h4>Trekvogelpad</h4>
+                                    <p>Lange afstand wandelroute door Nederland</p>
+                                </div>
+                                <div class="route-card-action">
+                                    <i class="fas fa-plus"></i>
+                                    Toevoegen
+                                </div>
                             </div>
-                        </div>
-
-                        <!-- Stap 3: Toon route -->
-                        <div class="step-container" id="step3" style="display: none;">
-                            <div class="step-number">3</div>
-                            <div class="step-content">
-                                <button class="button-primary" onclick="showSelectedRoute()">
-                                    <i class="fas fa-eye"></i>
-                                    Toon Route op Kaart
-                                </button>
+                            
+                            <div class="route-card" onclick="addLAWRoute('LAW 4', 'Zuiderzeepad')" data-route="LAW 4">
+                                <div class="route-card-header">
+                                    <i class="fas fa-hiking"></i>
+                                    <div class="route-number">LAW 4</div>
+                                </div>
+                                <div class="route-card-content">
+                                    <h4>Zuiderzeepad</h4>
+                                    <p>Lange afstand wandelroute door Nederland</p>
+                                </div>
+                                <div class="route-card-action">
+                                    <i class="fas fa-plus"></i>
+                                    Toevoegen
+                                </div>
+                            </div>
+                            
+                            <div class="route-card" onclick="addLAWRoute('LAW 3', 'Pelgrimspad')" data-route="LAW 3">
+                                <div class="route-card-header">
+                                    <i class="fas fa-hiking"></i>
+                                    <div class="route-number">LAW 3</div>
+                                </div>
+                                <div class="route-card-content">
+                                    <h4>Pelgrimspad deel 1</h4>
+                                    <p>Lange afstand wandelroute door Nederland</p>
+                                </div>
+                                <div class="route-card-action">
+                                    <i class="fas fa-plus"></i>
+                                    Toevoegen
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -155,22 +183,12 @@
                             Actieve Routes
                         </div>
                         <div id="activeRoutesDisplay">
-                            <div class="empty-state">Geen routes geselecteerd</div>
+                            <div class="empty-state">Klik op een route card hierboven om deze toe te voegen</div>
                         </div>
                         <button class="button-secondary" onclick="clearAllRoutes()">
                             <i class="fas fa-trash"></i>
                             Alle routes verwijderen
                         </button>
-                    </div>
-
-                    <div class="control-section">
-                        <div class="section-title">
-                            <i class="fas fa-list"></i>
-                            Route Details
-                        </div>
-                        <div id="routeDetailsContainer">
-                            <div class="empty-state">Selecteer een route om details te zien</div>
-                        </div>
                     </div>
                 </div>
 
