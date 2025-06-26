@@ -149,8 +149,28 @@ function initMap() {
         highlightLayer = L.layerGroup();
         highlightLayer.addTo(map);
 
-        // Initialize clustering groups for better performance
+        // Initialize simple layer groups (clustering will be added later if library loads)
         campingLayer = L.layerGroup();
+        vriendenLayer = L.layerGroup();
+        
+        // Try to initialize clustering if available
+        initializeClustering();
+
+        setupEventListeners();
+        setupTabNavigation();
+        setupMobileFeatures();
+        
+        console.log('Map initialized successfully');
+    } catch (error) {
+        console.error('Error initializing map:', error);
+    }
+}
+
+// Initialize clustering if library is available
+function initializeClustering() {
+    if (typeof L.markerClusterGroup !== 'undefined') {
+        console.log('MarkerCluster library loaded, initializing clustering...');
+        
         campingClusterGroup = L.markerClusterGroup({
             maxClusterRadius: 50,
             spiderfyOnMaxZoom: true,
@@ -170,7 +190,6 @@ function initMap() {
             }
         });
 
-        vriendenLayer = L.layerGroup();
         vriendenClusterGroup = L.markerClusterGroup({
             maxClusterRadius: 50,
             spiderfyOnMaxZoom: true,
@@ -189,14 +208,10 @@ function initMap() {
                 });
             }
         });
-
-        setupEventListeners();
-        setupTabNavigation();
-        setupMobileFeatures();
-        
-        console.log('Map initialized successfully');
-    } catch (error) {
-        console.error('Error initializing map:', error);
+    } else {
+        console.log('MarkerCluster library not available, using simple layer groups');
+        campingClusterGroup = campingLayer;
+        vriendenClusterGroup = vriendenLayer;
     }
 }
 
@@ -508,7 +523,9 @@ function loadCampingGeoJSON() {
             }
             
             hideLoadingOverlay();
-            showNotification(`${geojsonData.features.length} campings geladen (geclusterd)`, 'success');
+            
+            const clusterText = (typeof L.markerClusterGroup !== 'undefined') ? ' (geclusterd)' : '';
+            showNotification(`${geojsonData.features.length} campings geladen${clusterText}`, 'success');
         })
         .catch(error => {
             hideLoadingOverlay();
@@ -581,7 +598,9 @@ function loadVriendenGeoJSON() {
             }
             
             hideLoadingOverlay();
-            showNotification(`${geojsonData.features.length} Vrienden op de Fiets locaties geladen (geclusterd)`, 'success');
+            
+            const clusterText = (typeof L.markerClusterGroup !== 'undefined') ? ' (geclusterd)' : '';
+            showNotification(`${geojsonData.features.length} Vrienden op de Fiets locaties geladen${clusterText}`, 'success');
         })
         .catch(error => {
             hideLoadingOverlay();
