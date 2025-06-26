@@ -145,24 +145,29 @@ function initMap() {
 
 // Setup mobile-specific features
 function setupMobileFeatures() {
-    // Create overlay for mobile sidebar
-    if (isMobile) {
-        const overlay = document.createElement('div');
+    // Always create overlay for mobile sidebar (might be needed after resize)
+    let overlay = document.querySelector('.sidebar-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
         overlay.className = 'sidebar-overlay';
         overlay.addEventListener('click', closeSidebar);
         document.body.appendChild(overlay);
-        
-        // Auto-close sidebar when selecting routes on mobile
-        const originalShowSelectedRoute = showSelectedRoute;
-        showSelectedRoute = function() {
+    }
+    
+    // Auto-close sidebar when selecting routes on mobile
+    const originalShowSelectedRoute = window.showSelectedRoute;
+    if (originalShowSelectedRoute) {
+        window.showSelectedRoute = function() {
             originalShowSelectedRoute();
             if (isMobile) {
                 closeSidebar();
             }
         };
-        
-        // Prevent map interactions when sidebar is open on mobile
-        const sidebar = document.getElementById('sidebar');
+    }
+    
+    // Prevent map interactions when sidebar is open on mobile
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) {
         sidebar.addEventListener('touchstart', function(e) {
             e.stopPropagation();
         });
@@ -204,12 +209,24 @@ function setupMobileFeatures() {
 
 // Toggle sidebar on mobile
 function toggleSidebar() {
-    if (!isMobile) return;
+    const sidebar = document.getElementById('sidebar');
+    let overlay = document.querySelector('.sidebar-overlay');
+    const toggle = document.querySelector('.sidebar-toggle');
+    
+    // Create overlay if it doesn't exist
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.className = 'sidebar-overlay';
+        overlay.addEventListener('click', closeSidebar);
+        document.body.appendChild(overlay);
+    }
+    
+    if (!sidebar || !toggle) {
+        console.error('Sidebar elements not found');
+        return;
+    }
     
     sidebarOpen = !sidebarOpen;
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.querySelector('.sidebar-overlay');
-    const toggle = document.querySelector('.sidebar-toggle');
     
     if (sidebarOpen) {
         sidebar.classList.add('open');
@@ -228,15 +245,16 @@ function toggleSidebar() {
 
 // Close sidebar
 function closeSidebar() {
-    if (!isMobile || !sidebarOpen) return;
-    
-    sidebarOpen = false;
     const sidebar = document.getElementById('sidebar');
     const overlay = document.querySelector('.sidebar-overlay');
     const toggle = document.querySelector('.sidebar-toggle');
     
+    if (!sidebar || !toggle) return;
+    
+    sidebarOpen = false;
+    
     sidebar.classList.remove('open');
-    overlay.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
     toggle.classList.remove('open');
     toggle.innerHTML = '<i class="fas fa-bars"></i>';
     document.body.style.overflow = '';
