@@ -600,25 +600,118 @@ function addRouteToMap(routeData) {
 function showRouteInfoInPanel(feature) {
     const props = feature.properties;
     
+    // Calculate route distance if geometry is available
+    let routeDistance = 0;
+    let routeDistanceText = 'Onbekend';
+    
+    if (feature.geometry && feature.geometry.coordinates) {
+        let coordinates;
+        
+        if (feature.geometry.type === 'LineString') {
+            coordinates = feature.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+        } else if (feature.geometry.type === 'MultiLineString') {
+            coordinates = feature.geometry.coordinates[0].map(coord => [coord[1], coord[0]]);
+        }
+        
+        if (coordinates && coordinates.length > 1) {
+            for (let i = 1; i < coordinates.length; i++) {
+                const prevPoint = L.latLng(coordinates[i-1]);
+                const currentPoint = L.latLng(coordinates[i]);
+                routeDistance += prevPoint.distanceTo(currentPoint);
+            }
+            
+            // Convert to kilometers
+            const distanceKm = routeDistance / 1000;
+            routeDistanceText = distanceKm < 1 ? 
+                `${Math.round(routeDistance)} meter` : 
+                `${distanceKm.toFixed(1)} km`;
+        }
+    }
+    
+    // Estimate walking time (4 km/h average)
+    let walkingTimeText = 'Onbekend';
+    if (routeDistance > 0) {
+        const walkingTimeHours = (routeDistance / 1000) / 4;
+        const hours = Math.floor(walkingTimeHours);
+        const minutes = Math.round((walkingTimeHours - hours) * 60);
+        
+        if (hours > 0) {
+            walkingTimeText = `${hours}u ${minutes}min`;
+        } else {
+            walkingTimeText = `${minutes} minuten`;
+        }
+    }
+    
     const panelContent = `
         <div class="route-info-card">
             <div class="route-info-header">
-                <div class="route-info-title">${props.lawnaam || 'LAW Route'}</div>
+                <div class="route-info-title">
+                    <i class="fas fa-route"></i>
+                    ${props.lawnaam || 'LAW Route'}
+                </div>
+                <div class="route-info-badge">
+                    <i class="fas fa-hiking"></i>
+                    Wandelroute
+                </div>
+            </div>
+            
+            <div class="route-stats-grid">
+                <div class="route-stat">
+                    <div class="stat-icon">
+                        <i class="fas fa-ruler-horizontal"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">${routeDistanceText}</div>
+                        <div class="stat-label">Totale afstand</div>
+                    </div>
+                </div>
+                
+                <div class="route-stat">
+                    <div class="stat-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">${walkingTimeText}</div>
+                        <div class="stat-label">Looptijd (4 km/u)</div>
+                    </div>
+                </div>
             </div>
             
             ${props.etappe || props.etappnaam ? `
                 <div class="route-info-section">
                     <h4><i class="fas fa-map-marker-alt"></i> Etappe Informatie</h4>
-                    ${props.etappe ? `<p><strong>Etappe:</strong> ${props.etappe}</p>` : ''}
-                    ${props.etappnaam ? `<p><strong>Naam:</strong> ${props.etappnaam}</p>` : ''}
+                    ${props.etappe ? `<p><strong>Etappe nummer:</strong> ${props.etappe}</p>` : ''}
+                    ${props.etappnaam ? `<p><strong>Etappe naam:</strong> ${props.etappnaam}</p>` : ''}
                 </div>
             ` : ''}
             
             ${props.van || props.naar ? `
                 <div class="route-info-section">
                     <h4><i class="fas fa-route"></i> Route Traject</h4>
-                    ${props.van ? `<p><strong>Van:</strong> ${props.van}</p>` : ''}
-                    ${props.naar ? `<p><strong>Naar:</strong> ${props.naar}</p>` : ''}
+                    ${props.van ? `<p><strong>Startpunt:</strong> ${props.van}</p>` : ''}
+                    ${props.naar ? `<p><strong>Eindpunt:</strong> ${props.naar}</p>` : ''}
+                    ${props.van && props.naar ? `
+                        <div class="route-direction">
+                            <i class="fas fa-long-arrow-alt-right"></i>
+                            <span>${props.van} → ${props.naar}</span>
+                        </div>
+                    ` : ''}
+                </div>
+            ` : ''}
+            
+            ${props.oppervlak || props.verharding ? `
+                <div class="route-info-section">
+                    <h4><i class="fas fa-road"></i> Wegtype & Ondergrond</h4>
+                    ${props.oppervlak ? `<p><strong>Ondergrond:</strong> ${props.oppervlak}</p>` : ''}
+                    ${props.verharding ? `<p><strong>Verharding:</strong> ${props.verharding}</p>` : ''}
+                </div>
+            ` : ''}
+            
+            ${props.markering || props.bewegwijzering ? `
+                <div class="route-info-section">
+                    <h4><i class="fas fa-map-signs"></i> Bewegwijzering</h4>
+                    ${props.markering ? `<p><strong>Markering:</strong> ${props.markering}</p>` : ''}
+                    ${props.bewegwijzering ? `<p><strong>Bewegwijzering:</strong> ${props.bewegwijzering}</p>` : ''}
                 </div>
             ` : ''}
             
@@ -627,11 +720,24 @@ function showRouteInfoInPanel(feature) {
                     <i class="fas fa-eye-slash"></i>
                     Verberg highlight
                 </button>
+                <button class="zoom-btn" onclick="zoomToEtappe()">
+                    <i class="fas fa-search-plus"></i>
+                    Zoom naar etappe
+                </button>
+            </div>
+            
+            <div class="route-info-tip">
+                <i class="fas fa-lightbulb"></i>
+                <span>Tip: Klik op een andere route lijn om meer etappes te bekijken</span>
             </div>
         </div>
     `;
     
     document.getElementById('routeInfoPanel').innerHTML = panelContent;
+    
+    // Store current feature for zoom functionality
+    window.currentEtappeFeature = feature;
+    
     switchToRouteInfoTab();
 }
 
@@ -776,9 +882,12 @@ function interpolatePosition(coordinates, targetDistance) {
     return null;
 }
 
+// Zoom to current etappe
 function clearEtappeHighlight() {
     highlightLayer.clearLayers();
+    window.currentEtappeFeature = null;
     document.getElementById('routeInfoPanel').innerHTML = '<div class="empty-state">Geen etappe geselecteerd</div>';
+    showNotification('Highlight verwijderd', 'info');
 }
 
 function updateActiveRoutesDisplay() {
