@@ -190,15 +190,22 @@ function setupMobileFeatures() {
         const wasMobile = isMobile;
         isMobile = window.innerWidth <= 768;
         
+        console.log('Window resized, isMobile:', isMobile, 'wasMobile:', wasMobile);
+        
         if (wasMobile && !isMobile) {
             // Switched from mobile to desktop
             closeSidebar();
             const sidebar = document.getElementById('sidebar');
-            sidebar.style.left = '';
+            if (sidebar) {
+                sidebar.style.left = '';
+                sidebar.classList.remove('open');
+            }
         } else if (!wasMobile && isMobile) {
             // Switched from desktop to mobile
             const sidebar = document.getElementById('sidebar');
-            sidebar.style.left = '-100%';
+            if (sidebar && !sidebarOpen) {
+                sidebar.style.left = '-100%';
+            }
         }
         
         setTimeout(function() {
@@ -209,6 +216,8 @@ function setupMobileFeatures() {
 
 // Toggle sidebar on mobile
 function toggleSidebar() {
+    console.log('Toggle sidebar called, isMobile:', isMobile, 'sidebarOpen:', sidebarOpen);
+    
     const sidebar = document.getElementById('sidebar');
     let overlay = document.querySelector('.sidebar-overlay');
     const toggle = document.querySelector('.sidebar-toggle');
@@ -219,14 +228,16 @@ function toggleSidebar() {
         overlay.className = 'sidebar-overlay';
         overlay.addEventListener('click', closeSidebar);
         document.body.appendChild(overlay);
+        console.log('Created overlay');
     }
     
     if (!sidebar || !toggle) {
-        console.error('Sidebar elements not found');
+        console.error('Sidebar elements not found', { sidebar: !!sidebar, toggle: !!toggle });
         return;
     }
     
     sidebarOpen = !sidebarOpen;
+    console.log('New sidebarOpen state:', sidebarOpen);
     
     if (sidebarOpen) {
         sidebar.classList.add('open');
@@ -234,12 +245,14 @@ function toggleSidebar() {
         toggle.classList.add('open');
         toggle.innerHTML = '<i class="fas fa-times"></i>';
         document.body.style.overflow = 'hidden';
+        console.log('Sidebar opened');
     } else {
         sidebar.classList.remove('open');
         overlay.classList.remove('active');
         toggle.classList.remove('open');
         toggle.innerHTML = '<i class="fas fa-bars"></i>';
         document.body.style.overflow = '';
+        console.log('Sidebar closed');
     }
 }
 
