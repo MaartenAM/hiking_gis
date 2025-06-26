@@ -171,43 +171,74 @@ function initializeClustering() {
     if (typeof L.markerClusterGroup !== 'undefined') {
         console.log('MarkerCluster library loaded, initializing clustering...');
         
-        campingClusterGroup = L.markerClusterGroup({
-            maxClusterRadius: 50,
-            spiderfyOnMaxZoom: true,
-            showCoverageOnHover: false,
-            zoomToBoundsOnClick: true,
-            iconCreateFunction: function(cluster) {
-                const count = cluster.getChildCount();
-                let size = 'small';
-                if (count > 10) size = 'medium';
-                if (count > 25) size = 'large';
-                
-                return L.divIcon({
-                    html: `<div class="cluster-inner camping-cluster">${count}</div>`,
-                    className: `marker-cluster marker-cluster-${size}`,
-                    iconSize: L.point(40, 40)
-                });
-            }
-        });
+        try {
+            campingClusterGroup = L.markerClusterGroup({
+                maxClusterRadius: 50,
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: false,
+                zoomToBoundsOnClick: true,
+                iconCreateFunction: function(cluster) {
+                    const count = cluster.getChildCount();
+                    let size = 'small';
+                    if (count > 10) size = 'medium';
+                    if (count > 25) size = 'large';
+                    
+                    return L.divIcon({
+                        html: `<div class="cluster-inner camping-cluster">${count}</div>`,
+                        className: `marker-cluster marker-cluster-${size}`,
+                        iconSize: L.point(40, 40)
+                    });
+                }
+            });
 
-        vriendenClusterGroup = L.markerClusterGroup({
-            maxClusterRadius: 50,
-            spiderfyOnMaxZoom: true,
-            showCoverageOnHover: false,
-            zoomToBoundsOnClick: true,
-            iconCreateFunction: function(cluster) {
-                const count = cluster.getChildCount();
-                let size = 'small';
-                if (count > 10) size = 'medium';
-                if (count > 25) size = 'large';
-                
-                return L.divIcon({
-                    html: `<div class="cluster-inner vrienden-cluster">${count}</div>`,
-                    className: `marker-cluster marker-cluster-${size}`,
-                    iconSize: L.point(40, 40)
+            vriendenClusterGroup = L.markerClusterGroup({
+                maxClusterRadius: 50,
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: false,
+                zoomToBoundsOnClick: true,
+                iconCreateFunction: function(cluster) {
+                    const count = cluster.getChildCount();
+                    let size = 'small';
+                    if (count > 10) size = 'medium';
+                    if (count > 25) size = 'large';
+                    
+                    return L.divIcon({
+                        html: `<div class="cluster-inner vrienden-cluster">${count}</div>`,
+                        className: `marker-cluster marker-cluster-${size}`,
+                        iconSize: L.point(40, 40)
+                    });
+                }
+            });
+            
+            console.log('Clustering groups created successfully');
+            
+            // Update existing cluster groups if they were using fallback
+            if (campingVisible && campingClusterGroup !== campingLayer) {
+                console.log('Updating camping layer to use clustering');
+                // Transfer markers from simple layer to cluster group if needed
+                campingLayer.eachLayer(function(layer) {
+                    campingClusterGroup.addLayer(layer);
                 });
+                map.removeLayer(campingLayer);
+                map.addLayer(campingClusterGroup);
             }
-        });
+            
+            if (vriendenVisible && vriendenClusterGroup !== vriendenLayer) {
+                console.log('Updating vrienden layer to use clustering');
+                // Transfer markers from simple layer to cluster group if needed
+                vriendenLayer.eachLayer(function(layer) {
+                    vriendenClusterGroup.addLayer(layer);
+                });
+                map.removeLayer(vriendenLayer);
+                map.addLayer(vriendenClusterGroup);
+            }
+            
+        } catch (error) {
+            console.error('Error initializing clustering:', error);
+            // Fallback to simple layers
+            campingClusterGroup = campingLayer;
+            vriendenClusterGroup = vriendenLayer;
+        }
     } else {
         console.log('MarkerCluster library not available, using simple layer groups');
         campingClusterGroup = campingLayer;
@@ -483,49 +514,35 @@ function toggleCampingLayer() {
 function loadCampingGeoJSON() {
     showLoadingOverlay('Campings laden...');
     
-    console.log('Loading camping GeoJSON from:', './data/campings.geojson');
-    
     fetch('./data/campings.geojson')
         .then(response => {
-            console.log('Camping fetch response status:', response.status);
-            console.log('Camping fetch response ok:', response.ok);
-            
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw new Error('GeoJSON bestand niet gevonden');
             }
             return response.json();
         })
         .then(geojsonData => {
-            console.log('Camping GeoJSON data loaded:', geojsonData);
             campingClusterGroup.clearLayers();
             
-            if (!geojsonData.features || geojsonData.features.length === 0) {
-                throw new Error('Geen features gevonden in camping GeoJSON bestand');
-            }
-            
-            geojsonData.features.forEach((feature, index) => {
-                try {
-                    const coords = feature.geometry.coordinates;
-                    const props = feature.properties;
-                    
-                    const popupContent = `
-                        <div class="camping-popup">
-                            <h4><i class="fas fa-campground"></i> ${props.name || 'Camping'}</h4>
-                            ${props.operator ? `<p><strong>Beheerder:</strong> ${props.operator}</p>` : ''}
-                            ${props.access ? `<p><strong>Toegang:</strong> ${props.access}</p>` : ''}
-                            ${props.house ? `<p><strong>Accommodatie:</strong> ${props.house}</p>` : ''}
-                            <p style="font-size: 10px; color: #666;">OSM ID: ${props.osm_id}</p>
-                        </div>
-                    `;
-                    
-                    const marker = L.marker([coords[1], coords[0]], {
-                        icon: campingIcon
-                    }).bindPopup(popupContent);
-                    
-                    campingClusterGroup.addLayer(marker);
-                } catch (featureError) {
-                    console.error(`Error processing camping feature ${index}:`, featureError, feature);
-                }
+            geojsonData.features.forEach(feature => {
+                const coords = feature.geometry.coordinates;
+                const props = feature.properties;
+                
+                const popupContent = `
+                    <div class="camping-popup">
+                        <h4><i class="fas fa-campground"></i> ${props.name || 'Camping'}</h4>
+                        ${props.operator ? `<p><strong>Beheerder:</strong> ${props.operator}</p>` : ''}
+                        ${props.access ? `<p><strong>Toegang:</strong> ${props.access}</p>` : ''}
+                        ${props.house ? `<p><strong>Accommodatie:</strong> ${props.house}</p>` : ''}
+                        <p style="font-size: 10px; color: #666;">OSM ID: ${props.osm_id}</p>
+                    </div>
+                `;
+                
+                const marker = L.marker([coords[1], coords[0]], {
+                    icon: campingIcon
+                }).bindPopup(popupContent);
+                
+                campingClusterGroup.addLayer(marker);
             });
             
             map.addLayer(campingClusterGroup);
@@ -542,19 +559,8 @@ function loadCampingGeoJSON() {
             showNotification(`${geojsonData.features.length} campings geladen${clusterText}`, 'success');
         })
         .catch(error => {
-            console.error('Error loading camping GeoJSON:', error);
             hideLoadingOverlay();
-            
-            let errorMessage = 'Fout bij laden camping data: ';
-            if (error.message.includes('HTTP error')) {
-                errorMessage += `Bestand niet gevonden (${error.message}). Controleer of data/campings.geojson bestaat.`;
-            } else if (error.message.includes('Failed to fetch')) {
-                errorMessage += 'Netwerk fout. Controleer of je een lokale server draait (bijv. Live Server in VS Code).';
-            } else {
-                errorMessage += error.message;
-            }
-            
-            showNotification(errorMessage, 'error');
+            showNotification('Campings GeoJSON niet gevonden in data/campings.geojson', 'error');
         });
 }
 
@@ -580,62 +586,80 @@ function toggleVriendenLayer() {
 function loadVriendenGeoJSON() {
     showLoadingOverlay('Vrienden op de Fiets laden...');
     
-    // Debug: log current URL info
-    console.log('Current URL:', window.location.href);
-    console.log('Trying to fetch:', './data/vrienden-op-de-fiets.geojson');
-    
     fetch('./data/vrienden-op-de-fiets.geojson')
         .then(response => {
-            console.log('Fetch response status:', response.status);
-            console.log('Fetch response ok:', response.ok);
-            console.log('Fetch response url:', response.url);
-            
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw new Error('GeoJSON bestand niet gevonden');
             }
             return response.json();
         })
         .then(geojsonData => {
-            console.log('GeoJSON data loaded:', geojsonData);
-            console.log('Features count:', geojsonData.features ? geojsonData.features.length : 'No features');
-            
             vriendenClusterGroup.clearLayers();
             
-            if (!geojsonData.features || geojsonData.features.length === 0) {
-                throw new Error('Geen features gevonden in GeoJSON bestand');
-            }
-            
-            geojsonData.features.forEach((feature, index) => {
-                try {
-                    const coords = feature.geometry.coordinates;
-                    const props = feature.properties;
+            geojsonData.features.forEach(feature => {
+                const coords = feature.geometry.coordinates;
+                const props = feature.properties;
+                
+                // Format availability dates
+                let availabilityText = '';
+                if (props.nietbeschikbaarvanaf || props.nietbeschikbaartm) {
+                    const van = props.nietbeschikbaarvanaf ? new Date(props.nietbeschikbaarvanaf).toLocaleDateString('nl-NL') : '';
+                    const tm = props.nietbeschikbaartm ? new Date(props.nietbeschikbaartm).toLocaleDateString('nl-NL') : '';
                     
-                    // Debug first few features
-                    if (index < 3) {
-                        console.log(`Feature ${index}:`, feature);
+                    if (van && tm) {
+                        availabilityText = `<p><strong>Niet beschikbaar:</strong> ${van} - ${tm}</p>`;
+                    } else if (van) {
+                        availabilityText = `<p><strong>Niet beschikbaar vanaf:</strong> ${van}</p>`;
+                    } else if (tm) {
+                        availabilityText = `<p><strong>Niet beschikbaar tot:</strong> ${tm}</p>`;
                     }
-                    
-                    const popupContent = `
-                        <div class="vrienden-popup">
-                            <h4><i class="fas fa-bicycle"></i> ${props.name || props.naam || 'Vrienden op de Fiets'}</h4>
-                            ${props.adres || props.address ? `<p><strong>Adres:</strong> ${props.adres || props.address}</p>` : ''}
-                            ${props.plaats || props.city ? `<p><strong>Plaats:</strong> ${props.plaats || props.city}</p>` : ''}
-                            ${props.telefoon || props.phone ? `<p><strong>Telefoon:</strong> ${props.telefoon || props.phone}</p>` : ''}
-                            ${props.email ? `<p><strong>Email:</strong> ${props.email}</p>` : ''}
-                            ${props.website ? `<p><strong>Website:</strong> <a href="${props.website}" target="_blank">${props.website}</a></p>` : ''}
-                            ${props.beschrijving || props.description ? `<div class="vrienden-description">${props.beschrijving || props.description}</div>` : ''}
-                            <p style="font-size: 10px; color: #666; margin-top: 8px;">Vrienden op de Fiets locatie</p>
-                        </div>
-                    `;
-                    
-                    const marker = L.marker([coords[1], coords[0]], {
-                        icon: vriendenIcon
-                    }).bindPopup(popupContent);
-                    
-                    vriendenClusterGroup.addLayer(marker);
-                } catch (featureError) {
-                    console.error(`Error processing feature ${index}:`, featureError, feature);
                 }
+                
+                // Format room information
+                let roomInfo = '';
+                if (props.verblijftype) {
+                    roomInfo += `<p><strong>Type:</strong> ${props.verblijftype}</p>`;
+                }
+                if (props.kamers) {
+                    roomInfo += `<p><strong>Kamers:</strong> ${props.kamers}</p>`;
+                }
+                if (props.eenpersoonsbedden !== undefined && props.eenpersoonsbedden !== null) {
+                    roomInfo += `<p><strong>Eenpersoonsbedden:</strong> ${props.eenpersoonsbedden}</p>`;
+                }
+                
+                const popupContent = `
+                    <div class="vrienden-popup">
+                        <h4><i class="fas fa-bicycle"></i> ${props.name || props.naam || 'Vrienden op de Fiets'}</h4>
+                        ${props.adres || props.address ? `<p><strong>Adres:</strong> ${props.adres || props.address}</p>` : ''}
+                        ${props.plaats || props.city ? `<p><strong>Plaats:</strong> ${props.plaats || props.city}</p>` : ''}
+                        
+                        ${roomInfo ? `
+                            <div class="vrienden-accommodation">
+                                <h5><i class="fas fa-bed"></i> Accommodatie</h5>
+                                ${roomInfo}
+                            </div>
+                        ` : ''}
+                        
+                        ${availabilityText ? `
+                            <div class="vrienden-availability">
+                                <h5><i class="fas fa-calendar-times"></i> Beschikbaarheid</h5>
+                                ${availabilityText}
+                            </div>
+                        ` : ''}
+                        
+                        ${props.telefoon || props.phone ? `<p><strong>Telefoon:</strong> ${props.telefoon || props.phone}</p>` : ''}
+                        ${props.email ? `<p><strong>Email:</strong> ${props.email}</p>` : ''}
+                        ${props.website ? `<p><strong>Website:</strong> <a href="${props.website}" target="_blank">${props.website}</a></p>` : ''}
+                        ${props.beschrijving || props.description ? `<div class="vrienden-description">${props.beschrijving || props.description}</div>` : ''}
+                        <p style="font-size: 10px; color: #666; margin-top: 8px;">Vrienden op de Fiets locatie</p>
+                    </div>
+                `;
+                
+                const marker = L.marker([coords[1], coords[0]], {
+                    icon: vriendenIcon
+                }).bindPopup(popupContent);
+                
+                vriendenClusterGroup.addLayer(marker);
             });
             
             map.addLayer(vriendenClusterGroup);
@@ -652,20 +676,8 @@ function loadVriendenGeoJSON() {
             showNotification(`${geojsonData.features.length} Vrienden op de Fiets locaties geladen${clusterText}`, 'success');
         })
         .catch(error => {
-            console.error('Error loading Vrienden op de Fiets GeoJSON:', error);
             hideLoadingOverlay();
-            
-            // More detailed error message
-            let errorMessage = 'Fout bij laden Vrienden op de Fiets data: ';
-            if (error.message.includes('HTTP error')) {
-                errorMessage += `Bestand niet gevonden (${error.message}). Controleer of data/vrienden-op-de-fiets.geojson bestaat.`;
-            } else if (error.message.includes('Failed to fetch')) {
-                errorMessage += 'Netwerk fout. Controleer of je een lokale server draait (bijv. Live Server in VS Code).';
-            } else {
-                errorMessage += error.message;
-            }
-            
-            showNotification(errorMessage, 'error');
+            showNotification('Vrienden op de Fiets GeoJSON niet gevonden in data/vrienden-op-de-fiets.geojson', 'error');
         });
 }
 
