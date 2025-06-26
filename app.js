@@ -83,6 +83,8 @@ const vriendenIcon = L.icon({
     iconAnchor: [12, 24],
     popupAnchor: [0, -24]
 });
+
+// Camping icon
 const campingIcon = L.icon({
     iconUrl: 'data:image/svg+xml;base64,' + btoa(`
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
@@ -147,12 +149,9 @@ function initMap() {
         highlightLayer = L.layerGroup();
         highlightLayer.addTo(map);
 
-        // Initialize simple layer groups (clustering will be added later if library loads)
+        // Initialize layer groups
         campingLayer = L.layerGroup();
         vriendenLayer = L.layerGroup();
-        
-        // Try to initialize clustering if available
-        initializeClustering();
 
         setupEventListeners();
         setupTabNavigation();
@@ -164,118 +163,15 @@ function initMap() {
     }
 }
 
-// Initialize clustering if library is available
-function initializeClustering() {
-    if (typeof L.markerClusterGroup !== 'undefined') {
-        console.log('MarkerCluster library loaded, initializing clustering...');
-        
-        try {
-            campingClusterGroup = L.markerClusterGroup({
-                maxClusterRadius: 50,
-                spiderfyOnMaxZoom: true,
-                showCoverageOnHover: false,
-                zoomToBoundsOnClick: true,
-                iconCreateFunction: function(cluster) {
-                    const count = cluster.getChildCount();
-                    let size = 'small';
-                    if (count > 10) size = 'medium';
-                    if (count > 25) size = 'large';
-                    
-                    return L.divIcon({
-                        html: `<div class="cluster-inner camping-cluster">${count}</div>`,
-                        className: `marker-cluster marker-cluster-${size}`,
-                        iconSize: L.point(40, 40)
-                    });
-                }
-            });
-
-            vriendenClusterGroup = L.markerClusterGroup({
-                maxClusterRadius: 50,
-                spiderfyOnMaxZoom: true,
-                showCoverageOnHover: false,
-                zoomToBoundsOnClick: true,
-                iconCreateFunction: function(cluster) {
-                    const count = cluster.getChildCount();
-                    let size = 'small';
-                    if (count > 10) size = 'medium';
-                    if (count > 25) size = 'large';
-                    
-                    return L.divIcon({
-                        html: `<div class="cluster-inner vrienden-cluster">${count}</div>`,
-                        className: `marker-cluster marker-cluster-${size}`,
-                        iconSize: L.point(40, 40)
-                    });
-                }
-            });
-            
-            console.log('Clustering groups created successfully');
-            
-            // Update existing cluster groups if they were using fallback
-            if (campingVisible && campingClusterGroup !== campingLayer) {
-                console.log('Updating camping layer to use clustering');
-                // Transfer markers from simple layer to cluster group if needed
-                campingLayer.eachLayer(function(layer) {
-                    campingClusterGroup.addLayer(layer);
-                });
-                map.removeLayer(campingLayer);
-                map.addLayer(campingClusterGroup);
-            }
-            
-            if (vriendenVisible && vriendenClusterGroup !== vriendenLayer) {
-                console.log('Updating vrienden layer to use clustering');
-                // Transfer markers from simple layer to cluster group if needed
-                vriendenLayer.eachLayer(function(layer) {
-                    vriendenClusterGroup.addLayer(layer);
-                });
-                map.removeLayer(vriendenLayer);
-                map.addLayer(vriendenClusterGroup);
-            }
-            
-        } catch (error) {
-            console.error('Error initializing clustering:', error);
-            // Fallback to simple layers
-            campingClusterGroup = campingLayer;
-            vriendenClusterGroup = vriendenLayer;
-        }
-    } else {
-        console.log('MarkerCluster library not available, using simple layer groups');
-        campingClusterGroup = campingLayer;
-        vriendenClusterGroup = vriendenLayer;
-    }
-}
-
 // Setup mobile-specific features
 function setupMobileFeatures() {
-    // Always create overlay for mobile sidebar (might be needed after resize)
+    // Create overlay for mobile sidebar
     let overlay = document.querySelector('.sidebar-overlay');
     if (!overlay) {
         overlay = document.createElement('div');
         overlay.className = 'sidebar-overlay';
         overlay.addEventListener('click', closeSidebar);
         document.body.appendChild(overlay);
-    }
-    
-    // Auto-close sidebar when selecting routes on mobile
-    const originalShowSelectedRoute = window.showSelectedRoute;
-    if (originalShowSelectedRoute) {
-        window.showSelectedRoute = function() {
-            originalShowSelectedRoute();
-            if (isMobile) {
-                closeSidebar();
-            }
-        };
-    }
-    
-    // Prevent map interactions when sidebar is open on mobile
-    const sidebar = document.getElementById('sidebar');
-    if (sidebar) {
-        sidebar.addEventListener('touchstart', function(e) {
-            e.stopPropagation();
-        });
-        
-        sidebar.addEventListener('touchmove', function(e) {
-            e.stopPropagation();
-        });
     }
     
     // Handle orientation changes
@@ -291,10 +187,7 @@ function setupMobileFeatures() {
         const wasMobile = isMobile;
         isMobile = window.innerWidth <= 768;
         
-        console.log('Window resized, isMobile:', isMobile, 'wasMobile:', wasMobile);
-        
         if (wasMobile && !isMobile) {
-            // Switched from mobile to desktop
             closeSidebar();
             const sidebar = document.getElementById('sidebar');
             if (sidebar) {
@@ -302,7 +195,6 @@ function setupMobileFeatures() {
                 sidebar.classList.remove('open');
             }
         } else if (!wasMobile && isMobile) {
-            // Switched from desktop to mobile
             const sidebar = document.getElementById('sidebar');
             if (sidebar && !sidebarOpen) {
                 sidebar.style.left = '-100%';
@@ -323,13 +215,11 @@ function toggleSidebar() {
     let overlay = document.querySelector('.sidebar-overlay');
     const toggle = document.querySelector('.sidebar-toggle');
     
-    // Create overlay if it doesn't exist
     if (!overlay) {
         overlay = document.createElement('div');
         overlay.className = 'sidebar-overlay';
         overlay.addEventListener('click', closeSidebar);
         document.body.appendChild(overlay);
-        console.log('Created overlay');
     }
     
     if (!sidebar || !toggle) {
@@ -338,7 +228,6 @@ function toggleSidebar() {
     }
     
     sidebarOpen = !sidebarOpen;
-    console.log('New sidebarOpen state:', sidebarOpen);
     
     if (sidebarOpen) {
         sidebar.classList.add('open');
@@ -346,14 +235,12 @@ function toggleSidebar() {
         toggle.classList.add('open');
         toggle.innerHTML = '<i class="fas fa-times"></i>';
         document.body.style.overflow = 'hidden';
-        console.log('Sidebar opened');
     } else {
         sidebar.classList.remove('open');
         overlay.classList.remove('active');
         toggle.classList.remove('open');
         toggle.innerHTML = '<i class="fas fa-bars"></i>';
         document.body.style.overflow = '';
-        console.log('Sidebar closed');
     }
 }
 
@@ -423,7 +310,6 @@ function setupEventListeners() {
         if (measuring) {
             addMeasurePoint(e.latlng);
         } else if (activeRoutes.length > 0) {
-            // Check for route info
             activeRoutes.forEach(route => {
                 const bounds = map.getBounds();
                 const size = map.getSize();
@@ -459,7 +345,6 @@ function setupEventListeners() {
                                 showRouteInfoInPanel(filteredFeatures[0]);
                                 highlightEtappe(filteredFeatures[0]);
                                 
-                                // Auto-close sidebar on mobile after showing route info
                                 if (isMobile) {
                                     setTimeout(() => {
                                         closeSidebar();
@@ -490,46 +375,7 @@ function switchBaseLayer(layerType) {
 
 // ============ CAMPING FUNCTIONALITY ============
 
-// Auto-load functions for zoom-based loading
-function autoLoadCampings() {
-    console.log('Auto-loading campings at zoom level', map.getZoom());
-    showNotification('Campings worden geladen...', 'info');
-    loadCampingGeoJSON(true); // true = auto-loaded
-}
-
-function autoLoadVrienden() {
-    console.log('Auto-loading vrienden at zoom level', map.getZoom());
-    showNotification('Vrienden op de Fiets worden geladen...', 'info');
-    loadVriendenGeoJSON(true); // true = auto-loaded
-}
-
-function showCampingLayer() {
-    map.addLayer(campingLayer);
-    campingVisible = true;
-    const card = document.getElementById('camping-layer-card');
-    if (card) card.classList.add('active');
-}
-
-function hideCampingLayer() {
-    map.removeLayer(campingLayer);
-    campingVisible = false;
-    const card = document.getElementById('camping-layer-card');
-    if (card) card.classList.remove('active');
-}
-
-function showVriendenLayer() {
-    map.addLayer(vriendenLayer);
-    vriendenVisible = true;
-    const card = document.getElementById('vrienden-layer-card');
-    if (card) card.classList.add('active');
-}
-
-function hideVriendenLayer() {
-    map.removeLayer(vriendenLayer);
-    vriendenVisible = false;
-    const card = document.getElementById('vrienden-layer-card');
-    if (card) card.classList.remove('active');
-}
+function toggleCampingLayer() {
     campingVisible = !campingVisible;
     const card = document.getElementById('camping-layer-card');
     
@@ -559,7 +405,6 @@ function loadCampingGeoJSON() {
             return response.json();
         })
         .then(geojsonData => {
-            console.log('Loading', geojsonData.features.length, 'camping markers');
             campingLayer.clearLayers();
             
             geojsonData.features.forEach(feature => {
@@ -583,7 +428,6 @@ function loadCampingGeoJSON() {
                 campingLayer.addLayer(marker);
             });
             
-            console.log('Added', campingLayer.getLayers().length, 'markers to camping layer');
             map.addLayer(campingLayer);
             campingVisible = true;
             
@@ -598,7 +442,6 @@ function loadCampingGeoJSON() {
         .catch(error => {
             hideLoadingOverlay();
             showNotification('Campings GeoJSON niet gevonden in data/campings.geojson', 'error');
-            console.error('Error loading campings:', error);
         });
 }
 
@@ -632,7 +475,6 @@ function loadVriendenGeoJSON() {
             return response.json();
         })
         .then(geojsonData => {
-            console.log('Loading', geojsonData.features.length, 'vrienden markers');
             vriendenLayer.clearLayers();
             
             geojsonData.features.forEach(feature => {
@@ -701,7 +543,6 @@ function loadVriendenGeoJSON() {
                 vriendenLayer.addLayer(marker);
             });
             
-            console.log('Added', vriendenLayer.getLayers().length, 'markers to vrienden layer');
             map.addLayer(vriendenLayer);
             vriendenVisible = true;
             
@@ -711,17 +552,15 @@ function loadVriendenGeoJSON() {
             }
             
             hideLoadingOverlay();
-            
-            const currentZoom = map.getZoom();
-            const autoText = currentZoom >= 12 ? ' (automatisch bij zoom)' : '';
-            showNotification(`${geojsonData.features.length} Vrienden op de Fiets locaties geladen${autoText}`, 'success');
+            showNotification(`${geojsonData.features.length} Vrienden op de Fiets locaties geladen`, 'success');
         })
         .catch(error => {
             hideLoadingOverlay();
             showNotification('Vrienden op de Fiets GeoJSON niet gevonden in data/vrienden-op-de-fiets.geojson', 'error');
-            console.error('Error loading vrienden:', error);
         });
 }
+
+// ============ ROUTE FUNCTIONALITY ============
 
 // Simplified route adding function
 function addLAWRoute(routeValue, routeFilter) {
@@ -769,77 +608,6 @@ function addLAWRoute(routeValue, routeFilter) {
     if (isMobile) {
         setTimeout(() => closeSidebar(), 1000);
     }
-}
-
-function loadRouteOptions() {
-    const routeType = document.getElementById('routeTypeSelect').value;
-    const specificSelect = document.getElementById('specificRouteSelect');
-    const step2 = document.getElementById('step2');
-    const step3 = document.getElementById('step3');
-    
-    if (routeType === 'law' && routeDefinitions.law) {
-        step2.style.display = 'block';
-        
-        specificSelect.innerHTML = '<option value="">-- Selecteer een LAW route --</option>';
-        routeDefinitions.law.forEach(route => {
-            const option = document.createElement('option');
-            option.value = route.value;
-            option.textContent = route.name;
-            option.dataset.filter = route.filter;
-            option.dataset.type = routeType;
-            specificSelect.appendChild(option);
-        });
-        
-        specificSelect.onchange = function() {
-            if (this.value) {
-                step3.style.display = 'block';
-            } else {
-                step3.style.display = 'none';
-            }
-        };
-    } else {
-        step2.style.display = 'none';
-        step3.style.display = 'none';
-        specificSelect.innerHTML = '<option value="">-- Selecteer eerst LAW --</option>';
-    }
-}
-
-function showSelectedRoute() {
-    const routeTypeSelect = document.getElementById('routeTypeSelect');
-    const specificSelect = document.getElementById('specificRouteSelect');
-    
-    const routeType = routeTypeSelect.value;
-    const selectedOption = specificSelect.options[specificSelect.selectedIndex];
-    
-    if (!routeType || !selectedOption.value) {
-        alert('Selecteer eerst een route type en specifieke route');
-        return;
-    }
-    
-    const routeName = selectedOption.textContent;
-    const routeFilter = selectedOption.dataset.filter;
-    const layerName = 'landelijke-wandelroutes';
-    
-    const existingRoute = activeRoutes.find(route => route.filter === routeFilter);
-    if (existingRoute) {
-        alert(`Route "${routeName}" is al toegevoegd!`);
-        resetRouteForm();
-        return;
-    }
-    
-    const routeData = {
-        id: Date.now(),
-        name: routeName,
-        type: routeType,
-        filter: routeFilter,
-        layerName: layerName,
-        value: selectedOption.value
-    };
-    
-    activeRoutes.push(routeData);
-    addRouteToMap(routeData);
-    updateActiveRoutesDisplay();
-    resetRouteForm();
 }
 
 function addRouteToMap(routeData) {
@@ -962,22 +730,6 @@ function showRouteInfoInPanel(feature) {
                 </div>
             ` : ''}
             
-            ${props.oppervlak || props.verharding ? `
-                <div class="route-info-section">
-                    <h4><i class="fas fa-road"></i> Wegtype & Ondergrond</h4>
-                    ${props.oppervlak ? `<p><strong>Ondergrond:</strong> ${props.oppervlak}</p>` : ''}
-                    ${props.verharding ? `<p><strong>Verharding:</strong> ${props.verharding}</p>` : ''}
-                </div>
-            ` : ''}
-            
-            ${props.markering || props.bewegwijzering ? `
-                <div class="route-info-section">
-                    <h4><i class="fas fa-map-signs"></i> Bewegwijzering</h4>
-                    ${props.markering ? `<p><strong>Markering:</strong> ${props.markering}</p>` : ''}
-                    ${props.bewegwijzering ? `<p><strong>Bewegwijzering:</strong> ${props.bewegwijzering}</p>` : ''}
-                </div>
-            ` : ''}
-            
             <div class="route-info-actions">
                 <button class="highlight-btn" onclick="clearEtappeHighlight()">
                     <i class="fas fa-eye-slash"></i>
@@ -1006,600 +758,3 @@ function showRouteInfoInPanel(feature) {
 
 function switchToRouteInfoTab() {
     document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
-    
-    const infoTab = document.querySelector('[data-tab="info"]');
-    const infoPanel = document.getElementById('info-panel');
-    
-    if (infoTab) infoTab.classList.add('active');
-    if (infoPanel) infoPanel.classList.add('active');
-    
-    // On mobile, open sidebar to show the info
-    if (isMobile && !sidebarOpen) {
-        toggleSidebar();
-    }
-}
-
-function highlightEtappe(feature) {
-    highlightLayer.clearLayers();
-    
-    if (feature.geometry && feature.geometry.coordinates) {
-        let coordinates;
-        
-        if (feature.geometry.type === 'LineString') {
-            coordinates = feature.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-        } else if (feature.geometry.type === 'MultiLineString') {
-            coordinates = feature.geometry.coordinates[0].map(coord => [coord[1], coord[0]]);
-        }
-        
-        if (coordinates && coordinates.length > 0) {
-            const highlightLine = L.polyline(coordinates, {
-                color: '#f59e0b',
-                weight: 8,
-                opacity: 0.9,
-                zIndex: 1000
-            });
-            
-            highlightLayer.addLayer(highlightLine);
-            addKilometerMarkers(coordinates);
-            
-            if (coordinates.length >= 2) {
-                const startPoint = coordinates[0];
-                const endPoint = coordinates[coordinates.length - 1];
-                
-                const startMarker = L.circleMarker(startPoint, {
-                    radius: 18,
-                    color: '#ffffff',
-                    fillColor: '#059669',
-                    fillOpacity: 1,
-                    weight: 4,
-                    zIndex: 1003
-                }).bindTooltip('🚩 START', { 
-                    permanent: true, 
-                    direction: 'top',
-                    className: 'start-tooltip',
-                    offset: [0, -25]
-                });
-                
-                const endMarker = L.circleMarker(endPoint, {
-                    radius: 18,
-                    color: '#ffffff',
-                    fillColor: '#dc2626',
-                    fillOpacity: 1,
-                    weight: 4,
-                    zIndex: 1003
-                }).bindTooltip('🏁 FINISH', { 
-                    permanent: true, 
-                    direction: 'top',
-                    className: 'end-tooltip',
-                    offset: [0, -25]
-                });
-                
-                highlightLayer.addLayer(startMarker);
-                highlightLayer.addLayer(endMarker);
-            }
-        }
-    }
-}
-
-function addKilometerMarkers(coordinates) {
-    if (coordinates.length < 2) return;
-    
-    let totalDistance = 0;
-    let kmCount = 1;
-    
-    for (let i = 1; i < coordinates.length; i++) {
-        const prevPoint = L.latLng(coordinates[i-1]);
-        const currentPoint = L.latLng(coordinates[i]);
-        const segmentDistance = prevPoint.distanceTo(currentPoint);
-        
-        totalDistance += segmentDistance;
-        
-        while (kmCount * 1000 <= totalDistance) {
-            const kmPosition = interpolatePosition(coordinates, kmCount * 1000);
-            
-            if (kmPosition) {
-                const kmMarker = L.circleMarker(kmPosition, {
-                    radius: 12,
-                    color: '#ffffff',
-                    fillColor: '#3b82f6',
-                    fillOpacity: 1,
-                    weight: 3,
-                    zIndex: 1002
-                }).bindTooltip(`${kmCount}km`, { 
-                    permanent: true, 
-                    direction: 'center',
-                    className: 'km-tooltip-prominent',
-                    offset: [0, 0]
-                });
-                
-                highlightLayer.addLayer(kmMarker);
-            }
-            
-            kmCount++;
-        }
-    }
-}
-
-function interpolatePosition(coordinates, targetDistance) {
-    let currentDistance = 0;
-    
-    for (let i = 1; i < coordinates.length; i++) {
-        const prevPoint = L.latLng(coordinates[i-1]);
-        const currentPoint = L.latLng(coordinates[i]);
-        const segmentDistance = prevPoint.distanceTo(currentPoint);
-        
-        if (currentDistance + segmentDistance >= targetDistance) {
-            const remainingDistance = targetDistance - currentDistance;
-            const ratio = remainingDistance / segmentDistance;
-            
-            const lat = coordinates[i-1][0] + (coordinates[i][0] - coordinates[i-1][0]) * ratio;
-            const lng = coordinates[i-1][1] + (coordinates[i][1] - coordinates[i-1][1]) * ratio;
-            
-            return [lat, lng];
-        }
-        
-        currentDistance += segmentDistance;
-    }
-    
-    return null;
-}
-
-// Zoom to current etappe
-function clearEtappeHighlight() {
-    highlightLayer.clearLayers();
-    window.currentEtappeFeature = null;
-    document.getElementById('routeInfoPanel').innerHTML = '<div class="empty-state">Geen etappe geselecteerd</div>';
-    showNotification('Highlight verwijderd', 'info');
-}
-
-function updateActiveRoutesDisplay() {
-    const container = document.getElementById('activeRoutesDisplay');
-    
-    if (activeRoutes.length === 0) {
-        container.innerHTML = '<div class="empty-state">Klik op een route card hierboven om deze toe te voegen</div>';
-        
-        // Reset all route cards
-        document.querySelectorAll('.route-card').forEach(card => {
-            card.classList.remove('added');
-            const action = card.querySelector('.route-card-action');
-            if (action) {
-                action.innerHTML = '<i class="fas fa-plus"></i> Toevoegen';
-            }
-        });
-        return;
-    }
-    
-    container.innerHTML = activeRoutes.map(route => `
-        <div class="active-route-item">
-            <div class="active-route-info">
-                <h4>${route.name}</h4>
-                <p>Lange Afstand Wandelpad • Klik op route voor details</p>
-            </div>
-            <button class="route-remove-btn" onclick="removeRoute(${route.id})" title="Route verwijderen">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    `).join('');
-}
-
-function removeRoute(routeId) {
-    const routeIndex = activeRoutes.findIndex(r => r.id === routeId);
-    if (routeIndex !== -1) {
-        const route = activeRoutes[routeIndex];
-        
-        // Remove visual feedback from route card
-        const routeCard = document.querySelector(`[data-route="${route.value}"]`);
-        if (routeCard) {
-            routeCard.classList.remove('added');
-            const action = routeCard.querySelector('.route-card-action');
-            if (action) {
-                action.innerHTML = '<i class="fas fa-plus"></i> Toevoegen';
-            }
-        }
-        
-        if (route.layer) {
-            map.removeLayer(route.layer);
-        }
-        
-        activeRoutes.splice(routeIndex, 1);
-        updateActiveRoutesDisplay();
-        
-        showNotification(`Route "${route.name}" verwijderd`, 'info');
-    }
-}
-
-function clearAllRoutes() {
-    activeRoutes.forEach(route => {
-        if (route.layer) {
-            map.removeLayer(route.layer);
-        }
-    });
-    
-    activeRoutes = [];
-    updateActiveRoutesDisplay();
-    resetRouteForm();
-}
-
-function resetRouteForm() {
-    document.getElementById('routeTypeSelect').value = '';
-    document.getElementById('specificRouteSelect').innerHTML = '<option value="">-- Eerst route type kiezen --</option>';
-    document.getElementById('step2').style.display = 'none';
-    document.getElementById('step3').style.display = 'none';
-}
-
-// ============ TOOLS & UTILITY FUNCTIONS ============
-
-// Toggle measure from map control button
-function toggleMeasureFromMap() {
-    measuring = !measuring;
-    const btn = document.getElementById('measureControlBtn');
-    
-    if (measuring) {
-        btn.classList.add('active');
-        btn.title = 'Stop meting - Klik punten op de kaart';
-        btn.innerHTML = '<i class="fas fa-stop"></i>';
-        map.getContainer().style.cursor = 'crosshair';
-        showNotification('Afstand meten geactiveerd - Klik punten op de kaart', 'info');
-        
-        // Update sidebar button if it exists
-        const sidebarBtn = document.getElementById('measureBtn');
-        if (sidebarBtn) {
-            sidebarBtn.innerHTML = '<i class="fas fa-stop"></i> Stop meting';
-            sidebarBtn.classList.add('active');
-        }
-    } else {
-        btn.classList.remove('active');
-        btn.title = 'Afstand meten';
-        btn.innerHTML = '<i class="fas fa-ruler-combined"></i>';
-        map.getContainer().style.cursor = '';
-        showNotification('Afstand meten gestopt', 'info');
-        
-        // Update sidebar button if it exists
-        const sidebarBtn = document.getElementById('measureBtn');
-        if (sidebarBtn) {
-            sidebarBtn.innerHTML = '<i class="fas fa-ruler-combined"></i> Start meting';
-            sidebarBtn.classList.remove('active');
-        }
-    }
-}
-
-// Legacy function for sidebar (if needed)
-function toggleMeasure() {
-    toggleMeasureFromMap();
-}
-
-function addMeasurePoint(latlng) {
-    const marker = L.circleMarker(latlng, {
-        radius: 8,
-        color: '#ffffff',
-        fillColor: '#f59e0b',
-        fillOpacity: 1,
-        weight: 3,
-        zIndex: 1001
-    }).addTo(map);
-
-    // Add point number
-    const pointNumber = measureMarkers.filter(item => item.getLatLng).length + 1;
-    marker.bindTooltip(`${pointNumber}`, { 
-        permanent: true, 
-        direction: 'center',
-        className: 'measure-point-tooltip',
-        offset: [0, 0]
-    });
-
-    measureMarkers.push(marker);
-
-    if (measureMarkers.length > 1) {
-        // Find the previous actual marker (not label)
-        let prevMarker = null;
-        for (let i = measureMarkers.length - 2; i >= 0; i--) {
-            if (measureMarkers[i].getLatLng && measureMarkers[i].options.fillColor === '#f59e0b') {
-                prevMarker = measureMarkers[i];
-                break;
-            }
-        }
-
-        if (prevMarker) {
-            const segmentDistance = prevMarker.getLatLng().distanceTo(latlng);
-            const line = L.polyline([prevMarker.getLatLng(), latlng], {
-                color: '#f59e0b',
-                weight: 4,
-                opacity: 0.8,
-                zIndex: 1000
-            }).addTo(map);
-
-            measureMarkers.push(line);
-
-            // Calculate midpoint for distance label
-            const midPoint = [
-                (prevMarker.getLatLng().lat + latlng.lat) / 2,
-                (prevMarker.getLatLng().lng + latlng.lng) / 2
-            ];
-            
-            const segmentDistanceKm = segmentDistance / 1000;
-            const distanceText = segmentDistanceKm < 1 ? 
-                `${Math.round(segmentDistance)} m` : 
-                `${segmentDistanceKm.toFixed(2)} km`;
-
-            const distanceLabel = L.marker(midPoint, {
-                icon: L.divIcon({
-                    className: 'distance-label-container',
-                    html: `<div class="distance-text">${distanceText}</div>`,
-                    iconSize: [null, null], // Auto-size
-                    iconAnchor: [null, null] // Auto-anchor
-                }),
-                zIndex: 1002,
-                interactive: false // Make non-interactive so clicks go through to map
-            }).addTo(map);
-
-            measureMarkers.push(distanceLabel);
-
-            totalDistance += segmentDistance / 1000;
-            updateDistanceDisplay();
-            updateTotalDistanceOnMap();
-        }
-    } else {
-        // First point - show starting indicator
-        updateTotalDistanceOnMap();
-    }
-}
-
-function updateTotalDistanceOnMap() {
-    // Remove existing total distance marker
-    if (window.totalDistanceMarker) {
-        map.removeLayer(window.totalDistanceMarker);
-    }
-    
-    if (measureMarkers.length > 0) {
-        // Get last actual marker (not label)
-        let lastMarker = null;
-        for (let i = measureMarkers.length - 1; i >= 0; i--) {
-            if (measureMarkers[i].getLatLng && measureMarkers[i].options.fillColor === '#f59e0b') {
-                lastMarker = measureMarkers[i];
-                break;
-            }
-        }
-        
-        if (lastMarker) {
-            const totalText = totalDistance < 1 ? 
-                `Totaal: ${Math.round(totalDistance * 1000)} m` : 
-                `Totaal: ${totalDistance.toFixed(2)} km`;
-
-            // Position total slightly offset from last point
-            const offsetLat = lastMarker.getLatLng().lat + 0.002; // Small offset north
-            const offsetLng = lastMarker.getLatLng().lng;
-
-            window.totalDistanceMarker = L.marker([offsetLat, offsetLng], {
-                icon: L.divIcon({
-                    className: 'total-distance-label-container',
-                    html: `<div class="total-distance-text">${totalText}</div>`,
-                    iconSize: [null, null], // Auto-size
-                    iconAnchor: [null, null] // Auto-anchor
-                }),
-                zIndex: 1003,
-                interactive: false // Make non-interactive
-            }).addTo(map);
-        }
-    }
-}
-
-function updateDistanceDisplay() {
-    const displayEl = document.getElementById('distanceDisplay');
-    if (displayEl) {
-        displayEl.querySelector('.distance-value').textContent = totalDistance.toFixed(2);
-    }
-}
-
-function clearMeasurements() {
-    measureMarkers.forEach(item => {
-        map.removeLayer(item);
-    });
-    measureMarkers = [];
-    totalDistance = 0;
-    updateDistanceDisplay();
-    
-    // Reset map control button
-    const mapBtn = document.getElementById('measureControlBtn');
-    if (mapBtn) {
-        mapBtn.classList.remove('active');
-        mapBtn.title = 'Afstand meten';
-        mapBtn.innerHTML = '<i class="fas fa-ruler-combined"></i>';
-    }
-    
-    // Reset sidebar button if it exists
-    const sidebarBtn = document.getElementById('measureBtn');
-    if (sidebarBtn) {
-        sidebarBtn.innerHTML = '<i class="fas fa-ruler-combined"></i> Start meting';
-        sidebarBtn.classList.remove('active');
-    }
-    
-    measuring = false;
-    map.getContainer().style.cursor = '';
-    showNotification('Alle metingen gewist', 'success');
-}
-
-function searchLocation() {
-    const query = document.getElementById('searchInput').value.trim();
-    if (!query) return;
-
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=nl&limit=3`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.length > 0) {
-                const result = data[0];
-                const lat = parseFloat(result.lat);
-                const lon = parseFloat(result.lon);
-                
-                map.setView([lat, lon], 12);
-                
-                const marker = L.marker([lat, lon]).addTo(map);
-                marker.bindPopup(result.display_name).openPopup();
-                
-                setTimeout(() => {
-                    map.removeLayer(marker);
-                }, 10000);
-                
-                // Close sidebar on mobile after search
-                if (isMobile) {
-                    closeSidebar();
-                }
-            } else {
-                alert('Locatie niet gevonden');
-            }
-        })
-        .catch(error => {
-            console.error('Zoekfout:', error);
-            alert('Er is een fout opgetreden bij het zoeken');
-        });
-}
-
-function zoomToNetherlands() {
-    map.setView([52.1326, 5.2913], 7);
-    
-    // Close sidebar on mobile
-    if (isMobile) {
-        closeSidebar();
-    }
-}
-
-function getCurrentLocation() {
-    if (navigator.geolocation) {
-        // Close sidebar on mobile when using location
-        if (isMobile) {
-            closeSidebar();
-        }
-        
-        navigator.geolocation.getCurrentPosition(function(position) {
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            
-            map.setView([lat, lon], 14);
-            
-            const marker = L.marker([lat, lon]).addTo(map);
-            marker.bindPopup('Uw huidige locatie').openPopup();
-            
-            setTimeout(() => {
-                map.removeLayer(marker);
-            }, 15000);
-        }, function(error) {
-            alert('Locatie kon niet worden bepaald');
-        });
-    } else {
-        alert('Geolocation wordt niet ondersteund');
-    }
-}
-
-function fitToCampings() {
-    if (campingLayer.getLayers().length > 0) {
-        const group = new L.featureGroup(campingLayer.getLayers());
-        map.fitBounds(group.getBounds(), { padding: [20, 20] });
-        
-        // Close sidebar on mobile
-        if (isMobile) {
-            closeSidebar();
-        }
-    } else {
-        showNotification('Geen campings geladen', 'warning');
-    }
-}
-
-function fitToVrienden() {
-    if (vriendenLayer.getLayers().length > 0) {
-        const group = new L.featureGroup(vriendenLayer.getLayers());
-        map.fitBounds(group.getBounds(), { padding: [20, 20] });
-        
-        // Close sidebar on mobile
-        if (isMobile) {
-            closeSidebar();
-        }
-    } else {
-        showNotification('Geen Vrienden op de Fiets locaties geladen', 'warning');
-    }
-}
-
-function toggleFullscreen() {
-    if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
-    } else {
-        document.exitFullscreen();
-    }
-}
-
-function addCurrentViewToFavorites() {
-    alert('Favorieten functionaliteit beschikbaar');
-}
-
-function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    const bgColor = type === 'success' ? '#10b981' : 
-                   type === 'error' ? '#ef4444' : 
-                   type === 'warning' ? '#f59e0b' : '#3b82f6';
-    
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${bgColor};
-        color: white;
-        padding: 12px 20px;
-        border-radius: 8px;
-        z-index: 10000;
-        font-size: 14px;
-        max-width: 300px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    `;
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.parentNode.removeChild(notification);
-        }
-    }, type === 'error' ? 5000 : 3000);
-}
-
-function showLoadingOverlay(text = 'Laden...') {
-    hideLoadingOverlay();
-    
-    loadingOverlay = document.createElement('div');
-    loadingOverlay.className = 'loading-overlay';
-    loadingOverlay.innerHTML = `
-        <div class="loading-content">
-            <div class="loading-spinner-large"></div>
-            <div class="loading-text">${text}</div>
-        </div>
-    `;
-    
-    document.body.appendChild(loadingOverlay);
-}
-
-function hideLoadingOverlay() {
-    if (loadingOverlay && loadingOverlay.parentNode) {
-        loadingOverlay.parentNode.removeChild(loadingOverlay);
-        loadingOverlay = null;
-    }
-}
-
-// Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, initializing...');
-    
-    // Set initial mobile state
-    isMobile = window.innerWidth <= 768;
-    
-    initMap();
-    
-    // Handle back button on mobile
-    if (isMobile) {
-        window.addEventListener('popstate', function(e) {
-            if (sidebarOpen) {
-                closeSidebar();
-                history.pushState(null, null, location.href);
-            }
-        });
-        
-        // Push initial state for back button handling
-        history.pushState(null, null, location.href);
-    }
-});
