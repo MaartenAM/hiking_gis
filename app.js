@@ -8,7 +8,11 @@ let activeBaseLayer = 'osm';
 let activeRoutes = [];
 let highlightLayer;
 let campingLayer;
+let campingClusterGroup;
+let vriendenLayer;
+let vriendenClusterGroup;
 let campingVisible = false;
+let vriendenVisible = false;
 let loadingOverlay = null;
 let isMobile = window.innerWidth <= 768;
 let sidebarOpen = false;
@@ -66,7 +70,21 @@ L.tileLayer.pdokFilter = function (url, options) {
     return new L.TileLayer.PDOKFilter(url, options);
 };
 
-// Camping icon
+// Vrienden op de Fiets icon
+const vriendenIcon = L.icon({
+    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+            <circle cx="12" cy="12" r="12" fill="#3b82f6"/>
+            <path d="M7 9C7 8.45 7.45 8 8 8H16C16.55 8 17 8.45 17 9V10H15V9H9V10H7V9Z" fill="white"/>
+            <circle cx="9" cy="13" r="2" fill="white"/>
+            <circle cx="15" cy="13" r="2" fill="white"/>
+            <path d="M11 11H13V15H11V11Z" fill="white"/>
+        </svg>
+    `),
+    iconSize: [24, 24],
+    iconAnchor: [12, 24],
+    popupAnchor: [0, -24]
+});
 const campingIcon = L.icon({
     iconUrl: 'data:image/svg+xml;base64,' + btoa(`
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
@@ -131,7 +149,46 @@ function initMap() {
         highlightLayer = L.layerGroup();
         highlightLayer.addTo(map);
 
+        // Initialize clustering groups for better performance
         campingLayer = L.layerGroup();
+        campingClusterGroup = L.markerClusterGroup({
+            maxClusterRadius: 50,
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: true,
+            iconCreateFunction: function(cluster) {
+                const count = cluster.getChildCount();
+                let size = 'small';
+                if (count > 10) size = 'medium';
+                if (count > 25) size = 'large';
+                
+                return L.divIcon({
+                    html: `<div class="cluster-inner camping-cluster">${count}</div>`,
+                    className: `marker-cluster marker-cluster-${size}`,
+                    iconSize: L.point(40, 40)
+                });
+            }
+        });
+
+        vriendenLayer = L.layerGroup();
+        vriendenClusterGroup = L.markerClusterGroup({
+            maxClusterRadius: 50,
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: true,
+            iconCreateFunction: function(cluster) {
+                const count = cluster.getChildCount();
+                let size = 'small';
+                if (count > 10) size = 'medium';
+                if (count > 25) size = 'large';
+                
+                return L.divIcon({
+                    html: `<div class="cluster-inner vrienden-cluster">${count}</div>`,
+                    className: `marker-cluster marker-cluster-${size}`,
+                    iconSize: L.point(40, 40)
+                });
+            }
+        });
 
         setupEventListeners();
         setupTabNavigation();
@@ -394,21 +451,21 @@ function toggleCampingLayer() {
     const card = document.getElementById('camping-layer-card');
     
     if (campingVisible) {
-        if (campingLayer.getLayers().length === 0) {
-            loadGeoJSONOnly();
+        if (campingClusterGroup.getLayers().length === 0) {
+            loadCampingGeoJSON();
         } else {
-            campingLayer.addTo(map);
+            map.addLayer(campingClusterGroup);
             card.classList.add('active');
             showNotification('Campings zichtbaar', 'success');
         }
     } else {
-        map.removeLayer(campingLayer);
+        map.removeLayer(campingClusterGroup);
         card.classList.remove('active');
         showNotification('Campings verborgen', 'info');
     }
 }
 
-function loadGeoJSONOnly() {
+function loadCampingGeoJSON() {
     showLoadingOverlay('Campings laden...');
     
     fetch('./data/campings.geojson')
@@ -419,7 +476,7 @@ function loadGeoJSONOnly() {
             return response.json();
         })
         .then(geojsonData => {
-            campingLayer.clearLayers();
+            campingClusterGroup.clearLayers();
             
             geojsonData.features.forEach(feature => {
                 const coords = feature.geometry.coordinates;
@@ -436,14 +493,13 @@ function loadGeoJSONOnly() {
                 `;
                 
                 const marker = L.marker([coords[1], coords[0]], {
-                    icon: campingIcon,
-                    zIndex: 1000
+                    icon: campingIcon
                 }).bindPopup(popupContent);
                 
-                campingLayer.addLayer(marker);
+                campingClusterGroup.addLayer(marker);
             });
             
-            campingLayer.addTo(map);
+            map.addLayer(campingClusterGroup);
             campingVisible = true;
             
             const card = document.getElementById('camping-layer-card');
@@ -452,11 +508,84 @@ function loadGeoJSONOnly() {
             }
             
             hideLoadingOverlay();
-            showNotification(`${geojsonData.features.length} campings geladen`, 'success');
+            showNotification(`${geojsonData.features.length} campings geladen (geclusterd)`, 'success');
         })
         .catch(error => {
             hideLoadingOverlay();
-            showNotification('GeoJSON bestand niet gevonden in data/campings.geojson', 'error');
+            showNotification('Campings GeoJSON niet gevonden in data/campings.geojson', 'error');
+        });
+}
+
+function toggleVriendenLayer() {
+    vriendenVisible = !vriendenVisible;
+    const card = document.getElementById('vrienden-layer-card');
+    
+    if (vriendenVisible) {
+        if (vriendenClusterGroup.getLayers().length === 0) {
+            loadVriendenGeoJSON();
+        } else {
+            map.addLayer(vriendenClusterGroup);
+            card.classList.add('active');
+            showNotification('Vrienden op de Fiets zichtbaar', 'success');
+        }
+    } else {
+        map.removeLayer(vriendenClusterGroup);
+        card.classList.remove('active');
+        showNotification('Vrienden op de Fiets verborgen', 'info');
+    }
+}
+
+function loadVriendenGeoJSON() {
+    showLoadingOverlay('Vrienden op de Fiets laden...');
+    
+    fetch('./data/vrienden-op-de-fiets.geojson')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('GeoJSON bestand niet gevonden');
+            }
+            return response.json();
+        })
+        .then(geojsonData => {
+            vriendenClusterGroup.clearLayers();
+            
+            geojsonData.features.forEach(feature => {
+                const coords = feature.geometry.coordinates;
+                const props = feature.properties;
+                
+                const popupContent = `
+                    <div class="vrienden-popup">
+                        <h4><i class="fas fa-bicycle"></i> ${props.name || props.naam || 'Vrienden op de Fiets'}</h4>
+                        ${props.adres || props.address ? `<p><strong>Adres:</strong> ${props.adres || props.address}</p>` : ''}
+                        ${props.plaats || props.city ? `<p><strong>Plaats:</strong> ${props.plaats || props.city}</p>` : ''}
+                        ${props.telefoon || props.phone ? `<p><strong>Telefoon:</strong> ${props.telefoon || props.phone}</p>` : ''}
+                        ${props.email ? `<p><strong>Email:</strong> ${props.email}</p>` : ''}
+                        ${props.website ? `<p><strong>Website:</strong> <a href="${props.website}" target="_blank">${props.website}</a></p>` : ''}
+                        ${props.beschrijving || props.description ? `<div class="vrienden-description">${props.beschrijving || props.description}</div>` : ''}
+                        <p style="font-size: 10px; color: #666; margin-top: 8px;">Vrienden op de Fiets locatie</p>
+                    </div>
+                `;
+                
+                const marker = L.marker([coords[1], coords[0]], {
+                    icon: vriendenIcon
+                }).bindPopup(popupContent);
+                
+                vriendenClusterGroup.addLayer(marker);
+            });
+            
+            map.addLayer(vriendenClusterGroup);
+            vriendenVisible = true;
+            
+            const card = document.getElementById('vrienden-layer-card');
+            if (card) {
+                card.classList.add('active');
+            }
+            
+            hideLoadingOverlay();
+            showNotification(`${geojsonData.features.length} Vrienden op de Fiets locaties geladen (geclusterd)`, 'success');
+        })
+        .catch(error => {
+            hideLoadingOverlay();
+            showNotification('Vrienden op de Fiets GeoJSON niet gevonden in data/vrienden-op-de-fiets.geojson', 'error');
         });
 }
 
@@ -1228,9 +1357,8 @@ function getCurrentLocation() {
 }
 
 function fitToCampings() {
-    if (campingLayer.getLayers().length > 0) {
-        const group = new L.featureGroup(campingLayer.getLayers());
-        map.fitBounds(group.getBounds(), { padding: [20, 20] });
+    if (campingClusterGroup.getLayers().length > 0) {
+        map.fitBounds(campingClusterGroup.getBounds(), { padding: [20, 20] });
         
         // Close sidebar on mobile
         if (isMobile) {
@@ -1238,6 +1366,19 @@ function fitToCampings() {
         }
     } else {
         showNotification('Geen campings geladen', 'warning');
+    }
+}
+
+function fitToVrienden() {
+    if (vriendenClusterGroup.getLayers().length > 0) {
+        map.fitBounds(vriendenClusterGroup.getBounds(), { padding: [20, 20] });
+        
+        // Close sidebar on mobile
+        if (isMobile) {
+            closeSidebar();
+        }
+    } else {
+        showNotification('Geen Vrienden op de Fiets locaties geladen', 'warning');
     }
 }
 
