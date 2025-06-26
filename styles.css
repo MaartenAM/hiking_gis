@@ -716,7 +716,151 @@ body {
     color: var(--text-muted);
 }
 
-/* Empty State */
+/* Route Cards Grid */
+.route-cards-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+
+.route-card {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.route-card:hover {
+    border-color: var(--orange);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.route-card.added {
+    border-color: var(--primary-green);
+    background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
+    color: white;
+}
+
+.route-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.route-card-header i {
+    font-size: 24px;
+    color: var(--accent-green);
+    transition: all 0.3s ease;
+}
+
+.route-card.added .route-card-header i {
+    color: white;
+}
+
+.route-number {
+    background: linear-gradient(135deg, var(--accent-green), var(--light-green));
+    color: white;
+    padding: 6px 12px;
+    border-radius: var(--radius-lg);
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+
+.route-card.added .route-number {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.route-card-content h4 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    transition: color 0.3s ease;
+}
+
+.route-card.added .route-card-content h4 {
+    color: white;
+}
+
+.route-card-content p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.4;
+    transition: color 0.3s ease;
+}
+
+.route-card.added .route-card-content p {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.route-card-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 12px;
+    background: var(--surface-elevated);
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--orange);
+    transition: all 0.3s ease;
+}
+
+.route-card:hover .route-card-action {
+    background: var(--orange);
+    color: white;
+}
+
+.route-card.added .route-card-action {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.route-card.added .route-card-action i {
+    transform: rotate(45deg);
+}
+
+/* Route card animations */
+.route-card-appear {
+    animation: routeCardSlideIn 0.5s ease-out;
+}
+
+@keyframes routeCardSlideIn {
+    0% {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.route-card-added {
+    animation: routeCardAdded 0.6s ease-out;
+}
+
+@keyframes routeCardAdded {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
 .empty-state {
     font-style: italic;
     color: var(--text-muted);
@@ -777,17 +921,26 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px;
-    background: var(--surface);
+    padding: 16px;
+    background: linear-gradient(135deg, var(--surface), var(--surface-elevated));
     border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    margin-bottom: 8px;
+    border-radius: var(--radius-lg);
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+    border-left: 4px solid var(--accent-green);
+}
+
+.active-route-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-left-color: var(--orange);
 }
 
 .active-route-info h4 {
-    font-size: 14px;
+    font-size: 15px;
+    font-weight: 600;
     color: var(--text-primary);
-    margin-bottom: 4px;
+    margin-bottom: 6px;
 }
 
 .active-route-info p {
@@ -801,14 +954,20 @@ body {
     border: none;
     color: var(--text-muted);
     cursor: pointer;
-    padding: 4px;
-    border-radius: var(--radius-sm);
+    padding: 8px;
+    border-radius: var(--radius-md);
     transition: all 0.2s ease;
+    min-width: 36px;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .route-remove-btn:hover {
-    background: var(--surface-elevated);
-    color: #ef4444;
+    background: #fee2e2;
+    color: #dc2626;
+    transform: scale(1.1);
 }
 
 /* Route details styling */
@@ -1494,6 +1653,28 @@ body {
     .layer-grid {
         grid-template-columns: 1fr 1fr;
         gap: 8px;
+    }
+    
+    .route-cards-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .route-card {
+        padding: 16px;
+    }
+    
+    .route-card-header i {
+        font-size: 20px;
+    }
+    
+    .route-card-content h4 {
+        font-size: 16px;
+    }
+    
+    .route-card-action {
+        padding: 10px;
+        font-size: 13px;
     }
     
     .layer-card {
