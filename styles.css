@@ -348,8 +348,8 @@ body {
 
 /* Vrienden popup styling */
 .vrienden-popup {
-    min-width: 280px;
-    max-width: 350px;
+    min-width: 300px;
+    max-width: 380px;
 }
 
 .vrienden-popup h4 {
@@ -359,6 +359,18 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.vrienden-popup h5 {
+    margin: 12px 0 8px 0;
+    color: #1e40af;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 4px;
 }
 
 .vrienden-popup p {
@@ -379,6 +391,40 @@ body {
 
 .vrienden-popup a:hover {
     text-decoration: underline;
+}
+
+.vrienden-accommodation {
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    border: 1px solid #bfdbfe;
+    border-radius: var(--radius-md);
+    padding: 12px;
+    margin: 12px 0;
+}
+
+.vrienden-accommodation h5 {
+    margin: 0 0 8px 0;
+    border: none;
+    padding: 0;
+}
+
+.vrienden-availability {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 1px solid #f59e0b;
+    border-radius: var(--radius-md);
+    padding: 12px;
+    margin: 12px 0;
+}
+
+.vrienden-availability h5 {
+    margin: 0 0 8px 0;
+    color: #92400e;
+    border: none;
+    padding: 0;
+}
+
+.vrienden-availability p {
+    color: #92400e;
+    font-weight: 500;
 }
 
 .vrienden-description {
