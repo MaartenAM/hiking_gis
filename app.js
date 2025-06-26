@@ -522,6 +522,7 @@ function loadCampingGeoJSON() {
             return response.json();
         })
         .then(geojsonData => {
+            console.log('Loading', geojsonData.features.length, 'camping markers into cluster group');
             campingClusterGroup.clearLayers();
             
             geojsonData.features.forEach(feature => {
@@ -545,6 +546,7 @@ function loadCampingGeoJSON() {
                 campingClusterGroup.addLayer(marker);
             });
             
+            console.log('Added', campingClusterGroup.getLayers().length, 'markers to camping cluster group');
             map.addLayer(campingClusterGroup);
             campingVisible = true;
             
@@ -554,13 +556,12 @@ function loadCampingGeoJSON() {
             }
             
             hideLoadingOverlay();
-            
-            const clusterText = (typeof L.markerClusterGroup !== 'undefined') ? ' (geclusterd)' : '';
-            showNotification(`${geojsonData.features.length} campings geladen${clusterText}`, 'success');
+            showNotification(`${geojsonData.features.length} campings geladen (geclusterd)`, 'success');
         })
         .catch(error => {
             hideLoadingOverlay();
             showNotification('Campings GeoJSON niet gevonden in data/campings.geojson', 'error');
+            console.error('Error loading campings:', error);
         });
 }
 
@@ -594,6 +595,7 @@ function loadVriendenGeoJSON() {
             return response.json();
         })
         .then(geojsonData => {
+            console.log('Loading', geojsonData.features.length, 'vrienden markers into cluster group');
             vriendenClusterGroup.clearLayers();
             
             geojsonData.features.forEach(feature => {
@@ -662,6 +664,7 @@ function loadVriendenGeoJSON() {
                 vriendenClusterGroup.addLayer(marker);
             });
             
+            console.log('Added', vriendenClusterGroup.getLayers().length, 'markers to vrienden cluster group');
             map.addLayer(vriendenClusterGroup);
             vriendenVisible = true;
             
@@ -671,13 +674,12 @@ function loadVriendenGeoJSON() {
             }
             
             hideLoadingOverlay();
-            
-            const clusterText = (typeof L.markerClusterGroup !== 'undefined') ? ' (geclusterd)' : '';
-            showNotification(`${geojsonData.features.length} Vrienden op de Fiets locaties geladen${clusterText}`, 'success');
+            showNotification(`${geojsonData.features.length} Vrienden op de Fiets locaties geladen (geclusterd)`, 'success');
         })
         .catch(error => {
             hideLoadingOverlay();
             showNotification('Vrienden op de Fiets GeoJSON niet gevonden in data/vrienden-op-de-fiets.geojson', 'error');
+            console.error('Error loading vrienden:', error);
         });
 }
 
