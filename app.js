@@ -1028,9 +1028,10 @@ function addMeasurePoint(latlng) {
     measureMarkers.push(marker);
 
     if (measureMarkers.length > 1) {
+        // Find the previous actual marker (not label)
         let prevMarker = null;
         for (let i = measureMarkers.length - 2; i >= 0; i--) {
-            if (measureMarkers[i].getLatLng) {
+            if (measureMarkers[i].getLatLng && measureMarkers[i].options.fillColor === '#f59e0b') {
                 prevMarker = measureMarkers[i];
                 break;
             }
@@ -1047,7 +1048,7 @@ function addMeasurePoint(latlng) {
 
             measureMarkers.push(line);
 
-            // Add segment distance label in the middle of the line
+            // Calculate midpoint for distance label
             const midPoint = [
                 (prevMarker.getLatLng().lat + latlng.lat) / 2,
                 (prevMarker.getLatLng().lng + latlng.lng) / 2
@@ -1060,12 +1061,13 @@ function addMeasurePoint(latlng) {
 
             const distanceLabel = L.marker(midPoint, {
                 icon: L.divIcon({
-                    className: 'distance-label',
+                    className: 'distance-label-container',
                     html: `<div class="distance-text">${distanceText}</div>`,
-                    iconSize: [60, 20],
-                    iconAnchor: [30, 10]
+                    iconSize: [null, null], // Auto-size
+                    iconAnchor: [null, null] // Auto-anchor
                 }),
-                zIndex: 1002
+                zIndex: 1002,
+                interactive: false // Make non-interactive so clicks go through to map
             }).addTo(map);
 
             measureMarkers.push(distanceLabel);
@@ -1087,21 +1089,33 @@ function updateTotalDistanceOnMap() {
     }
     
     if (measureMarkers.length > 0) {
-        // Get last point position
-        const lastMarker = measureMarkers.filter(item => item.getLatLng).pop();
+        // Get last actual marker (not label)
+        let lastMarker = null;
+        for (let i = measureMarkers.length - 1; i >= 0; i--) {
+            if (measureMarkers[i].getLatLng && measureMarkers[i].options.fillColor === '#f59e0b') {
+                lastMarker = measureMarkers[i];
+                break;
+            }
+        }
+        
         if (lastMarker) {
             const totalText = totalDistance < 1 ? 
                 `Totaal: ${Math.round(totalDistance * 1000)} m` : 
                 `Totaal: ${totalDistance.toFixed(2)} km`;
 
-            window.totalDistanceMarker = L.marker(lastMarker.getLatLng(), {
+            // Position total slightly offset from last point
+            const offsetLat = lastMarker.getLatLng().lat + 0.002; // Small offset north
+            const offsetLng = lastMarker.getLatLng().lng;
+
+            window.totalDistanceMarker = L.marker([offsetLat, offsetLng], {
                 icon: L.divIcon({
-                    className: 'total-distance-label',
+                    className: 'total-distance-label-container',
                     html: `<div class="total-distance-text">${totalText}</div>`,
-                    iconSize: [120, 30],
-                    iconAnchor: [60, -20]
+                    iconSize: [null, null], // Auto-size
+                    iconAnchor: [null, null] // Auto-anchor
                 }),
-                zIndex: 1003
+                zIndex: 1003,
+                interactive: false // Make non-interactive
             }).addTo(map);
         }
     }
