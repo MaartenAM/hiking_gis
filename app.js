@@ -621,10 +621,8 @@ function toggleVriendenLayer() {
     }
 }
 
-function loadVriendenGeoJSON(autoLoaded = false) {
-    if (!autoLoaded) {
-        showLoadingOverlay('Vrienden op de Fiets laden...');
-    }
+function loadVriendenGeoJSON() {
+    showLoadingOverlay('Vrienden op de Fiets laden...');
     
     fetch('./data/vrienden-op-de-fiets.geojson')
         .then(response => {
@@ -704,19 +702,22 @@ function loadVriendenGeoJSON(autoLoaded = false) {
             });
             
             console.log('Added', vriendenLayer.getLayers().length, 'markers to vrienden layer');
-            showVriendenLayer();
+            map.addLayer(vriendenLayer);
+            vriendenVisible = true;
             
-            if (!autoLoaded) {
-                hideLoadingOverlay();
+            const card = document.getElementById('vrienden-layer-card');
+            if (card) {
+                card.classList.add('active');
             }
             
-            const loadType = autoLoaded ? ' (automatisch geladen)' : '';
-            showNotification(`${geojsonData.features.length} Vrienden op de Fiets locaties geladen${loadType}`, 'success');
+            hideLoadingOverlay();
+            
+            const currentZoom = map.getZoom();
+            const autoText = currentZoom >= 12 ? ' (automatisch bij zoom)' : '';
+            showNotification(`${geojsonData.features.length} Vrienden op de Fiets locaties geladen${autoText}`, 'success');
         })
         .catch(error => {
-            if (!autoLoaded) {
-                hideLoadingOverlay();
-            }
+            hideLoadingOverlay();
             showNotification('Vrienden op de Fiets GeoJSON niet gevonden in data/vrienden-op-de-fiets.geojson', 'error');
             console.error('Error loading vrienden:', error);
         });
