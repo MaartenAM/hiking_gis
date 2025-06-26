@@ -390,7 +390,39 @@ body {
     100% { transform: rotate(360deg); }
 }
 
-/* Distance Display */
+/* Measure info styling */
+.measure-info {
+    text-align: center;
+}
+
+.measure-instruction {
+    background: linear-gradient(135deg, #e0f2fe, #f0f9ff);
+    border: 1px solid #bae6fd;
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.measure-instruction i:first-child {
+    color: #0369a1;
+    font-size: 18px;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.measure-instruction p {
+    font-size: 13px;
+    color: #0369a1;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.measure-instruction .fas.fa-ruler-combined {
+    color: var(--orange);
+    margin: 0 4px;
+    font-size: 14px;
+}
 .distance-display {
     background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
     color: white;
