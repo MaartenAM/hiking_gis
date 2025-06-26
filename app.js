@@ -10,6 +10,8 @@ let highlightLayer;
 let campingLayer;
 let campingVisible = false;
 let loadingOverlay = null;
+let isMobile = window.innerWidth <= 768;
+let sidebarOpen = false;
 
 // Route definitions
 const routeDefinitions = {
@@ -83,7 +85,19 @@ function initMap() {
     console.log('Initializing map...');
     
     try {
-        map = L.map('map').setView([52.1326, 5.2913], 7);
+        map = L.map('map', {
+            zoomControl: true,
+            touchZoom: true,
+            doubleClickZoom: true,
+            scrollWheelZoom: true,
+            boxZoom: !isMobile,
+            keyboard: !isMobile
+        }).setView([52.1326, 5.2913], 7);
+
+        // Move zoom controls to better position on mobile
+        if (isMobile) {
+            map.zoomControl.setPosition('bottomright');
+        }
 
         const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
@@ -121,11 +135,111 @@ function initMap() {
 
         setupEventListeners();
         setupTabNavigation();
+        setupMobileFeatures();
         
         console.log('Map initialized successfully');
     } catch (error) {
         console.error('Error initializing map:', error);
     }
+}
+
+// Setup mobile-specific features
+function setupMobileFeatures() {
+    // Create overlay for mobile sidebar
+    if (isMobile) {
+        const overlay = document.createElement('div');
+        overlay.className = 'sidebar-overlay';
+        overlay.addEventListener('click', closeSidebar);
+        document.body.appendChild(overlay);
+        
+        // Auto-close sidebar when selecting routes on mobile
+        const originalShowSelectedRoute = showSelectedRoute;
+        showSelectedRoute = function() {
+            originalShowSelectedRoute();
+            if (isMobile) {
+                closeSidebar();
+            }
+        };
+        
+        // Prevent map interactions when sidebar is open on mobile
+        const sidebar = document.getElementById('sidebar');
+        sidebar.addEventListener('touchstart', function(e) {
+            e.stopPropagation();
+        });
+        
+        sidebar.addEventListener('touchmove', function(e) {
+            e.stopPropagation();
+        });
+    }
+    
+    // Handle orientation changes
+    window.addEventListener('orientationchange', function() {
+        setTimeout(function() {
+            map.invalidateSize();
+            isMobile = window.innerWidth <= 768;
+        }, 100);
+    });
+    
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        const wasMobile = isMobile;
+        isMobile = window.innerWidth <= 768;
+        
+        if (wasMobile && !isMobile) {
+            // Switched from mobile to desktop
+            closeSidebar();
+            const sidebar = document.getElementById('sidebar');
+            sidebar.style.left = '';
+        } else if (!wasMobile && isMobile) {
+            // Switched from desktop to mobile
+            const sidebar = document.getElementById('sidebar');
+            sidebar.style.left = '-100%';
+        }
+        
+        setTimeout(function() {
+            map.invalidateSize();
+        }, 100);
+    });
+}
+
+// Toggle sidebar on mobile
+function toggleSidebar() {
+    if (!isMobile) return;
+    
+    sidebarOpen = !sidebarOpen;
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    const toggle = document.querySelector('.sidebar-toggle');
+    
+    if (sidebarOpen) {
+        sidebar.classList.add('open');
+        overlay.classList.add('active');
+        toggle.classList.add('open');
+        toggle.innerHTML = '<i class="fas fa-times"></i>';
+        document.body.style.overflow = 'hidden';
+    } else {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+        toggle.classList.remove('open');
+        toggle.innerHTML = '<i class="fas fa-bars"></i>';
+        document.body.style.overflow = '';
+    }
+}
+
+// Close sidebar
+function closeSidebar() {
+    if (!isMobile || !sidebarOpen) return;
+    
+    sidebarOpen = false;
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    const toggle = document.querySelector('.sidebar-toggle');
+    
+    sidebar.classList.remove('open');
+    overlay.classList.remove('active');
+    toggle.classList.remove('open');
+    toggle.innerHTML = '<i class="fas fa-bars"></i>';
+    document.body.style.overflow = '';
 }
 
 // Setup tab navigation
@@ -212,6 +326,13 @@ function setupEventListeners() {
                             if (filteredFeatures.length > 0) {
                                 showRouteInfoInPanel(filteredFeatures[0]);
                                 highlightEtappe(filteredFeatures[0]);
+                                
+                                // Auto-close sidebar on mobile after showing route info
+                                if (isMobile) {
+                                    setTimeout(() => {
+                                        closeSidebar();
+                                    }, 500);
+                                }
                             }
                         }
                     })
@@ -446,6 +567,11 @@ function switchToRouteInfoTab() {
     
     if (infoTab) infoTab.classList.add('active');
     if (infoPanel) infoPanel.classList.add('active');
+    
+    // On mobile, open sidebar to show the info
+    if (isMobile && !sidebarOpen) {
+        toggleSidebar();
+    }
 }
 
 function highlightEtappe(feature) {
@@ -721,6 +847,11 @@ function searchLocation() {
                 setTimeout(() => {
                     map.removeLayer(marker);
                 }, 10000);
+                
+                // Close sidebar on mobile after search
+                if (isMobile) {
+                    closeSidebar();
+                }
             } else {
                 alert('Locatie niet gevonden');
             }
@@ -733,10 +864,20 @@ function searchLocation() {
 
 function zoomToNetherlands() {
     map.setView([52.1326, 5.2913], 7);
+    
+    // Close sidebar on mobile
+    if (isMobile) {
+        closeSidebar();
+    }
 }
 
 function getCurrentLocation() {
     if (navigator.geolocation) {
+        // Close sidebar on mobile when using location
+        if (isMobile) {
+            closeSidebar();
+        }
+        
         navigator.geolocation.getCurrentPosition(function(position) {
             const lat = position.coords.latitude;
             const lon = position.coords.longitude;
@@ -754,6 +895,20 @@ function getCurrentLocation() {
         });
     } else {
         alert('Geolocation wordt niet ondersteund');
+    }
+}
+
+function fitToCampings() {
+    if (campingLayer.getLayers().length > 0) {
+        const group = new L.featureGroup(campingLayer.getLayers());
+        map.fitBounds(group.getBounds(), { padding: [20, 20] });
+        
+        // Close sidebar on mobile
+        if (isMobile) {
+            closeSidebar();
+        }
+    } else {
+        showNotification('Geen campings geladen', 'warning');
     }
 }
 
@@ -823,5 +978,22 @@ function hideLoadingOverlay() {
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, initializing...');
+    
+    // Set initial mobile state
+    isMobile = window.innerWidth <= 768;
+    
     initMap();
+    
+    // Handle back button on mobile
+    if (isMobile) {
+        window.addEventListener('popstate', function(e) {
+            if (sidebarOpen) {
+                closeSidebar();
+                history.pushState(null, null, location.href);
+            }
+        });
+        
+        // Push initial state for back button handling
+        history.pushState(null, null, location.href);
+    }
 });
