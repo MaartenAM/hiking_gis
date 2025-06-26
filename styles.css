@@ -80,6 +80,34 @@ body {
 
 .sidebar-toggle {
     display: none;
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    width: 50px;
+    height: 50px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    color: var(--text-primary);
+    box-shadow: var(--shadow-lg);
+    z-index: 10001;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(12px);
+}
+
+.sidebar-toggle:hover {
+    background: var(--primary-green);
+    color: white;
+    transform: scale(1.1);
+}
+
+.sidebar-toggle.open {
+    background: var(--primary-green);
+    color: white;
 }
 
 /* Tabs */
@@ -1402,35 +1430,7 @@ body {
     }
     
     .sidebar-toggle {
-        position: fixed;
-        top: 15px;
-        left: 15px;
-        width: 50px;
-        height: 50px;
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 50%;
         display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        font-size: 18px;
-        color: var(--text-primary);
-        box-shadow: var(--shadow-lg);
-        z-index: 10001;
-        transition: all 0.3s ease;
-        backdrop-filter: blur(12px);
-    }
-    
-    .sidebar-toggle:hover {
-        background: var(--primary-green);
-        color: white;
-        transform: scale(1.1);
-    }
-    
-    .sidebar-toggle.open {
-        background: var(--primary-green);
-        color: white;
     }
 
     #map {
