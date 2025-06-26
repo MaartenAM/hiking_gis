@@ -1430,7 +1430,7 @@ body {
     }
     
     .sidebar-toggle {
-        display: flex;
+        display: flex !important;
     }
 
     #map {
