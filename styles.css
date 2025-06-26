@@ -78,6 +78,10 @@ body {
     font-weight: 400;
 }
 
+.sidebar-toggle {
+    display: none;
+}
+
 /* Tabs */
 .sidebar-tabs {
     display: flex;
@@ -1019,6 +1023,33 @@ body {
     border-radius: 2px;
 }
 
+/* Mobile overlay for sidebar */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.sidebar-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Better touch targets */
+.leaflet-control-zoom a {
+    width: 40px !important;
+    height: 40px !important;
+    line-height: 40px !important;
+    font-size: 16px !important;
+}
+
 /* Subtle kilometer marker tooltips */
 .km-tooltip-subtle {
     background: transparent !important;
@@ -1318,47 +1349,115 @@ body {
 }
 
 /* Responsive */
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
     .sidebar {
         width: 350px;
     }
     
     .layer-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 1024px) {
+    .sidebar {
+        width: 320px;
     }
     
     .trace-stats, .stats-grid {
         grid-template-columns: 1fr;
         gap: 12px;
     }
+    
+    .tab-button {
+        padding: 10px 6px;
+        font-size: 11px;
+    }
+    
+    .tab-button i {
+        font-size: 13px;
+    }
 }
 
 @media (max-width: 768px) {
     .container {
         flex-direction: column;
+        position: relative;
     }
     
     .sidebar {
-        width: 100%;
-        height: 50vh;
-        border-right: none;
-        border-bottom: 1px solid var(--border);
+        position: fixed;
+        top: 0;
+        left: -100%;
+        width: 85%;
+        max-width: 350px;
+        height: 100vh;
+        z-index: 10000;
+        transition: left 0.3s ease;
+        box-shadow: var(--shadow-xl);
     }
     
+    .sidebar.open {
+        left: 0;
+    }
+    
+    .sidebar-toggle {
+        position: fixed;
+        top: 15px;
+        left: 15px;
+        width: 50px;
+        height: 50px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 18px;
+        color: var(--text-primary);
+        box-shadow: var(--shadow-lg);
+        z-index: 10001;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(12px);
+    }
+    
+    .sidebar-toggle:hover {
+        background: var(--primary-green);
+        color: white;
+        transform: scale(1.1);
+    }
+    
+    .sidebar-toggle.open {
+        background: var(--primary-green);
+        color: white;
+    }
+
     #map {
-        height: 50vh;
+        height: 100vh;
+        width: 100%;
     }
 
     .map-controls {
-        top: 10px;
-        right: 10px;
+        top: 15px;
+        right: 15px;
+        flex-direction: row;
+        gap: 10px;
+    }
+    
+    .map-control-btn {
+        width: 44px;
+        height: 44px;
+        font-size: 16px;
     }
 
     .info-panel {
-        bottom: 10px;
-        right: 10px;
-        left: 10px;
+        bottom: 15px;
+        right: 15px;
+        left: 15px;
         max-width: none;
+        max-height: 40vh;
+        overflow-y: auto;
     }
     
     .sidebar-title {
@@ -1366,12 +1465,17 @@ body {
     }
     
     .tab-button {
-        padding: 10px 6px;
+        padding: 12px 4px;
         font-size: 10px;
+        gap: 2px;
     }
     
     .tab-button i {
-        font-size: 12px;
+        font-size: 14px;
+    }
+    
+    .tab-button span {
+        font-size: 9px;
     }
     
     .route-info-card {
@@ -1383,7 +1487,216 @@ body {
     }
 
     .camping-popup {
-        min-width: 250px;
+        min-width: 220px;
+        max-width: 260px;
+    }
+    
+    .layer-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    
+    .layer-card {
+        padding: 12px;
+    }
+    
+    .layer-card i {
+        font-size: 20px;
+    }
+    
+    .layer-name {
+        font-size: 11px;
+    }
+    
+    .control-section {
+        margin-bottom: 24px;
+    }
+    
+    .section-title {
+        font-size: 16px;
+    }
+    
+    .button-primary, .button-secondary {
+        padding: 14px 20px;
+        font-size: 14px;
+    }
+    
+    .step-container {
+        padding: 12px;
+        gap: 12px;
+    }
+    
+    .step-number {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
+    }
+    
+    .distance-display {
+        padding: 16px;
+    }
+    
+    .distance-value {
+        font-size: 24px;
+    }
+    
+    .search-container {
+        margin-bottom: 8px;
+    }
+    
+    .input-field, .select-field {
+        padding: 14px 16px;
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+}
+
+@media (max-width: 480px) {
+    .sidebar {
+        width: 90%;
+    }
+    
+    .sidebar-title {
+        font-size: 18px;
+    }
+    
+    .sidebar-subtitle {
+        font-size: 12px;
+    }
+    
+    .tab-button {
+        padding: 10px 2px;
+        font-size: 9px;
+    }
+    
+    .tab-button i {
+        font-size: 12px;
+    }
+    
+    .tab-button span {
+        font-size: 8px;
+    }
+    
+    .layer-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    
+    .section-title {
+        font-size: 15px;
+    }
+    
+    .control-section {
+        margin-bottom: 20px;
+    }
+    
+    .route-info-card {
+        padding: 12px;
+    }
+    
+    .route-info-title {
+        font-size: 16px;
+    }
+    
+    .camping-popup {
+        min-width: 200px;
+        max-width: 240px;
+    }
+    
+    .map-controls {
+        top: 10px;
+        right: 10px;
+        gap: 8px;
+    }
+    
+    .map-control-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 14px;
+    }
+    
+    .sidebar-toggle {
+        top: 10px;
+        left: 10px;
+        width: 45px;
+        height: 45px;
+        font-size: 16px;
+    }
+    
+    .distance-display {
+        padding: 12px;
+    }
+    
+    .distance-value {
+        font-size: 20px;
+    }
+    
+    .info-panel {
+        bottom: 10px;
+        right: 10px;
+        left: 10px;
+        padding: 16px;
+    }
+}
+
+/* Touch optimizations */
+@media (hover: none) and (pointer: coarse) {
+    .layer-card {
+        padding: 16px;
+        min-height: 60px;
+    }
+    
+    .button-primary, .button-secondary {
+        min-height: 50px;
+        padding: 16px 20px;
+    }
+    
+    .tab-button {
+        min-height: 60px;
+        padding: 14px 8px;
+    }
+    
+    .map-control-btn {
+        min-width: 50px;
+        min-height: 50px;
+    }
+    
+    .route-remove-btn {
+        min-width: 44px;
+        min-height: 44px;
+        padding: 12px;
+    }
+    
+    .highlight-btn {
+        min-height: 44px;
+        padding: 12px 16px;
+    }
+    
+    .search-button {
+        min-width: 50px;
+    }
+}
+
+/* Landscape mobile */
+@media (max-width: 768px) and (orientation: landscape) {
+    .sidebar {
+        width: 60%;
         max-width: 280px;
+    }
+    
+    .sidebar-content {
+        padding-bottom: 20px;
+    }
+    
+    .tab-button {
+        padding: 8px 4px;
+        font-size: 9px;
+    }
+    
+    .tab-button i {
+        font-size: 12px;
+    }
+    
+    .control-section {
+        margin-bottom: 16px;
     }
 }
