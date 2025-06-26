@@ -340,7 +340,124 @@ body {
     letter-spacing: -0.01em;
 }
 
-/* Camping Layer Card Styling */
+/* Vrienden op de Fiets Layer Card Styling */
+#vrienden-layer-card.active {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    border-color: #3b82f6;
+}
+
+/* Vrienden popup styling */
+.vrienden-popup {
+    min-width: 280px;
+    max-width: 350px;
+}
+
+.vrienden-popup h4 {
+    margin: 0 0 12px 0;
+    color: #3b82f6;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.vrienden-popup p {
+    margin: 6px 0;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.vrienden-popup strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.vrienden-popup a {
+    color: #3b82f6;
+    text-decoration: none;
+}
+
+.vrienden-popup a:hover {
+    text-decoration: underline;
+}
+
+.vrienden-description {
+    background: var(--surface-elevated);
+    padding: 8px;
+    border-radius: var(--radius-sm);
+    margin: 8px 0;
+    font-size: 12px;
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+/* Marker Clustering Styles */
+.marker-cluster-small {
+    background-color: rgba(245, 158, 11, 0.6);
+}
+
+.marker-cluster-small div {
+    background-color: rgba(245, 158, 11, 0.8);
+}
+
+.marker-cluster-medium {
+    background-color: rgba(245, 158, 11, 0.6);
+}
+
+.marker-cluster-medium div {
+    background-color: rgba(245, 158, 11, 0.8);
+}
+
+.marker-cluster-large {
+    background-color: rgba(245, 158, 11, 0.6);
+}
+
+.marker-cluster-large div {
+    background-color: rgba(245, 158, 11, 0.8);
+}
+
+.marker-cluster {
+    background-clip: padding-box;
+    border-radius: 20px;
+}
+
+.marker-cluster div {
+    width: 30px;
+    height: 30px;
+    margin-left: 5px;
+    margin-top: 5px;
+    text-align: center;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cluster-inner.camping-cluster {
+    background: linear-gradient(135deg, var(--camping-color), var(--camping-hover)) !important;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.cluster-inner.vrienden-cluster {
+    background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.marker-cluster-small .cluster-inner {
+    font-size: 11px;
+}
+
+.marker-cluster-medium .cluster-inner {
+    font-size: 12px;
+}
+
+.marker-cluster-large .cluster-inner {
+    font-size: 13px;
+    font-weight: 800;
+}
 #camping-layer-card.active {
     background: linear-gradient(135deg, var(--camping-color), var(--camping-hover));
     border-color: var(--camping-color);
