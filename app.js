@@ -1528,3 +1528,453 @@ document.addEventListener('DOMContentLoaded', function() {
         history.pushState(null, null, location.href);
     }
 });
+
+// Uitbreiding voor app.js - Openbaar Vervoer functionaliteit
+
+// Global variables voor OV
+let ovStopsLayer;
+let ovStopsClusterGroup;
+let ovStopsVisible = false;
+let ovStopsData = [];
+
+// Iconen voor verschillende OV types
+const trainIcon = L.icon({
+    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+            <circle cx="12" cy="12" r="12" fill="#003082"/>
+            <rect x="6" y="8" width="12" height="8" rx="2" fill="white"/>
+            <circle cx="9" cy="14" r="1.5" fill="#003082"/>
+            <circle cx="15" cy="14" r="1.5" fill="#003082"/>
+            <rect x="8" y="10" width="8" height="2" fill="#003082"/>
+        </svg>
+    `),
+    iconSize: [24, 24],
+    iconAnchor: [12, 24],
+    popupAnchor: [0, -24]
+});
+
+const busIcon = L.icon({
+    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+            <circle cx="12" cy="12" r="12" fill="#e17000"/>
+            <rect x="5" y="7" width="14" height="10" rx="2" fill="white"/>
+            <circle cx="8" cy="15" r="1.5" fill="#e17000"/>
+            <circle cx="16" cy="15" r="1.5" fill="#e17000"/>
+            <rect x="6" y="9" width="12" height="4" fill="#e17000"/>
+        </svg>
+    `),
+    iconSize: [24, 24],
+    iconAnchor: [12, 24],
+    popupAnchor: [0, -24]
+});
+
+const tramIcon = L.icon({
+    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+            <circle cx="12" cy="12" r="12" fill="#009639"/>
+            <rect x="6" y="8" width="12" height="8" rx="2" fill="white"/>
+            <circle cx="9" cy="14" r="1.5" fill="#009639"/>
+            <circle cx="15" cy="14" r="1.5" fill="#009639"/>
+            <rect x="8" y="10" width="8" height="2" fill="#009639"/>
+            <line x1="12" y1="6" x2="12" y2="8" stroke="#009639" stroke-width="2"/>
+        </svg>
+    `),
+    iconSize: [24, 24],
+    iconAnchor: [12, 24],
+    popupAnchor: [0, -24]
+});
+
+// Initialize OV clustering
+function initializeOVClustering() {
+    if (typeof L.markerClusterGroup !== 'undefined') {
+        ovStopsClusterGroup = L.markerClusterGroup({
+            maxClusterRadius: 60,
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: true,
+            iconCreateFunction: function(cluster) {
+                const count = cluster.getChildCount();
+                let size = 'small';
+                if (count > 15) size = 'medium';
+                if (count > 30) size = 'large';
+                
+                return L.divIcon({
+                    html: `<div class="cluster-inner ov-cluster">${count}</div>`,
+                    className: `marker-cluster marker-cluster-${size}`,
+                    iconSize: L.point(40, 40)
+                });
+            }
+        });
+    } else {
+        ovStopsClusterGroup = L.layerGroup();
+    }
+}
+
+// Toggle OV stops layer
+function toggleOVStopsLayer() {
+    ovStopsVisible = !ovStopsVisible;
+    const card = document.getElementById('ov-layer-card');
+    
+    if (ovStopsVisible) {
+        if (ovStopsClusterGroup.getLayers().length === 0) {
+            loadOVStopsData();
+        } else {
+            map.addLayer(ovStopsClusterGroup);
+            card.classList.add('active');
+            showNotification('Openbaar vervoer haltes zichtbaar', 'success');
+        }
+    } else {
+        map.removeLayer(ovStopsClusterGroup);
+        card.classList.remove('active');
+        showNotification('Openbaar vervoer haltes verborgen', 'info');
+    }
+}
+
+// Load OV stops data from GTFS or alternative source
+async function loadOVStopsData() {
+    showLoadingOverlay('Openbaar vervoer data laden...');
+    
+    try {
+        // Optie 1: Gebruik lokale GeoJSON (als je GTFS data hebt geconverteerd)
+        const response = await fetch('./data/ov-stops.geojson');
+        if (response.ok) {
+            const geojsonData = await response.json();
+            processOVStopsGeoJSON(geojsonData);
+            return;
+        }
+    } catch (error) {
+        console.log('Lokale OV data niet gevonden, probeer alternatieve bronnen...');
+    }
+    
+    try {
+        // Optie 2: Gebruik NS stations data
+        await loadNSStations();
+        
+        // Optie 3: Voor bushaltes, gebruik OpenOV/OVapi
+        // await loadBusStopsFromOVapi();
+        
+    } catch (error) {
+        console.error('Fout bij laden OV data:', error);
+        showNotification('Kon openbaar vervoer data niet laden', 'error');
+    } finally {
+        hideLoadingOverlay();
+    }
+}
+
+// Load NS railway stations
+async function loadNSStations() {
+    try {
+        // Gebruik open data van Rijden de Treinen (CC0 licentie)
+        const response = await fetch('https://www.rijdendetreinen.nl/api/v2/stations');
+        const stationsData = await response.json();
+        
+        stationsData.forEach(station => {
+            if (station.land === 'NL') { // Alleen Nederlandse stations
+                const popupContent = `
+                    <div class="ov-popup train-popup">
+                        <h4><i class="fas fa-train"></i> ${station.namen.lang}</h4>
+                        <p><strong>Type:</strong> ${getStationTypeDescription(station.stationType)}</p>
+                        <p><strong>Stationscode:</strong> ${station.code}</p>
+                        ${station.namen.kort !== station.namen.lang ? `<p><strong>Korte naam:</strong> ${station.namen.kort}</p>` : ''}
+                        <div class="ov-actions">
+                            <button class="popup-button" onclick="showNSSchedule('${station.code}')">
+                                <i class="fas fa-clock"></i> Vertrektijden
+                            </button>
+                            <button class="popup-button" onclick="planRouteToStation('${station.lat}', '${station.lng}')">
+                                <i class="fas fa-route"></i> Route plannen
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                const marker = L.marker([station.lat, station.lng], {
+                    icon: trainIcon
+                }).bindPopup(popupContent);
+                
+                ovStopsClusterGroup.addLayer(marker);
+            }
+        });
+        
+        map.addLayer(ovStopsClusterGroup);
+        ovStopsVisible = true;
+        
+        const card = document.getElementById('ov-layer-card');
+        if (card) {
+            card.classList.add('active');
+        }
+        
+        showNotification(`${stationsData.length} treinstations geladen`, 'success');
+        
+    } catch (error) {
+        console.error('Fout bij laden NS stations:', error);
+        throw error;
+    }
+}
+
+// Process local GeoJSON OV data
+function processOVStopsGeoJSON(geojsonData) {
+    ovStopsClusterGroup.clearLayers();
+    
+    geojsonData.features.forEach(feature => {
+        const coords = feature.geometry.coordinates;
+        const props = feature.properties;
+        
+        // Bepaal icon type op basis van stop type
+        let icon = busIcon;
+        let typeLabel = 'Bushalte';
+        
+        if (props.stop_type === 'train' || props.route_type === '1') {
+            icon = trainIcon;
+            typeLabel = 'Treinstation';
+        } else if (props.stop_type === 'tram' || props.route_type === '0') {
+            icon = tramIcon;
+            typeLabel = 'Tramhalte';
+        }
+        
+        const popupContent = `
+            <div class="ov-popup">
+                <h4><i class="fas fa-bus"></i> ${props.stop_name || props.name}</h4>
+                <p><strong>Type:</strong> ${typeLabel}</p>
+                ${props.stop_code ? `<p><strong>Haltecode:</strong> ${props.stop_code}</p>` : ''}
+                ${props.stop_desc ? `<p><strong>Beschrijving:</strong> ${props.stop_desc}</p>` : ''}
+                <div class="ov-actions">
+                    <button class="popup-button" onclick="showOVSchedule('${props.stop_id}')">
+                        <i class="fas fa-clock"></i> Vertrektijden
+                    </button>
+                    <button class="popup-button" onclick="planRouteToStop('${coords[1]}', '${coords[0]}')">
+                        <i class="fas fa-route"></i> Route plannen
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        const marker = L.marker([coords[1], coords[0]], {
+            icon: icon
+        }).bindPopup(popupContent);
+        
+        ovStopsClusterGroup.addLayer(marker);
+    });
+    
+    map.addLayer(ovStopsClusterGroup);
+    ovStopsVisible = true;
+    
+    const card = document.getElementById('ov-layer-card');
+    if (card) {
+        card.classList.add('active');
+    }
+    
+    showNotification(`${geojsonData.features.length} OV haltes geladen`, 'success');
+}
+
+// Helper function voor station type beschrijvingen
+function getStationTypeDescription(type) {
+    const types = {
+        'megastation': 'Megastation',
+        'knooppuntIntercitystation': 'Knooppunt Intercitystation',
+        'intercitystation': 'Intercitystation',
+        'knooppuntSneltreinstation': 'Knooppunt Sneltreinstation',
+        'sneltreinstation': 'Sneltreinstation',
+        'knooppuntStoptreinstation': 'Knooppunt Stoptreinstation',
+        'stoptreinstation': 'Stoptreinstation',
+        'facultatiefStation': 'Facultatief station'
+    };
+    return types[type] || type;
+}
+
+// Show nearby OV stops when clicking on a route
+function showNearbyOVStops(latlng, radius = 2000) {
+    if (!ovStopsVisible || ovStopsClusterGroup.getLayers().length === 0) {
+        showNotification('Laad eerst de openbaar vervoer haltes', 'warning');
+        return;
+    }
+    
+    const nearbyStops = [];
+    
+    ovStopsClusterGroup.eachLayer(layer => {
+        if (layer.getLatLng) {
+            const distance = latlng.distanceTo(layer.getLatLng());
+            if (distance <= radius) {
+                nearbyStops.push({
+                    layer: layer,
+                    distance: distance
+                });
+            }
+        }
+    });
+    
+    // Sorteer op afstand
+    nearbyStops.sort((a, b) => a.distance - b.distance);
+    
+    if (nearbyStops.length > 0) {
+        // Highlight nearby stops
+        nearbyStops.forEach(stop => {
+            if (stop.layer.setStyle) {
+                stop.layer.setStyle({
+                    color: '#ff7b54',
+                    weight: 4,
+                    opacity: 1
+                });
+            }
+        });
+        
+        // Show info panel with nearby stops
+        showNearbyOVPanel(nearbyStops, latlng);
+    } else {
+        showNotification('Geen openbaar vervoer in de buurt (binnen 2km)', 'info');
+    }
+}
+
+// Show panel with nearby OV information
+function showNearbyOVPanel(nearbyStops, centerPoint) {
+    const panelContent = `
+        <div class="route-info-card">
+            <div class="route-info-header">
+                <div class="route-info-title">
+                    <i class="fas fa-bus"></i>
+                    Openbaar Vervoer in de Buurt
+                </div>
+                <div class="route-info-badge">
+                    <i class="fas fa-map-marker-alt"></i>
+                    ${nearbyStops.length} halte(s)
+                </div>
+            </div>
+            
+            <div class="ov-stops-list">
+                ${nearbyStops.slice(0, 10).map(stop => {
+                    const distance = (stop.distance / 1000).toFixed(1);
+                    const stopName = stop.layer.getPopup()?.getContent()?.match(/<h4[^>]*>(.*?)<\/h4>/)?.[1]?.replace(/<[^>]*>/g, '') || 'Onbekende halte';
+                    
+                    return `
+                        <div class="ov-stop-item" onclick="zoomToOVStop(${stop.layer.getLatLng().lat}, ${stop.layer.getLatLng().lng})">
+                            <div class="ov-stop-info">
+                                <h5>${stopName}</h5>
+                                <p><i class="fas fa-walking"></i> ${distance} km • ca. ${Math.round(distance * 12)} min lopen</p>
+                            </div>
+                            <div class="ov-stop-action">
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+            
+            <div class="route-info-actions">
+                <button class="highlight-btn" onclick="clearOVHighlight()">
+                    <i class="fas fa-eye-slash"></i>
+                    Verberg highlights
+                </button>
+                <button class="zoom-btn" onclick="fitToNearbyOV()">
+                    <i class="fas fa-search-plus"></i>
+                    Zoom naar OV
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('routeInfoPanel').innerHTML = panelContent;
+    switchToRouteInfoTab();
+    
+    // Store for zoom functionality
+    window.currentNearbyOV = nearbyStops;
+}
+
+// Additional functions for OV integration
+function showNSSchedule(stationCode) {
+    // Implementeer NS API call voor vertrektijden
+    showNotification(`Vertrektijden voor ${stationCode} - Implementeer NS API`, 'info');
+}
+
+function showOVSchedule(stopId) {
+    // Implementeer 9292 API of OVapi call
+    showNotification(`Vertrektijden voor halte ${stopId} - Implementeer OV API`, 'info');
+}
+
+function planRouteToStation(lat, lng) {
+    // Open externe route planner (9292, Google Maps, etc.)
+    const url = `https://9292.nl/reisadvies/naar/${lat},${lng}`;
+    window.open(url, '_blank');
+}
+
+function zoomToOVStop(lat, lng) {
+    map.setView([lat, lng], 16);
+    if (isMobile) {
+        closeSidebar();
+    }
+}
+
+function clearOVHighlight() {
+    // Reset all highlighted OV stops
+    if (window.currentNearbyOV) {
+        window.currentNearbyOV.forEach(stop => {
+            if (stop.layer.setStyle) {
+                stop.layer.setStyle({
+                    color: '#3388ff',
+                    weight: 2,
+                    opacity: 0.8
+                });
+            }
+        });
+        window.currentNearbyOV = null;
+    }
+    
+    document.getElementById('routeInfoPanel').innerHTML = '<div class="empty-state">Geen informatie geselecteerd</div>';
+    showNotification('OV highlights verwijderd', 'info');
+}
+
+function fitToNearbyOV() {
+    if (window.currentNearbyOV && window.currentNearbyOV.length > 0) {
+        const group = new L.featureGroup(window.currentNearbyOV.map(stop => stop.layer));
+        map.fitBounds(group.getBounds(), { padding: [20, 20] });
+        
+        if (isMobile) {
+            closeSidebar();
+        }
+    }
+}
+
+// Extend existing route click handler to show nearby OV
+function extendRouteClickHandler() {
+    // Voeg toe aan bestaande map click event
+    const originalMapClick = map._events.click;
+    
+    map.on('click', function(e) {
+        // Voer bestaande functionaliteit uit
+        // ...
+        
+        // Als er een route feature is gevonden, toon ook nearby OV
+        if (activeRoutes.length > 0 && ovStopsVisible) {
+            setTimeout(() => {
+                showNearbyOVStops(e.latlng);
+            }, 500);
+        }
+    });
+}
+
+
+// Initialize OV functionality
+function initializeOVIntegration() {
+    // Add styles
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = ovStyles;
+    document.head.appendChild(styleSheet);
+    
+    // Initialize clustering
+    initializeOVClustering();
+    
+    // Extend route click handler
+    extendRouteClickHandler();
+}
+
+// Call initialization when map is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Add to existing initialization
+    setTimeout(() => {
+        initializeOVIntegration();
+    }, 1000);
+});
+
+export {
+    toggleOVStopsLayer,
+    showNearbyOVStops,
+    initializeOVIntegration
+};
