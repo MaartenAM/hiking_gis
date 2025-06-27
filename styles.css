@@ -2275,3 +2275,88 @@ body {
         margin-bottom: 16px;
     }
 }
+
+// CSS voor OV styling (voeg toe aan styles.css)
+const ovStyles = `
+.ov-cluster {
+    background: linear-gradient(135deg, #003082, #0066cc) !important;
+    box-shadow: 0 2px 8px rgba(0, 48, 130, 0.3);
+}
+
+.ov-popup {
+    min-width: 280px;
+    max-width: 350px;
+}
+
+.ov-popup h4 {
+    margin: 0 0 12px 0;
+    color: #003082;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.train-popup h4 {
+    color: #003082;
+}
+
+.ov-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.ov-actions .popup-button {
+    background: #003082;
+    font-size: 11px;
+    padding: 6px 10px;
+}
+
+.ov-stops-list {
+    max-height: 300px;
+    overflow-y: auto;
+    margin: 16px 0;
+}
+
+.ov-stop-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ov-stop-item:hover {
+    background: var(--surface-elevated);
+    border-color: #003082;
+    transform: translateY(-1px);
+}
+
+.ov-stop-info h5 {
+    font-size: 14px;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.ov-stop-info p {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.ov-stop-action {
+    color: #003082;
+    font-size: 16px;
+}
+
+#ov-layer-card.active {
+    background: linear-gradient(135deg, #003082, #0066cc);
+    border-color: #003082;
+}
