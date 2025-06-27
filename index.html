@@ -98,26 +98,25 @@
                     </div>
 
                     <div class="control-section">
-    <div class="section-title">
-        <i class="fas fa-bus"></i>
-        Openbaar Vervoer
-    </div>
-    <div class="layer-grid">
-        <div class="layer-card" id="ov-layer-card" onclick="toggleOVStopsLayer()">
-            <i class="fas fa-train"></i>
-            <div class="layer-name">Stations & Haltes</div>
-        </div>
-        <div class="layer-card" onclick="showOVInfo()">
-            <i class="fas fa-clock"></i>
-            <div class="layer-name">Vertrektijden</div>
-        </div>
-    </div>
-    <div class="ov-info-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 8px; text-align: center;">
-        <i class="fas fa-info-circle"></i>
-        Klik op een wandelroute om nabijgelegen haltes te zien
-    </div>
-</div>
-
+                        <div class="section-title">
+                            <i class="fas fa-bus"></i>
+                            Openbaar Vervoer
+                        </div>
+                        <div class="layer-grid">
+                            <div class="layer-card" id="ov-layer-card" onclick="toggleOVStopsLayer()">
+                                <i class="fas fa-train"></i>
+                                <div class="layer-name">Stations & Haltes</div>
+                            </div>
+                            <div class="layer-card" onclick="showOVInfo()">
+                                <i class="fas fa-clock"></i>
+                                <div class="layer-name">Vertrektijden</div>
+                            </div>
+                        </div>
+                        <div class="ov-info-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 8px; text-align: center;">
+                            <i class="fas fa-info-circle"></i>
+                            Klik op een wandelroute om nabijgelegen haltes te zien
+                        </div>
+                    </div>
 
                     <div class="control-section">
                         <div class="section-title">
@@ -220,9 +219,6 @@
                     </div>
                 </div>
 
-                <!-- Camping Tab -->
-                <!-- VERWIJDERD - Camping functionaliteit nu alleen via Lagen tab -->
-
                 <!-- Route Info Tab -->
                 <div class="tab-panel" id="info-panel">
                     <div class="control-section">
@@ -239,6 +235,23 @@
                         </div>
                         <div id="routeInfoPanel">
                             <div class="empty-state">Geen etappe geselecteerd</div>
+                        </div>
+                    </div>
+
+                    <div class="control-section">
+                        <div class="section-title">
+                            <i class="fas fa-info-circle"></i>
+                            Openbaar Vervoer Info
+                        </div>
+                        <div class="info-instruction">
+                            <div class="instruction-icon">
+                                <i class="fas fa-bus"></i>
+                            </div>
+                            <h4>OV Integratie</h4>
+                            <p>Klik op een wandelroute om nabijgelegen treinstations en bushaltes te zien. Perfect voor het plannen van reizen met openbaar vervoer naar startpunten van etappes.</p>
+                        </div>
+                        <div id="ovInfoPanel">
+                            <div class="empty-state">Geen OV informatie beschikbaar</div>
                         </div>
                     </div>
                 </div>
@@ -288,24 +301,26 @@
                             Zoom naar Vrienden o/d Fiets
                         </button>
                     </div>
+
+                    <div class="control-section">
+                        <div class="section-title">
+                            <i class="fas fa-route"></i>
+                            Route & Vervoer
+                        </div>
+                        <button class="button-secondary" onclick="findNearestOVStops()">
+                            <i class="fas fa-search-location"></i>
+                            Vind dichtstbijzijnde haltes
+                        </button>
+                        <button class="button-secondary" onclick="planMultiModalRoute()">
+                            <i class="fas fa-map-marked-alt"></i>
+                            Plan reis met OV
+                        </button>
+                        <button class="button-secondary" onclick="fitToOVStops()">
+                            <i class="fas fa-train"></i>
+                            Zoom naar OV haltes
+                        </button>
+                    </div>
                 </div>
-
-                <!-- Voeg toe aan de Tools sectie -->
-<div class="control-section">
-    <div class="section-title">
-        <i class="fas fa-route"></i>
-        Route & Vervoer
-    </div>
-    <button class="button-secondary" onclick="findNearestOVStops()">
-        <i class="fas fa-search-location"></i>
-        Vind dichtstbijzijnde haltes
-    </button>
-    <button class="button-secondary" onclick="planMultiModalRoute()">
-        <i class="fas fa-map-marked-alt"></i>
-        Plan reis met OV
-    </button>
-</div>
-
 
                 <!-- Zoeken Tab -->
                 <div class="tab-panel" id="search-panel">
@@ -366,24 +381,6 @@
         <h4>Route informatie</h4>
         <div id="routeInfo" class="info-content"></div>
     </div>
-
-    <!-- Voeg toe aan de Info sectie -->
-<div class="control-section">
-    <div class="section-title">
-        <i class="fas fa-info-circle"></i>
-        Openbaar Vervoer Info
-    </div>
-    <div class="info-instruction">
-        <div class="instruction-icon">
-            <i class="fas fa-bus"></i>
-        </div>
-        <h4>OV Integratie</h4>
-        <p>Klik op een wandelroute om nabijgelegen treinstations en bushaltes te zien. Perfect voor het plannen van reizen met openbaar vervoer naar startpunten van etappes.</p>
-    </div>
-    <div id="ovInfoPanel">
-        <div class="empty-state">Geen OV informatie beschikbaar</div>
-    </div>
-</div>
 
     <!-- External Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
