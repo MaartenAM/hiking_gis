@@ -1,18 +1,4 @@
-function showNearbyOVStops(latlng, radius = 2000) {
-    if (!ovStopsVisible) {
-        showNotification('Activeer eerst de OV laag', 'warning');
-        return;
-    }
-    
-    if (!ovStopsData) {
-        showNotification('OV data nog niet geladen', 'warning');
-        return;
-    }
-    
-    const nearbyStops = [];
-    
-    // Search in raw data instead of current markers for better coverage
-    ovStopsData.features.forEach(feature => {
+ovStopsData.features.forEach(feature => {
         const coords = feature.geometry.coordinates;
         const stopLatLng = L.latLng(coords[1], coords[0]);
         const distance = latlng.distanceTo(stopLatLng);
@@ -40,10 +26,8 @@ function showNearbyOVStops(latlng, radius = 2000) {
                 opacity: 1
             });
             
-            // Add to map temporarily
             ovStopsClusterGroup.addLayer(marker);
             
-            // Remove after 10 seconds
             setTimeout(() => {
                 ovStopsClusterGroup.removeLayer(marker);
             }, 10000);
@@ -99,7 +83,6 @@ function showNearbyOVPanel(nearbyStops, centerPoint) {
         </div>
     `;
     
-    // Add to existing route info instead of replacing
     const existingContent = document.getElementById('routeInfoPanel').innerHTML;
     if (existingContent.includes('empty-state')) {
         document.getElementById('routeInfoPanel').innerHTML = panelContent;
@@ -138,8 +121,6 @@ function zoomToNearbyOV() {
     }
 }
 
-// ============ UTILITY FUNCTIONS ============
-
 function planRouteToStop(lat, lng) {
     const url = `https://9292.nl/reisadvies/naar/${lat},${lng}`;
     window.open(url, '_blank');
@@ -165,7 +146,6 @@ function fitToOVStops() {
         return;
     }
     
-    // Create bounds from all OV data
     const coordinates = ovStopsData.features.map(f => [f.geometry.coordinates[1], f.geometry.coordinates[0]]);
     const bounds = L.latLngBounds(coordinates);
     map.fitBounds(bounds, { padding: [20, 20] });
@@ -205,7 +185,7 @@ function fitToVrienden() {
     }
 }
 
-// ============ SETUP FUNCTIONS (UNCHANGED FROM PREVIOUS) ============
+// ============ SETUP FUNCTIONS ============
 
 function setupMobileFeatures() {
     let overlay = document.querySelector('.sidebar-overlay');
@@ -352,7 +332,6 @@ function setupEventListeners() {
         if (measuring) {
             addMeasurePoint(e.latlng);
         } else if (activeRoutes.length > 0) {
-            // Check for route info
             activeRoutes.forEach(route => {
                 const bounds = map.getBounds();
                 const size = map.getSize();
@@ -388,7 +367,6 @@ function setupEventListeners() {
                                 showRouteInfoInPanel(filteredFeatures[0]);
                                 highlightEtappe(filteredFeatures[0]);
                                 
-                                // Show nearby OV stops
                                 if (ovStopsVisible) {
                                     setTimeout(() => {
                                         showNearbyOVStops(e.latlng);
@@ -422,7 +400,7 @@ function switchBaseLayer(layerType) {
     }
 }
 
-// ============ ROUTE FUNCTIONALITY (UNCHANGED) ============
+// ============ ROUTE FUNCTIONALITY ============
 
 function addLAWRoute(routeValue, routeFilter) {
     const routeName = `${routeValue} - ${routeFilter}`;
@@ -1097,7 +1075,23 @@ function hideLoadingOverlay() {
     }
 }
 
-// Add notification animations
+function showZoomIndicator(message) {
+    let indicator = document.querySelector('.zoom-indicator');
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.className = 'zoom-indicator';
+        document.body.appendChild(indicator);
+    }
+    
+    indicator.textContent = message;
+    indicator.classList.add('show');
+    
+    setTimeout(() => {
+        indicator.classList.remove('show');
+    }, 2000);
+}
+
+// Add notification and zoom indicator animations
 const notificationStyles = `
 @keyframes slideInRight {
     from {
@@ -1121,7 +1115,6 @@ const notificationStyles = `
     }
 }
 
-/* Performance indicator for zoom levels */
 .zoom-indicator {
     position: fixed;
     top: 10px;
@@ -1146,65 +1139,6 @@ const notificationStyles = `
     50% { opacity: 1; }
 }
 `;
-
-// Performance monitoring
-function showZoomIndicator(message) {
-    let indicator = document.querySelector('.zoom-indicator');
-    if (!indicator) {
-        indicator = document.createElement('div');
-        indicator.className = 'zoom-indicator';
-        document.body.appendChild(indicator);
-    }
-    
-    indicator.textContent = message;
-    indicator.classList.add('show');
-    
-    setTimeout(() => {
-        indicator.classList.remove('show');
-    }, 2000);
-}
-
-// Enhanced viewport update with performance feedback
-function updateViewportData() {
-    const zoom = map.getZoom();
-    const bounds = map.getBounds();
-    
-    console.log(`Viewport update: zoom ${zoom}`);
-    
-    // Show user feedback about zoom levels
-    if (campingVisible && zoom < ZOOM_LEVELS.CAMPING_MIN) {
-        showZoomIndicator(`Zoom in tot ${ZOOM_LEVELS.CAMPING_MIN}+ voor campings`);
-    }
-    if (vriendenVisible && zoom < ZOOM_LEVELS.VRIENDEN_MIN) {
-        showZoomIndicator(`Zoom in tot ${ZOOM_LEVELS.VRIENDEN_MIN}+ voor Vrienden op de Fiets`);
-    }
-    if (ovStopsVisible && zoom < ZOOM_LEVELS.OV_MIN) {
-        showZoomIndicator(`Zoom in tot ${ZOOM_LEVELS.OV_MIN}+ voor openbaar vervoer`);
-    }
-    
-    // Update camping data
-    if (campingVisible && zoom >= ZOOM_LEVELS.CAMPING_MIN) {
-        updateCampingInViewport(bounds);
-    } else if (campingVisible) {
-        clearCampingMarkers();
-    }
-    
-    // Update vrienden data
-    if (vriendenVisible && zoom >= ZOOM_LEVELS.VRIENDEN_MIN) {
-        updateVriendenInViewport(bounds);
-    } else if (vriendenVisible) {
-        clearVriendenMarkers();
-    }
-    
-    // Update OV data
-    if (ovStopsVisible && zoom >= ZOOM_LEVELS.OV_MIN) {
-        updateOVInViewport(bounds);
-    } else if (ovStopsVisible) {
-        clearOVMarkers();
-    }
-    
-    lastViewportBounds = bounds;
-}
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
@@ -1332,7 +1266,7 @@ L.tileLayer.pdokFilter = function (url, options) {
     return new L.TileLayer.PDOKFilter(url, options);
 };
 
-// Icons (unchanged)
+// Icons
 const campingIcon = L.icon({
     iconUrl: 'data:image/svg+xml;base64,' + btoa(`
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
@@ -1450,9 +1384,7 @@ function initMap() {
         vriendenLayer = L.layerGroup();
         ovStopsLayer = L.layerGroup();
         
-        // Try to initialize clustering if available
         initializeClustering();
-
         setupEventListeners();
         setupTabNavigation();
         setupMobileFeatures();
@@ -1538,10 +1470,9 @@ function initializeClustering() {
 
 // Setup viewport-based loading
 function setupViewportBasedLoading() {
-    // Listen to map events for viewport updates
     map.on('zoomend moveend', function() {
         clearTimeout(viewportUpdateTimeout);
-        viewportUpdateTimeout = setTimeout(updateViewportData, 300); // Debounce
+        viewportUpdateTimeout = setTimeout(updateViewportData, 300);
     });
 }
 
@@ -1550,21 +1481,38 @@ function updateViewportData() {
     const zoom = map.getZoom();
     const bounds = map.getBounds();
     
-    console.log(`Viewport update: zoom ${zoom}, bounds:`, bounds);
+    console.log(`Viewport update: zoom ${zoom}`);
+    
+    // Show user feedback about zoom levels
+    if (campingVisible && zoom < ZOOM_LEVELS.CAMPING_MIN) {
+        showZoomIndicator(`Zoom in tot ${ZOOM_LEVELS.CAMPING_MIN}+ voor campings`);
+    }
+    if (vriendenVisible && zoom < ZOOM_LEVELS.VRIENDEN_MIN) {
+        showZoomIndicator(`Zoom in tot ${ZOOM_LEVELS.VRIENDEN_MIN}+ voor Vrienden op de Fiets`);
+    }
+    if (ovStopsVisible && zoom < ZOOM_LEVELS.OV_MIN) {
+        showZoomIndicator(`Zoom in tot ${ZOOM_LEVELS.OV_MIN}+ voor openbaar vervoer`);
+    }
     
     // Update camping data
     if (campingVisible && zoom >= ZOOM_LEVELS.CAMPING_MIN) {
         updateCampingInViewport(bounds);
+    } else if (campingVisible) {
+        clearCampingMarkers();
     }
     
     // Update vrienden data
     if (vriendenVisible && zoom >= ZOOM_LEVELS.VRIENDEN_MIN) {
         updateVriendenInViewport(bounds);
+    } else if (vriendenVisible) {
+        clearVriendenMarkers();
     }
     
     // Update OV data
     if (ovStopsVisible && zoom >= ZOOM_LEVELS.OV_MIN) {
         updateOVInViewport(bounds);
+    } else if (ovStopsVisible) {
+        clearOVMarkers();
     }
     
     lastViewportBounds = bounds;
@@ -1582,15 +1530,10 @@ function isInBounds(lat, lng, bounds, buffer = 0.01) {
 function updateCampingInViewport(bounds) {
     if (!campingData) return;
     
-    // Clear existing markers
-    currentCampingMarkers.forEach(marker => {
-        campingClusterGroup.removeLayer(marker);
-    });
-    currentCampingMarkers = [];
+    clearCampingMarkers();
     
-    // Add markers in viewport
     let addedCount = 0;
-    const maxMarkers = 200; // Limit markers for performance
+    const maxMarkers = 200;
     
     campingData.features.forEach(feature => {
         if (addedCount >= maxMarkers) return;
@@ -1614,13 +1557,8 @@ function updateCampingInViewport(bounds) {
 function updateVriendenInViewport(bounds) {
     if (!vriendenData) return;
     
-    // Clear existing markers
-    currentVriendenMarkers.forEach(marker => {
-        vriendenClusterGroup.removeLayer(marker);
-    });
-    currentVriendenMarkers = [];
+    clearVriendenMarkers();
     
-    // Add markers in viewport
     let addedCount = 0;
     const maxMarkers = 200;
     
@@ -1646,15 +1584,10 @@ function updateVriendenInViewport(bounds) {
 function updateOVInViewport(bounds) {
     if (!ovStopsData) return;
     
-    // Clear existing markers
-    currentOVMarkers.forEach(marker => {
-        ovStopsClusterGroup.removeLayer(marker);
-    });
-    currentOVMarkers = [];
+    clearOVMarkers();
     
-    // Add markers in viewport
     let addedCount = 0;
-    const maxMarkers = 300; // More OV stops allowed
+    const maxMarkers = 300;
     
     ovStopsData.features.forEach(feature => {
         if (addedCount >= maxMarkers) return;
@@ -1674,7 +1607,7 @@ function updateOVInViewport(bounds) {
     console.log(`Added ${addedCount} OV markers in viewport`);
 }
 
-// Create camping marker
+// Create markers
 function createCampingMarker(feature) {
     const coords = feature.geometry.coordinates;
     const props = feature.properties;
@@ -1693,12 +1626,10 @@ function createCampingMarker(feature) {
     }).bindPopup(popupContent);
 }
 
-// Create vrienden marker
 function createVriendenMarker(feature) {
     const coords = feature.geometry.coordinates;
     const props = feature.properties;
     
-    // Format availability dates
     let availabilityText = '';
     if (props.nietbeschikbaarvanaf || props.nietbeschikbaartm) {
         const van = props.nietbeschikbaarvanaf ? new Date(props.nietbeschikbaarvanaf).toLocaleDateString('nl-NL') : '';
@@ -1728,7 +1659,6 @@ function createVriendenMarker(feature) {
     }).bindPopup(popupContent);
 }
 
-// Create OV marker
 function createOVMarker(feature) {
     const coords = feature.geometry.coordinates;
     const props = feature.properties;
@@ -1762,6 +1692,28 @@ function createOVMarker(feature) {
     }).bindPopup(popupContent);
 }
 
+// Clear functions
+function clearCampingMarkers() {
+    currentCampingMarkers.forEach(marker => {
+        campingClusterGroup.removeLayer(marker);
+    });
+    currentCampingMarkers = [];
+}
+
+function clearVriendenMarkers() {
+    currentVriendenMarkers.forEach(marker => {
+        vriendenClusterGroup.removeLayer(marker);
+    });
+    currentVriendenMarkers = [];
+}
+
+function clearOVMarkers() {
+    currentOVMarkers.forEach(marker => {
+        ovStopsClusterGroup.removeLayer(marker);
+    });
+    currentOVMarkers = [];
+}
+
 // ============ LAYER TOGGLE FUNCTIONS ============
 
 function toggleCampingLayer() {
@@ -1774,7 +1726,7 @@ function toggleCampingLayer() {
         } else {
             map.addLayer(campingClusterGroup);
             card.classList.add('active');
-            updateViewportData(); // Update viewport immediately
+            updateViewportData();
             showNotification('Campings zichtbaar - zoom in voor details', 'success');
         }
     } else {
@@ -1830,7 +1782,7 @@ function toggleOVStopsLayer() {
 // ============ DATA LOADING FUNCTIONS ============
 
 function loadCampingData() {
-    if (campingData) return; // Already loaded
+    if (campingData) return;
     
     showLoadingOverlay('Camping data laden...');
     
@@ -1853,10 +1805,8 @@ function loadCampingData() {
             }
             
             hideLoadingOverlay();
-            
             showNotification(`${geojsonData.features.length} campings geladen - zoom in voor details`, 'success');
             
-            // Update viewport if zoom is sufficient
             if (map.getZoom() >= ZOOM_LEVELS.CAMPING_MIN) {
                 updateViewportData();
             }
@@ -1868,7 +1818,7 @@ function loadCampingData() {
 }
 
 function loadVriendenData() {
-    if (vriendenData) return; // Already loaded
+    if (vriendenData) return;
     
     showLoadingOverlay('Vrienden op de Fiets data laden...');
     
@@ -1891,7 +1841,6 @@ function loadVriendenData() {
             }
             
             hideLoadingOverlay();
-            
             showNotification(`${geojsonData.features.length} Vrienden op de Fiets locaties geladen - zoom in voor details`, 'success');
             
             if (map.getZoom() >= ZOOM_LEVELS.VRIENDEN_MIN) {
@@ -1905,12 +1854,11 @@ function loadVriendenData() {
 }
 
 async function loadOVStopsData() {
-    if (ovStopsData) return; // Already loaded
+    if (ovStopsData) return;
     
     showLoadingOverlay('Openbaar vervoer data laden...');
     
     try {
-        // Try to load local GeoJSON first
         try {
             const response = await fetch('./data/ov-stops.geojson');
             if (response.ok) {
@@ -1937,7 +1885,6 @@ async function loadOVStopsData() {
             console.log('Local OV data niet gevonden, gebruik NS stations...');
         }
         
-        // Fallback to NS stations
         await loadNSStationsAsGeoJSON();
         
     } catch (error) {
@@ -1952,7 +1899,6 @@ async function loadNSStationsAsGeoJSON() {
         const response = await fetch('https://www.rijdendetreinen.nl/api/v2/stations');
         const stationsData = await response.json();
         
-        // Convert to GeoJSON format
         const features = stationsData
             .filter(station => station.land === 'NL')
             .map(station => ({
@@ -1997,31 +1943,19 @@ async function loadNSStationsAsGeoJSON() {
     }
 }
 
-// ============ CLEAR FUNCTIONS ============
-
-function clearCampingMarkers() {
-    currentCampingMarkers.forEach(marker => {
-        campingClusterGroup.removeLayer(marker);
-    });
-    currentCampingMarkers = [];
-}
-
-function clearVriendenMarkers() {
-    currentVriendenMarkers.forEach(marker => {
-        vriendenClusterGroup.removeLayer(marker);
-    });
-    currentVriendenMarkers = [];
-}
-
-function clearOVMarkers() {
-    currentOVMarkers.forEach(marker => {
-        ovStopsClusterGroup.removeLayer(marker);
-    });
-    currentOVMarkers = [];
-}
-
-// ============ SMART OV FUNCTIONS ============
+// ============ OV FUNCTIONS ============
 
 function showNearbyOVStops(latlng, radius = 2000) {
     if (!ovStopsVisible) {
-        showNotification('Activeer eerst de O
+        showNotification('Activeer eerst de OV laag', 'warning');
+        return;
+    }
+    
+    if (!ovStopsData) {
+        showNotification('OV data nog niet geladen', 'warning');
+        return;
+    }
+    
+    const nearbyStops = [];
+    
+    ovStopsData.features.forEach(feature =>
