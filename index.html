@@ -63,139 +63,6 @@
                         <div class="layer-grid">
                             <div class="layer-card active" data-layer="osm">
                                 <i class="fas fa-map-marked-alt"></i>
-                                <div class="layer-name">OpenStreetMap</div>
-                            </div>
-                            <div class="layer-card" data-layer="topo">
-                                <i class="fas fa-mountain"></i>
-                                <div class="layer-name">Topografisch</div>
-                            </div>
-                            <div class="layer-card" data-layer="satellite">
-                                <i class="fas fa-camera"></i>
-                                <div class="layer-name">Luchtfoto</div>
-                            </div>
-                            <div class="layer-card" data-layer="terrain">
-                                <i class="fas fa-globe-europe"></i>
-                                <div class="layer-name">Terrein</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="control-section">
-                        <div class="section-title">
-                            <i class="fas fa-bed"></i>
-                            Overnachtingen
-                        </div>
-                        <div class="layer-grid">
-                            <div class="layer-card" id="camping-layer-card" onclick="toggleCampingLayer()">
-                                <i class="fas fa-campground"></i>
-                                <div class="layer-name">Campings</div>
-                            </div>
-                            <div class="layer-card" id="vrienden-layer-card" onclick="toggleVriendenLayer()">
-                                <i class="fas fa-bicycle"></i>
-                                <div class="layer-name">Vrienden o/d Fiets</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="control-section">
-                        <div class="section-title">
-                            <i class="fas fa-bus"></i>
-                            Openbaar Vervoer
-                        </div>
-                        <div class="layer-grid">
-                            <div class="layer-card" id="ov-layer-card" onclick="toggleOVStopsLayer()">
-                                <i class="fas fa-train"></i>
-                                <div class="layer-name">Stations & Haltes</div>
-                            </div>
-                            <div class="layer-card" onclick="showOVInfo()">
-                                <i class="fas fa-clock"></i>
-                                <div class="layer-name">Vertrektijden</div>
-                            </div>
-                        </div>
-                        <div class="ov-info-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 8px; text-align: center;">
-                            <i class="fas fa-info-circle"></i>
-                            Klik op een wandelroute om nabijgelegen haltes te zien
-                        </div>
-                    </div>
-
-                    <div class="control-section">
-                        <div class="section-title">
-                            <i class="fas fa-hiking"></i>
-                            Route Informatie
-                        </div>
-                        <div class="info-instruction">
-                            <div class="instruction-icon">
-                                <i class="fas fa-info-circle"></i>
-                            </div>
-                            <h4>Etappe Details Bekijken</h4>
-                            <p>Klik op een route lijn op de kaart om gedetailleerde informatie te zien over etappes, van/naar locaties, en route eigenschappen.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Routes Tab -->
-                <div class="tab-panel" id="routes-panel">
-                    <div class="control-section">
-                        <div class="section-title">
-                            <i class="fas fa-route"></i>
-                            LAW Routes Toevoegen
-                        </div>
-                        
-                        <div class="route-cards-grid">
-                            <div class="route-card" onclick="addLAWRoute('LAW 10', 'Marskramerpad')" data-route="LAW 10">
-                                <div class="route-card-header">
-                                    <i class="fas fa-hiking"></i>
-                                    <div class="route-number">LAW 10</div>
-                                </div>
-                                <div class="route-card-content">
-                                    <h4>Marskramerpad</h4>
-                                    <p>Lange afstand wandelroute door Nederland</p>
-                                </div>
-                                <div class="route-card-action">
-                                    <i class="fas fa-plus"></i>
-                                    Toevoegen
-                                </div>
-                            </div>
-                            
-                            <div class="route-card" onclick="addLAWRoute('LAW 5', 'Trekvogelpad')" data-route="LAW 5">
-                                <div class="route-card-header">
-                                    <i class="fas fa-hiking"></i>
-                                    <div class="route-number">LAW 5</div>
-                                </div>
-                                <div class="route-card-content">
-                                    <h4>Trekvogelpad</h4>
-                                    <p>Lange afstand wandelroute door Nederland</p>
-                                </div>
-                                <div class="route-card-action">
-                                    <i class="fas fa-plus"></i>
-                                    Toevoegen
-                                </div>
-                            </div>
-                            
-                            <div class="route-card" onclick="addLAWRoute('LAW 4', 'Zuiderzeepad')" data-route="LAW 4">
-                                <div class="route-card-header">
-                                    <i class="fas fa-hiking"></i>
-                                    <div class="route-number">LAW 4</div>
-                                </div>
-                                <div class="route-card-content">
-                                    <h4>Zuiderzeepad</h4>
-                                    <p>Lange afstand wandelroute door Nederland</p>
-                                </div>
-                                <div class="route-card-action">
-                                    <i class="fas fa-plus"></i>
-                                    Toevoegen
-                                </div>
-                            </div>
-                            
-                            <div class="route-card" onclick="addLAWRoute('LAW 3', 'Pelgrimspad')" data-route="LAW 3">
-                                <div class="route-card-header">
-                                    <i class="fas fa-hiking"></i>
-                                    <div class="route-number">LAW 3</div>
-                                </div>
-                                <div class="route-card-content">
-                                    <h4>Pelgrimspad deel 1</h4>
-                                    <p>Lange afstand wandelroute door Nederland</p>
-                                </div>
                                 <div class="route-card-action">
                                     <i class="fas fa-plus"></i>
                                     Toevoegen
@@ -413,4 +280,143 @@
     <!-- Custom Scripts -->
     <script src="app.js"></script>
 </body>
-</html>
+</html> class="layer-name">OpenStreetMap</div>
+                            </div>
+                            <div class="layer-card" data-layer="topo">
+                                <i class="fas fa-mountain"></i>
+                                <div class="layer-name">Topografisch</div>
+                            </div>
+                            <div class="layer-card" data-layer="satellite">
+                                <i class="fas fa-camera"></i>
+                                <div class="layer-name">Luchtfoto</div>
+                            </div>
+                            <div class="layer-card" data-layer="terrain">
+                                <i class="fas fa-globe-europe"></i>
+                                <div class="layer-name">Terrein</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-section">
+                        <div class="section-title">
+                            <i class="fas fa-bed"></i>
+                            Overnachtingen
+                        </div>
+                        <div class="layer-grid">
+                            <div class="layer-card" id="camping-layer-card" onclick="toggleCampingLayer()">
+                                <i class="fas fa-campground"></i>
+                                <div class="layer-name">Campings</div>
+                            </div>
+                            <div class="layer-card" id="vrienden-layer-card" onclick="toggleVriendenLayer()">
+                                <i class="fas fa-bicycle"></i>
+                                <div class="layer-name">Vrienden o/d Fiets</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-section">
+                        <div class="section-title">
+                            <i class="fas fa-bus"></i>
+                            Openbaar Vervoer
+                        </div>
+                        <div class="layer-grid">
+                            <div class="layer-card" id="ov-layer-card" onclick="toggleOVStopsLayer()">
+                                <i class="fas fa-train"></i>
+                                <div class="layer-name">Stations & Haltes</div>
+                            </div>
+                            <div class="layer-card" onclick="showOVInfo()">
+                                <i class="fas fa-clock"></i>
+                                <div class="layer-name">Vertrektijden</div>
+                            </div>
+                        </div>
+                        <div class="ov-performance-info">
+                            <div class="ov-zoom-indicator">
+                                <i class="fas fa-search-plus"></i>
+                                <span>OV haltes laden vanaf zoomniveau 10 voor betere performance</span>
+                            </div>
+                            <div class="ov-tip-text">
+                                <i class="fas fa-info-circle"></i>
+                                Klik op een wandelroute om nabijgelegen haltes te zien
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-section">
+                        <div class="section-title">
+                            <i class="fas fa-hiking"></i>
+                            Route Informatie
+                        </div>
+                        <div class="info-instruction">
+                            <div class="instruction-icon">
+                                <i class="fas fa-info-circle"></i>
+                            </div>
+                            <h4>Etappe Details Bekijken</h4>
+                            <p>Klik op een route lijn op de kaart om gedetailleerde informatie te zien over etappes, van/naar locaties, en route eigenschappen.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Routes Tab -->
+                <div class="tab-panel" id="routes-panel">
+                    <div class="control-section">
+                        <div class="section-title">
+                            <i class="fas fa-route"></i>
+                            LAW Routes Toevoegen
+                        </div>
+                        
+                        <div class="route-cards-grid">
+                            <div class="route-card" onclick="addLAWRoute('LAW 10', 'Marskramerpad')" data-route="LAW 10">
+                                <div class="route-card-header">
+                                    <i class="fas fa-hiking"></i>
+                                    <div class="route-number">LAW 10</div>
+                                </div>
+                                <div class="route-card-content">
+                                    <h4>Marskramerpad</h4>
+                                    <p>Lange afstand wandelroute door Nederland</p>
+                                </div>
+                                <div class="route-card-action">
+                                    <i class="fas fa-plus"></i>
+                                    Toevoegen
+                                </div>
+                            </div>
+                            
+                            <div class="route-card" onclick="addLAWRoute('LAW 5', 'Trekvogelpad')" data-route="LAW 5">
+                                <div class="route-card-header">
+                                    <i class="fas fa-hiking"></i>
+                                    <div class="route-number">LAW 5</div>
+                                </div>
+                                <div class="route-card-content">
+                                    <h4>Trekvogelpad</h4>
+                                    <p>Lange afstand wandelroute door Nederland</p>
+                                </div>
+                                <div class="route-card-action">
+                                    <i class="fas fa-plus"></i>
+                                    Toevoegen
+                                </div>
+                            </div>
+                            
+                            <div class="route-card" onclick="addLAWRoute('LAW 4', 'Zuiderzeepad')" data-route="LAW 4">
+                                <div class="route-card-header">
+                                    <i class="fas fa-hiking"></i>
+                                    <div class="route-number">LAW 4</div>
+                                </div>
+                                <div class="route-card-content">
+                                    <h4>Zuiderzeepad</h4>
+                                    <p>Lange afstand wandelroute door Nederland</p>
+                                </div>
+                                <div class="route-card-action">
+                                    <i class="fas fa-plus"></i>
+                                    Toevoegen
+                                </div>
+                            </div>
+                            
+                            <div class="route-card" onclick="addLAWRoute('LAW 3', 'Pelgrimspad')" data-route="LAW 3">
+                                <div class="route-card-header">
+                                    <i class="fas fa-hiking"></i>
+                                    <div class="route-number">LAW 3</div>
+                                </div>
+                                <div class="route-card-content">
+                                    <h4>Pelgrimspad deel 1</h4>
+                                    <p>Lange afstand wandelroute door Nederland</p>
+                                </div>
+                                <div
