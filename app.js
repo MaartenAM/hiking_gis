@@ -1,842 +1,91 @@
-// Global variables
-let map;
-let measuring = false;
-let measureMarkers = [];
-let totalDistance = 0;
-let baseLayers = {};
-let activeBaseLayer = 'osm';
-let activeRoutes = [];
-let highlightLayer;
-let campingLayer;
-let campingClusterGroup;
-let vriendenLayer;
-let vriendenClusterGroup;
-let ovStopsLayer;
-let ovStopsClusterGroup;
-let campingVisible = false;
-let vriendenVisible = false;
-let ovStopsVisible = false;
-let loadingOverlay = null;
-let isMobile = window.innerWidth <= 768;
-let sidebarOpen = false;
-
-// OV Performance optimization variables
-let ovStopsData = null;
-let ovLoadedBounds = null;
-let ovMinZoom = 10;
-let ovLoadTimeout = null;
-
-// Route definitions
-const routeDefinitions = {
-    law: [
-        { value: 'LAW 10', name: 'LAW 10 - Marskramerpad', filter: 'Marskramerpad' },
-        { value: 'LAW 5', name: 'LAW 5 - Trekvogelpad', filter: 'Trekvogelpad' },
-        { value: 'LAW 4', name: 'LAW 4 - Zuiderzeepad', filter: 'Zuiderzeepad' },
-        { value: 'LAW 3', name: 'LAW 3 - Pelgrimspad deel 1', filter: 'Pelgrimspad' }
-    ]
-};
-
-// Custom WMS Layer class
-L.TileLayer.PDOKFilter = L.TileLayer.WMS.extend({
-    initialize: function (url, options) {
-        L.TileLayer.WMS.prototype.initialize.call(this, url, options);
-    },
-    
-    getTileUrl: function (coords) {
-        var tileBounds = this._tileCoordsToBounds(coords);
-        var nw = this._crs.project(tileBounds.getNorthWest());
-        var se = this._crs.project(tileBounds.getSouthEast());
-        var bbox = [nw.x, se.y, se.x, nw.y].join(',');
+// Load NS stations as fallback
+        await loadNSStations();
         
-        var url = this._url + '?';
-        var params = {
-            'REQUEST': 'GetMap',
-            'SERVICE': 'WMS',
-            'VERSION': '1.3.0',
-            'FORMAT': 'image/png',
-            'STYLES': '',
-            'TRANSPARENT': 'true',
-            'LAYERS': this.options.layers,
-            'CRS': 'EPSG:3857',
-            'WIDTH': this.options.tileSize || 256,
-            'HEIGHT': this.options.tileSize || 256,
-            'BBOX': bbox
-        };
-        
-        if (this.options.xmlFilter) {
-            params['FILTER'] = this.options.xmlFilter;
-        }
-        
-        var queryString = Object.keys(params).map(key => 
-            encodeURIComponent(key) + '=' + encodeURIComponent(params[key])
-        ).join('&');
-        
-        return url + queryString;
-    }
-});
-
-L.tileLayer.pdokFilter = function (url, options) {
-    return new L.TileLayer.PDOKFilter(url, options);
-};
-
-// Icons
-const campingIcon = L.icon({
-    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-            <circle cx="12" cy="12" r="12" fill="#f59e0b"/>
-            <path d="M7 4L12 14L17 4H15L12 10L9 4H7Z" fill="white"/>
-            <rect x="6" y="18" width="12" height="2" fill="white"/>
-        </svg>
-    `),
-    iconSize: [24, 24],
-    iconAnchor: [12, 24],
-    popupAnchor: [0, -24]
-});
-
-const vriendenIcon = L.icon({
-    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-            <circle cx="12" cy="12" r="12" fill="#3b82f6"/>
-            <path d="M7 9C7 8.45 7.45 8 8 8H16C16.55 8 17 8.45 17 9V10H15V9H9V10H7V9Z" fill="white"/>
-            <circle cx="9" cy="13" r="2" fill="white"/>
-            <circle cx="15" cy="13" r="2" fill="white"/>
-            <path d="M11 11H13V15H11V11Z" fill="white"/>
-        </svg>
-    `),
-    iconSize: [24, 24],
-    iconAnchor: [12, 24],
-    popupAnchor: [0, -24]
-});
-
-const trainIcon = L.icon({
-    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-            <circle cx="12" cy="12" r="12" fill="#003082"/>
-            <rect x="6" y="8" width="12" height="8" rx="2" fill="white"/>
-            <circle cx="9" cy="14" r="1.5" fill="#003082"/>
-            <circle cx="15" cy="14" r="1.5" fill="#003082"/>
-            <rect x="8" y="10" width="8" height="2" fill="#003082"/>
-        </svg>
-    `),
-    iconSize: [24, 24],
-    iconAnchor: [12, 24],
-    popupAnchor: [0, -24]
-});
-
-const busIcon = L.icon({
-    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-            <circle cx="12" cy="12" r="12" fill="#e17000"/>
-            <rect x="5" y="7" width="14" height="10" rx="2" fill="white"/>
-            <circle cx="8" cy="15" r="1.5" fill="#e17000"/>
-            <circle cx="16" cy="15" r="1.5" fill="#e17000"/>
-            <rect x="6" y="9" width="12" height="4" fill="#e17000"/>
-        </svg>
-    `),
-    iconSize: [24, 24],
-    iconAnchor: [12, 24],
-    popupAnchor: [0, -24]
-});
-
-// Initialize map
-function initMap() {
-    console.log('Initializing map...');
-    
-    try {
-        map = L.map('map', {
-            zoomControl: true,
-            touchZoom: true,
-            doubleClickZoom: true,
-            scrollWheelZoom: true,
-            boxZoom: !isMobile,
-            keyboard: !isMobile
-        }).setView([52.1326, 5.2913], 7);
-
-        // Move zoom controls to better position on mobile
-        if (isMobile) {
-            map.zoomControl.setPosition('bottomright');
-        }
-
-        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            zIndex: 1,
-            maxZoom: 19
-        });
-
-        const topoLayer = L.tileLayer('https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:3857/{z}/{x}/{y}.png', {
-            attribution: '© PDOK',
-            zIndex: 1,
-            maxZoom: 19
-        });
-
-        const satelliteLayer = L.tileLayer('https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_ortho25/EPSG:3857/{z}/{x}/{y}.jpeg', {
-            attribution: '© PDOK Luchtfoto',
-            zIndex: 1,
-            maxZoom: 19
-        });
-
-        const terrainLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}', {
-            attribution: '© Esri',
-            zIndex: 1,
-            maxZoom: 19
-        });
-
-        osmLayer.addTo(map);
-
-        baseLayers = {
-            'osm': osmLayer,
-            'topo': topoLayer,
-            'satellite': satelliteLayer,
-            'terrain': terrainLayer
-        };
-
-        highlightLayer = L.layerGroup();
-        highlightLayer.addTo(map);
-
-        // Initialize simple layer groups (clustering will be added later if library loads)
-        campingLayer = L.layerGroup();
-        vriendenLayer = L.layerGroup();
-        ovStopsLayer = L.layerGroup();
-        
-        // Try to initialize clustering if available
-        initializeClustering();
-
-        setupEventListeners();
-        setupTabNavigation();
-        setupMobileFeatures();
-        
-        // Setup OV performance optimization
-        setupOVPerformanceOptimization();
-        
-        console.log('Map initialized successfully');
     } catch (error) {
-        console.error('Error initializing map:', error);
+        console.error('Fout bij laden OV data:', error);
+        showNotification('Kon openbaar vervoer data niet laden', 'error');
+    } finally {
+        hideLoadingOverlay();
     }
 }
 
-// Setup OV performance optimization
-function setupOVPerformanceOptimization() {
-    // Only load OV stops when zoomed in enough and when the layer is visible
-    map.on('zoomend moveend', function() {
-        if (ovStopsVisible && map.getZoom() >= ovMinZoom) {
-            // Debounce the loading to avoid too many requests
-            clearTimeout(ovLoadTimeout);
-            ovLoadTimeout = setTimeout(() => {
-                loadOVStopsInBounds();
-            }, 300);
-        } else if (map.getZoom() < ovMinZoom) {
-            // Clear markers when zoomed out too far
-            clearOVStopsFromMap();
-        }
-    });
-}
-
-// Initialize clustering if library is available
-function initializeClustering() {
-    if (typeof L.markerClusterGroup !== 'undefined') {
-        console.log('MarkerCluster library loaded, initializing clustering...');
+async function loadNSStations() {
+    try {
+        const response = await fetch('https://www.rijdendetreinen.nl/api/v2/stations');
+        const stationsData = await response.json();
         
-        campingClusterGroup = L.markerClusterGroup({
-            maxClusterRadius: 50,
-            spiderfyOnMaxZoom: true,
-            showCoverageOnHover: false,
-            zoomToBoundsOnClick: true,
-            iconCreateFunction: function(cluster) {
-                const count = cluster.getChildCount();
-                let size = 'small';
-                if (count > 10) size = 'medium';
-                if (count > 25) size = 'large';
-                
-                return L.divIcon({
-                    html: `<div class="cluster-inner camping-cluster">${count}</div>`,
-                    className: `marker-cluster marker-cluster-${size}`,
-                    iconSize: L.point(40, 40)
-                });
-            }
-        });
-
-        vriendenClusterGroup = L.markerClusterGroup({
-            maxClusterRadius: 50,
-            spiderfyOnMaxZoom: true,
-            showCoverageOnHover: false,
-            zoomToBoundsOnClick: true,
-            iconCreateFunction: function(cluster) {
-                const count = cluster.getChildCount();
-                let size = 'small';
-                if (count > 10) size = 'medium';
-                if (count > 25) size = 'large';
-                
-                return L.divIcon({
-                    html: `<div class="cluster-inner vrienden-cluster">${count}</div>`,
-                    className: `marker-cluster marker-cluster-${size}`,
-                    iconSize: L.point(40, 40)
-                });
-            }
-        });
-
-        ovStopsClusterGroup = L.markerClusterGroup({
-            maxClusterRadius: 40,
-            spiderfyOnMaxZoom: true,
-            showCoverageOnHover: false,
-            zoomToBoundsOnClick: true,
-            disableClusteringAtZoom: 14,
-            chunkedLoading: true,
-            chunkProgress: function(processed, total, elapsed) {
-                // Show progress for large datasets
-                if (total > 100) {
-                    console.log(`Loading OV stops: ${processed}/${total} (${elapsed}ms)`);
-                }
-            },
-            iconCreateFunction: function(cluster) {
-                const count = cluster.getChildCount();
-                let size = 'small';
-                if (count > 15) size = 'medium';
-                if (count > 30) size = 'large';
-                
-                return L.divIcon({
-                    html: `<div class="cluster-inner ov-cluster">${count}</div>`,
-                    className: `marker-cluster marker-cluster-${size}`,
-                    iconSize: L.point(40, 40)
-                });
-            }
-        });
-    } else {
-        console.log('MarkerCluster library not available, using simple layer groups');
-        campingClusterGroup = campingLayer;
-        vriendenClusterGroup = vriendenLayer;
-        ovStopsClusterGroup = ovStopsLayer;
-    }
-}
-
-// Setup mobile-specific features
-function setupMobileFeatures() {
-    // Always create overlay for mobile sidebar (might be needed after resize)
-    let overlay = document.querySelector('.sidebar-overlay');
-    if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.className = 'sidebar-overlay';
-        overlay.addEventListener('click', closeSidebar);
-        document.body.appendChild(overlay);
-    }
-    
-    // Auto-close sidebar when selecting routes on mobile
-    const originalShowSelectedRoute = window.showSelectedRoute;
-    if (originalShowSelectedRoute) {
-        window.showSelectedRoute = function() {
-            originalShowSelectedRoute();
-            if (isMobile) {
-                closeSidebar();
-            }
-        };
-    }
-    
-    // Prevent map interactions when sidebar is open on mobile
-    const sidebar = document.getElementById('sidebar');
-    if (sidebar) {
-        sidebar.addEventListener('touchstart', function(e) {
-            e.stopPropagation();
-        });
+        ovStopsClusterGroup.clearLayers();
         
-        sidebar.addEventListener('touchmove', function(e) {
-            e.stopPropagation();
-        });
-    }
-    
-    // Handle orientation changes
-    window.addEventListener('orientationchange', function() {
-        setTimeout(function() {
-            map.invalidateSize();
-            isMobile = window.innerWidth <= 768;
-        }, 100);
-    });
-    
-    // Handle window resize
-    window.addEventListener('resize', function() {
-        const wasMobile = isMobile;
-        isMobile = window.innerWidth <= 768;
-        
-        console.log('Window resized, isMobile:', isMobile, 'wasMobile:', wasMobile);
-        
-        if (wasMobile && !isMobile) {
-            // Switched from mobile to desktop
-            closeSidebar();
-            const sidebar = document.getElementById('sidebar');
-            if (sidebar) {
-                sidebar.style.left = '';
-                sidebar.classList.remove('open');
-            }
-        } else if (!wasMobile && isMobile) {
-            // Switched from desktop to mobile
-            const sidebar = document.getElementById('sidebar');
-            if (sidebar && !sidebarOpen) {
-                sidebar.style.left = '-100%';
-            }
-        }
-        
-        setTimeout(function() {
-            map.invalidateSize();
-        }, 100);
-    });
-}
-
-// Toggle sidebar on mobile
-function toggleSidebar() {
-    console.log('Toggle sidebar called, isMobile:', isMobile, 'sidebarOpen:', sidebarOpen);
-    
-    const sidebar = document.getElementById('sidebar');
-    let overlay = document.querySelector('.sidebar-overlay');
-    const toggle = document.querySelector('.sidebar-toggle');
-    
-    // Create overlay if it doesn't exist
-    if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.className = 'sidebar-overlay';
-        overlay.addEventListener('click', closeSidebar);
-        document.body.appendChild(overlay);
-        console.log('Created overlay');
-    }
-    
-    if (!sidebar || !toggle) {
-        console.error('Sidebar elements not found', { sidebar: !!sidebar, toggle: !!toggle });
-        return;
-    }
-    
-    sidebarOpen = !sidebarOpen;
-    console.log('New sidebarOpen state:', sidebarOpen);
-    
-    if (sidebarOpen) {
-        sidebar.classList.add('open');
-        overlay.classList.add('active');
-        toggle.classList.add('open');
-        toggle.innerHTML = '<i class="fas fa-times"></i>';
-        document.body.style.overflow = 'hidden';
-        console.log('Sidebar opened');
-    } else {
-        sidebar.classList.remove('open');
-        overlay.classList.remove('active');
-        toggle.classList.remove('open');
-        toggle.innerHTML = '<i class="fas fa-bars"></i>';
-        document.body.style.overflow = '';
-        console.log('Sidebar closed');
-    }
-}
-
-// Close sidebar
-function closeSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.querySelector('.sidebar-overlay');
-    const toggle = document.querySelector('.sidebar-toggle');
-    
-    if (!sidebar || !toggle) return;
-    
-    sidebarOpen = false;
-    
-    sidebar.classList.remove('open');
-    if (overlay) overlay.classList.remove('active');
-    toggle.classList.remove('open');
-    toggle.innerHTML = '<i class="fas fa-bars"></i>';
-    document.body.style.overflow = '';
-}
-
-// Setup tab navigation
-function setupTabNavigation() {
-    const tabButtons = document.querySelectorAll('.tab-button');
-    const tabPanels = document.querySelectorAll('.tab-panel');
-
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const targetTab = button.dataset.tab;
-            
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            
-            tabPanels.forEach(panel => panel.classList.remove('active'));
-            const targetPanel = document.getElementById(targetTab + '-panel');
-            if (targetPanel) {
-                targetPanel.classList.add('active');
-            }
-        });
-    });
-}
-
-// Setup event listeners
-function setupEventListeners() {
-    // Base layer cards
-    document.querySelectorAll('[data-layer]').forEach(card => {
-        card.addEventListener('click', () => {
-            const layerType = card.dataset.layer;
-            switchBaseLayer(layerType);
-            
-            document.querySelectorAll('[data-layer]').forEach(c => c.classList.remove('active'));
-            card.classList.add('active');
-        });
-    });
-
-    // Search functionality
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput) {
-        searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                searchLocation();
-            }
-        });
-    }
-
-    // Map click events
-    map.on('click', function(e) {
-        if (measuring) {
-            addMeasurePoint(e.latlng);
-        } else if (activeRoutes.length > 0) {
-            // Check for route info
-            activeRoutes.forEach(route => {
-                const bounds = map.getBounds();
-                const size = map.getSize();
-                
-                const params = {
-                    request: 'GetFeatureInfo',
-                    service: 'WMS',
-                    srs: 'EPSG:4326',
-                    version: '1.1.0',
-                    format: 'image/png',
-                    bbox: `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`,
-                    height: size.y,
-                    width: size.x,
-                    layers: route.layerName,
-                    query_layers: route.layerName,
-                    info_format: 'application/json',
-                    x: Math.round(e.containerPoint.x),
-                    y: Math.round(e.containerPoint.y)
-                };
-                
-                const url = 'https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0?' + 
-                            Object.keys(params).map(key => `${key}=${encodeURIComponent(params[key])}`).join('&');
-                
-                fetch(url)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.features && data.features.length > 0) {
-                            const filteredFeatures = data.features.filter(feature => 
-                                feature.properties.lawnaam === route.filter
-                            );
-                            
-                            if (filteredFeatures.length > 0) {
-                                showRouteInfoInPanel(filteredFeatures[0]);
-                                highlightEtappe(filteredFeatures[0]);
-                                
-                                // Show nearby OV stops
-                                if (ovStopsVisible) {
-                                    setTimeout(() => {
-                                        showNearbyOVStops(e.latlng);
-                                    }, 500);
-                                }
-                                
-                                // Auto-close sidebar on mobile after showing route info
-                                if (isMobile) {
-                                    setTimeout(() => {
-                                        closeSidebar();
-                                    }, 500);
-                                }
-                            }
-                        }
-                    })
-                    .catch(error => {
-                        console.log('Geen route info beschikbaar');
-                    });
-            });
-        }
-    });
-}
-
-// Switch base layer
-function switchBaseLayer(layerType) {
-    if (baseLayers[activeBaseLayer]) {
-        map.removeLayer(baseLayers[activeBaseLayer]);
-    }
-    
-    if (baseLayers[layerType]) {
-        baseLayers[layerType].addTo(map);
-        activeBaseLayer = layerType;
-    }
-}
-
-// ============ CAMPING FUNCTIONALITY ============
-
-function toggleCampingLayer() {
-    campingVisible = !campingVisible;
-    const card = document.getElementById('camping-layer-card');
-    
-    if (campingVisible) {
-        if (campingClusterGroup.getLayers().length === 0) {
-            loadCampingGeoJSON();
-        } else {
-            map.addLayer(campingClusterGroup);
-            card.classList.add('active');
-            showNotification('Campings zichtbaar', 'success');
-        }
-    } else {
-        map.removeLayer(campingClusterGroup);
-        card.classList.remove('active');
-        showNotification('Campings verborgen', 'info');
-    }
-}
-
-function loadCampingGeoJSON() {
-    showLoadingOverlay('Campings laden...');
-    
-    fetch('./data/campings.geojson')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('GeoJSON bestand niet gevonden');
-            }
-            return response.json();
-        })
-        .then(geojsonData => {
-            campingClusterGroup.clearLayers();
-            
-            geojsonData.features.forEach(feature => {
-                const coords = feature.geometry.coordinates;
-                const props = feature.properties;
-                
+        stationsData.forEach(station => {
+            if (station.land === 'NL') {
                 const popupContent = `
-                    <div class="camping-popup">
-                        <h4><i class="fas fa-campground"></i> ${props.name || 'Camping'}</h4>
-                        ${props.operator ? `<p><strong>Beheerder:</strong> ${props.operator}</p>` : ''}
-                        ${props.access ? `<p><strong>Toegang:</strong> ${props.access}</p>` : ''}
-                        ${props.house ? `<p><strong>Accommodatie:</strong> ${props.house}</p>` : ''}
-                        <p style="font-size: 10px; color: #666;">OSM ID: ${props.osm_id}</p>
+                    <div class="ov-popup train-popup">
+                        <h4><i class="fas fa-train"></i> ${station.namen.lang}</h4>
+                        <p><strong>Type:</strong> ${getStationTypeDescription(station.stationType)}</p>
+                        <p><strong>Stationscode:</strong> ${station.code}</p>
+                        ${station.namen.kort !== station.namen.lang ? `<p><strong>Korte naam:</strong> ${station.namen.kort}</p>` : ''}
+                        <div class="ov-actions">
+                            <button class="popup-button" onclick="showNSSchedule('${station.code}')">
+                                <i class="fas fa-clock"></i> Vertrektijden
+                            </button>
+                            <button class="popup-button" onclick="planRouteToStation('${station.lat}', '${station.lng}')">
+                                <i class="fas fa-route"></i> Route plannen
+                            </button>
+                        </div>
                     </div>
                 `;
                 
-                const marker = L.marker([coords[1], coords[0]], {
-                    icon: campingIcon
+                const marker = L.marker([station.lat, station.lng], {
+                    icon: trainIcon
                 }).bindPopup(popupContent);
                 
-                campingClusterGroup.addLayer(marker);
-            });
-            
-            map.addLayer(campingClusterGroup);
-            campingVisible = true;
-            
-            const card = document.getElementById('camping-layer-card');
-            if (card) {
-                card.classList.add('active');
+                ovStopsClusterGroup.addLayer(marker);
             }
-            
-            hideLoadingOverlay();
-            
-            const clusterText = (typeof L.markerClusterGroup !== 'undefined') ? ' (geclusterd)' : '';
-            showNotification(`${geojsonData.features.length} Vrienden op de Fiets locaties geladen${clusterText}`, 'success');
-        })
-        .catch(error => {
-            hideLoadingOverlay();
-            showNotification('Vrienden op de Fiets GeoJSON niet gevonden in data/vrienden-op-de-fiets.geojson', 'error');
         });
-}
-
-// ============ OPENBAAR VERVOER FUNCTIONALITY - OPTIMIZED ============
-
-function toggleOVStopsLayer() {
-    ovStopsVisible = !ovStopsVisible;
-    const card = document.getElementById('ov-layer-card');
-    
-    if (ovStopsVisible) {
-        card.classList.add('active');
         
-        if (map.getZoom() >= ovMinZoom) {
-            // Load data immediately if zoomed in enough
-            loadOVStopsInBounds();
-        } else {
-            // Show message about zoom level
-            showNotification(`Zoom in tot niveau ${ovMinZoom} om OV haltes te zien`, 'info');
-        }
-    } else {
-        map.removeLayer(ovStopsClusterGroup);
-        card.classList.remove('active');
-        clearOVStopsFromMap();
-        showNotification('Openbaar vervoer haltes verborgen', 'info');
-    }
-}
-
-// Optimized function to load OV stops only in current bounds
-async function loadOVStopsInBounds() {
-    if (!ovStopsVisible || map.getZoom() < ovMinZoom) {
-        return;
-    }
-    
-    const currentBounds = map.getBounds();
-    
-    // Check if we already loaded this area
-    if (ovLoadedBounds && ovLoadedBounds.contains(currentBounds)) {
-        console.log('OV data already loaded for this area');
-        return;
-    }
-    
-    console.log('Loading OV stops for current bounds...');
-    
-    try {
-        // Load the full dataset only once
-        if (!ovStopsData) {
-            showNotification('OV data laden...', 'info');
-            ovStopsData = await loadOVStopsData();
+        map.addLayer(ovStopsClusterGroup);
+        ovStopsVisible = true;
+        
+        const card = document.getElementById('ov-layer-card');
+        if (card) {
+            card.classList.add('active');
         }
         
-        // Filter data for current bounds with some padding
-        const padding = 0.02; // ~2km padding
-        const boundsWithPadding = currentBounds.pad(padding);
-        
-        const filteredStops = filterOVStopsForBounds(ovStopsData, boundsWithPadding);
-        
-        // Clear existing markers and add filtered ones
-        ovStopsClusterGroup.clearLayers();
-        
-        // Add markers in batches to avoid UI blocking
-        await addOVMarkersInBatches(filteredStops, 50);
-        
-        // Add to map if not already added
-        if (!map.hasLayer(ovStopsClusterGroup)) {
-            map.addLayer(ovStopsClusterGroup);
-        }
-        
-        // Update loaded bounds
-        ovLoadedBounds = boundsWithPadding;
-        
-        console.log(`Loaded ${filteredStops.length} OV stops for current view`);
+        const clusterText = (typeof L.markerClusterGroup !== 'undefined') ? ' (geclusterd)' : '';
+        showNotification(`${stationsData.filter(s => s.land === 'NL').length} treinstations geladen${clusterText}`, 'success');
         
     } catch (error) {
-        console.error('Error loading OV stops:', error);
-        showNotification('Fout bij laden OV data', 'error');
-    }
-}
-
-// Load OV stops data (cached after first load)
-async function loadOVStopsData() {
-    try {
-        // First try local GeoJSON
-        try {
-            const response = await fetch('./data/ov-stops.geojson');
-            if (response.ok) {
-                const geojsonData = await response.json();
-                console.log(`Loaded ${geojsonData.features.length} OV stops from local GeoJSON`);
-                return geojsonData.features;
-            }
-        } catch (error) {
-            console.log('Local OV data not found, loading NS stations...');
-        }
-        
-        // Fallback to NS stations
-        const stationsData = await loadNSStationsData();
-        return stationsData;
-        
-    } catch (error) {
-        console.error('Error loading OV data:', error);
+        console.error('Fout bij laden NS stations:', error);
         throw error;
     }
 }
 
-// Load NS stations data
-async function loadNSStationsData() {
-    const response = await fetch('https://www.rijdendetreinen.nl/api/v2/stations');
-    const stationsData = await response.json();
+function processOVStopsGeoJSON(geojsonData) {
+    ovStopsClusterGroup.clearLayers();
     
-    // Convert to GeoJSON-like format
-    const features = stationsData
-        .filter(station => station.land === 'NL')
-        .map(station => ({
-            geometry: {
-                coordinates: [station.lng, station.lat],
-                type: 'Point'
-            },
-            properties: {
-                stop_name: station.namen.lang,
-                stop_code: station.code,
-                stop_type: 'train',
-                station_type: station.stationType,
-                short_name: station.namen.kort
-            }
-        }));
-    
-    console.log(`Loaded ${features.length} NS stations`);
-    return features;
-}
-
-// Filter OV stops for specific bounds
-function filterOVStopsForBounds(stops, bounds) {
-    return stops.filter(stop => {
-        const coords = stop.geometry.coordinates;
-        const lat = coords[1];
-        const lng = coords[0];
+    geojsonData.features.forEach(feature => {
+        const coords = feature.geometry.coordinates;
+        const props = feature.properties;
         
-        return bounds.contains([lat, lng]);
-    });
-}
-
-// Add OV markers in batches to avoid UI blocking
-async function addOVMarkersInBatches(stops, batchSize = 50) {
-    const totalStops = stops.length;
-    
-    for (let i = 0; i < totalStops; i += batchSize) {
-        const batch = stops.slice(i, i + batchSize);
+        let icon = busIcon;
+        let typeLabel = 'Bushalte';
         
-        batch.forEach(stop => {
-            const coords = stop.geometry.coordinates;
-            const props = stop.properties;
-            
-            let icon = busIcon;
-            let typeLabel = 'Bushalte';
-            
-            if (props.stop_type === 'train' || props.route_type === '1' || props.station_type) {
-                icon = trainIcon;
-                typeLabel = 'Treinstation';
-            } else if (props.stop_type === 'tram' || props.route_type === '0') {
-                icon = trainIcon;
-                typeLabel = 'Tramhalte';
-            }
-            
-            const popupContent = createOVPopupContent(props, typeLabel, coords);
-            
-            const marker = L.marker([coords[1], coords[0]], { icon })
-                .bindPopup(popupContent);
-            
-            ovStopsClusterGroup.addLayer(marker);
-        });
-        
-        // Allow UI to update between batches
-        if (i + batchSize < totalStops) {
-            await new Promise(resolve => setTimeout(resolve, 10));
+        if (props.stop_type === 'train' || props.route_type === '1') {
+            icon = trainIcon;
+            typeLabel = 'Treinstation';
+        } else if (props.stop_type === 'tram' || props.route_type === '0') {
+            icon = trainIcon; // Use train icon for tram too
+            typeLabel = 'Tramhalte';
         }
-    }
-}
-
-// Create popup content for OV stops
-function createOVPopupContent(props, typeLabel, coords) {
-    if (props.station_type) {
-        // NS Station
-        return `
-            <div class="ov-popup train-popup">
-                <h4><i class="fas fa-train"></i> ${props.stop_name}</h4>
-                <p><strong>Type:</strong> ${getStationTypeDescription(props.station_type)}</p>
-                <p><strong>Stationscode:</strong> ${props.stop_code}</p>
-                ${props.short_name !== props.stop_name ? `<p><strong>Korte naam:</strong> ${props.short_name}</p>` : ''}
-                <div class="ov-actions">
-                    <button class="popup-button" onclick="showNSSchedule('${props.stop_code}')">
-                        <i class="fas fa-clock"></i> Vertrektijden
-                    </button>
-                    <button class="popup-button" onclick="planRouteToStation('${coords[1]}', '${coords[0]}')">
-                        <i class="fas fa-route"></i> Route plannen
-                    </button>
-                </div>
-            </div>
-        `;
-    } else {
-        // Regular OV stop
-        return `
+        
+        const popupContent = `
             <div class="ov-popup">
-                <h4><i class="fas fa-bus"></i> ${props.stop_name}</h4>
+                <h4><i class="fas fa-bus"></i> ${props.stop_name || props.name}</h4>
                 <p><strong>Type:</strong> ${typeLabel}</p>
                 ${props.stop_code ? `<p><strong>Haltecode:</strong> ${props.stop_code}</p>` : ''}
                 ${props.stop_desc ? `<p><strong>Beschrijving:</strong> ${props.stop_desc}</p>` : ''}
                 <div class="ov-actions">
-                    <button class="popup-button" onclick="showOVSchedule('${props.stop_code || props.stop_name}')">
+                    <button class="popup-button" onclick="showOVSchedule('${props.stop_id}')">
                         <i class="fas fa-clock"></i> Vertrektijden
                     </button>
                     <button class="popup-button" onclick="planRouteToStop('${coords[1]}', '${coords[0]}')">
@@ -845,13 +94,24 @@ function createOVPopupContent(props, typeLabel, coords) {
                 </div>
             </div>
         `;
+        
+        const marker = L.marker([coords[1], coords[0]], {
+            icon: icon
+        }).bindPopup(popupContent);
+        
+        ovStopsClusterGroup.addLayer(marker);
+    });
+    
+    map.addLayer(ovStopsClusterGroup);
+    ovStopsVisible = true;
+    
+    const card = document.getElementById('ov-layer-card');
+    if (card) {
+        card.classList.add('active');
     }
-}
-
-// Clear OV stops from map
-function clearOVStopsFromMap() {
-    ovStopsClusterGroup.clearLayers();
-    ovLoadedBounds = null;
+    
+    const clusterText = (typeof L.markerClusterGroup !== 'undefined') ? ' (geclusterd)' : '';
+    showNotification(`${geojsonData.features.length} OV haltes geladen${clusterText}`, 'success');
 }
 
 function getStationTypeDescription(type) {
@@ -869,13 +129,8 @@ function getStationTypeDescription(type) {
 }
 
 function showNearbyOVStops(latlng, radius = 2000) {
-    if (!ovStopsVisible) {
-        showNotification('Activeer eerst de openbaar vervoer laag', 'warning');
-        return;
-    }
-    
-    if (map.getZoom() < ovMinZoom) {
-        showNotification(`Zoom in tot niveau ${ovMinZoom} om OV haltes te zien`, 'warning');
+    if (!ovStopsVisible || ovStopsClusterGroup.getLayers().length === 0) {
+        showNotification('Laad eerst de openbaar vervoer haltes', 'warning');
         return;
     }
     
@@ -1040,21 +295,12 @@ function fitToNearbyOV() {
 }
 
 function showOVInfo() {
-    if (map.getZoom() < ovMinZoom) {
-        showNotification(`Zoom in tot niveau ${ovMinZoom} om OV haltes te laden`, 'info');
-    } else {
-        showNotification('OV vertrektijden - Klik op een halte voor actuele tijden', 'info');
-    }
+    showNotification('Vertrektijden functie - Implementeer API integratie', 'info');
 }
 
 function findNearestOVStops() {
     if (!ovStopsVisible) {
         showNotification('Activeer eerst de OV laag', 'warning');
-        return;
-    }
-    
-    if (map.getZoom() < ovMinZoom) {
-        showNotification(`Zoom in tot niveau ${ovMinZoom} om OV haltes te zien`, 'warning');
         return;
     }
     
@@ -1074,11 +320,7 @@ function fitToOVStops() {
             closeSidebar();
         }
     } else {
-        if (map.getZoom() < ovMinZoom) {
-            showNotification(`Zoom in tot niveau ${ovMinZoom} om OV haltes te laden`, 'warning');
-        } else {
-            showNotification('Geen OV haltes geladen', 'warning');
-        }
+        showNotification('Geen OV haltes geladen', 'warning');
     }
 }
 
@@ -1909,7 +1151,601 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     console.log('App initialization complete');
-});(`${geojsonData.features.length} campings geladen${clusterText}`, 'success');
+});// Global variables
+let map;
+let measuring = false;
+let measureMarkers = [];
+let totalDistance = 0;
+let baseLayers = {};
+let activeBaseLayer = 'osm';
+let activeRoutes = [];
+let highlightLayer;
+let campingLayer;
+let campingClusterGroup;
+let vriendenLayer;
+let vriendenClusterGroup;
+let ovStopsLayer;
+let ovStopsClusterGroup;
+let campingVisible = false;
+let vriendenVisible = false;
+let ovStopsVisible = false;
+let loadingOverlay = null;
+let isMobile = window.innerWidth <= 768;
+let sidebarOpen = false;
+
+// Route definitions
+const routeDefinitions = {
+    law: [
+        { value: 'LAW 10', name: 'LAW 10 - Marskramerpad', filter: 'Marskramerpad' },
+        { value: 'LAW 5', name: 'LAW 5 - Trekvogelpad', filter: 'Trekvogelpad' },
+        { value: 'LAW 4', name: 'LAW 4 - Zuiderzeepad', filter: 'Zuiderzeepad' },
+        { value: 'LAW 3', name: 'LAW 3 - Pelgrimspad deel 1', filter: 'Pelgrimspad' }
+    ]
+};
+
+// Custom WMS Layer class
+L.TileLayer.PDOKFilter = L.TileLayer.WMS.extend({
+    initialize: function (url, options) {
+        L.TileLayer.WMS.prototype.initialize.call(this, url, options);
+    },
+    
+    getTileUrl: function (coords) {
+        var tileBounds = this._tileCoordsToBounds(coords);
+        var nw = this._crs.project(tileBounds.getNorthWest());
+        var se = this._crs.project(tileBounds.getSouthEast());
+        var bbox = [nw.x, se.y, se.x, nw.y].join(',');
+        
+        var url = this._url + '?';
+        var params = {
+            'REQUEST': 'GetMap',
+            'SERVICE': 'WMS',
+            'VERSION': '1.3.0',
+            'FORMAT': 'image/png',
+            'STYLES': '',
+            'TRANSPARENT': 'true',
+            'LAYERS': this.options.layers,
+            'CRS': 'EPSG:3857',
+            'WIDTH': this.options.tileSize || 256,
+            'HEIGHT': this.options.tileSize || 256,
+            'BBOX': bbox
+        };
+        
+        if (this.options.xmlFilter) {
+            params['FILTER'] = this.options.xmlFilter;
+        }
+        
+        var queryString = Object.keys(params).map(key => 
+            encodeURIComponent(key) + '=' + encodeURIComponent(params[key])
+        ).join('&');
+        
+        return url + queryString;
+    }
+});
+
+L.tileLayer.pdokFilter = function (url, options) {
+    return new L.TileLayer.PDOKFilter(url, options);
+};
+
+// Icons
+const campingIcon = L.icon({
+    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+            <circle cx="12" cy="12" r="12" fill="#f59e0b"/>
+            <path d="M7 4L12 14L17 4H15L12 10L9 4H7Z" fill="white"/>
+            <rect x="6" y="18" width="12" height="2" fill="white"/>
+        </svg>
+    `),
+    iconSize: [24, 24],
+    iconAnchor: [12, 24],
+    popupAnchor: [0, -24]
+});
+
+const vriendenIcon = L.icon({
+    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+            <circle cx="12" cy="12" r="12" fill="#3b82f6"/>
+            <path d="M7 9C7 8.45 7.45 8 8 8H16C16.55 8 17 8.45 17 9V10H15V9H9V10H7V9Z" fill="white"/>
+            <circle cx="9" cy="13" r="2" fill="white"/>
+            <circle cx="15" cy="13" r="2" fill="white"/>
+            <path d="M11 11H13V15H11V11Z" fill="white"/>
+        </svg>
+    `),
+    iconSize: [24, 24],
+    iconAnchor: [12, 24],
+    popupAnchor: [0, -24]
+});
+
+const trainIcon = L.icon({
+    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+            <circle cx="12" cy="12" r="12" fill="#003082"/>
+            <rect x="6" y="8" width="12" height="8" rx="2" fill="white"/>
+            <circle cx="9" cy="14" r="1.5" fill="#003082"/>
+            <circle cx="15" cy="14" r="1.5" fill="#003082"/>
+            <rect x="8" y="10" width="8" height="2" fill="#003082"/>
+        </svg>
+    `),
+    iconSize: [24, 24],
+    iconAnchor: [12, 24],
+    popupAnchor: [0, -24]
+});
+
+const busIcon = L.icon({
+    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+            <circle cx="12" cy="12" r="12" fill="#e17000"/>
+            <rect x="5" y="7" width="14" height="10" rx="2" fill="white"/>
+            <circle cx="8" cy="15" r="1.5" fill="#e17000"/>
+            <circle cx="16" cy="15" r="1.5" fill="#e17000"/>
+            <rect x="6" y="9" width="12" height="4" fill="#e17000"/>
+        </svg>
+    `),
+    iconSize: [24, 24],
+    iconAnchor: [12, 24],
+    popupAnchor: [0, -24]
+});
+
+// Initialize map
+function initMap() {
+    console.log('Initializing map...');
+    
+    try {
+        map = L.map('map', {
+            zoomControl: true,
+            touchZoom: true,
+            doubleClickZoom: true,
+            scrollWheelZoom: true,
+            boxZoom: !isMobile,
+            keyboard: !isMobile
+        }).setView([52.1326, 5.2913], 7);
+
+        // Move zoom controls to better position on mobile
+        if (isMobile) {
+            map.zoomControl.setPosition('bottomright');
+        }
+
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            zIndex: 1,
+            maxZoom: 19
+        });
+
+        const topoLayer = L.tileLayer('https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:3857/{z}/{x}/{y}.png', {
+            attribution: '© PDOK',
+            zIndex: 1,
+            maxZoom: 19
+        });
+
+        const satelliteLayer = L.tileLayer('https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_ortho25/EPSG:3857/{z}/{x}/{y}.jpeg', {
+            attribution: '© PDOK Luchtfoto',
+            zIndex: 1,
+            maxZoom: 19
+        });
+
+        const terrainLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '© Esri',
+            zIndex: 1,
+            maxZoom: 19
+        });
+
+        osmLayer.addTo(map);
+
+        baseLayers = {
+            'osm': osmLayer,
+            'topo': topoLayer,
+            'satellite': satelliteLayer,
+            'terrain': terrainLayer
+        };
+
+        highlightLayer = L.layerGroup();
+        highlightLayer.addTo(map);
+
+        // Initialize simple layer groups (clustering will be added later if library loads)
+        campingLayer = L.layerGroup();
+        vriendenLayer = L.layerGroup();
+        ovStopsLayer = L.layerGroup();
+        
+        // Try to initialize clustering if available
+        initializeClustering();
+
+        setupEventListeners();
+        setupTabNavigation();
+        setupMobileFeatures();
+        
+        console.log('Map initialized successfully');
+    } catch (error) {
+        console.error('Error initializing map:', error);
+    }
+}
+
+// Initialize clustering if library is available
+function initializeClustering() {
+    if (typeof L.markerClusterGroup !== 'undefined') {
+        console.log('MarkerCluster library loaded, initializing clustering...');
+        
+        campingClusterGroup = L.markerClusterGroup({
+            maxClusterRadius: 50,
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: true,
+            iconCreateFunction: function(cluster) {
+                const count = cluster.getChildCount();
+                let size = 'small';
+                if (count > 10) size = 'medium';
+                if (count > 25) size = 'large';
+                
+                return L.divIcon({
+                    html: `<div class="cluster-inner camping-cluster">${count}</div>`,
+                    className: `marker-cluster marker-cluster-${size}`,
+                    iconSize: L.point(40, 40)
+                });
+            }
+        });
+
+        vriendenClusterGroup = L.markerClusterGroup({
+            maxClusterRadius: 50,
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: true,
+            iconCreateFunction: function(cluster) {
+                const count = cluster.getChildCount();
+                let size = 'small';
+                if (count > 10) size = 'medium';
+                if (count > 25) size = 'large';
+                
+                return L.divIcon({
+                    html: `<div class="cluster-inner vrienden-cluster">${count}</div>`,
+                    className: `marker-cluster marker-cluster-${size}`,
+                    iconSize: L.point(40, 40)
+                });
+            }
+        });
+
+        ovStopsClusterGroup = L.markerClusterGroup({
+            maxClusterRadius: 60,
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: true,
+            disableClusteringAtZoom: 15,
+            iconCreateFunction: function(cluster) {
+                const count = cluster.getChildCount();
+                let size = 'small';
+                if (count > 15) size = 'medium';
+                if (count > 30) size = 'large';
+                
+                return L.divIcon({
+                    html: `<div class="cluster-inner ov-cluster">${count}</div>`,
+                    className: `marker-cluster marker-cluster-${size}`,
+                    iconSize: L.point(40, 40)
+                });
+            }
+        });
+    } else {
+        console.log('MarkerCluster library not available, using simple layer groups');
+        campingClusterGroup = campingLayer;
+        vriendenClusterGroup = vriendenLayer;
+        ovStopsClusterGroup = ovStopsLayer;
+    }
+}
+
+// Setup mobile-specific features
+function setupMobileFeatures() {
+    // Always create overlay for mobile sidebar (might be needed after resize)
+    let overlay = document.querySelector('.sidebar-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.className = 'sidebar-overlay';
+        overlay.addEventListener('click', closeSidebar);
+        document.body.appendChild(overlay);
+    }
+    
+    // Auto-close sidebar when selecting routes on mobile
+    const originalShowSelectedRoute = window.showSelectedRoute;
+    if (originalShowSelectedRoute) {
+        window.showSelectedRoute = function() {
+            originalShowSelectedRoute();
+            if (isMobile) {
+                closeSidebar();
+            }
+        };
+    }
+    
+    // Prevent map interactions when sidebar is open on mobile
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) {
+        sidebar.addEventListener('touchstart', function(e) {
+            e.stopPropagation();
+        });
+        
+        sidebar.addEventListener('touchmove', function(e) {
+            e.stopPropagation();
+        });
+    }
+    
+    // Handle orientation changes
+    window.addEventListener('orientationchange', function() {
+        setTimeout(function() {
+            map.invalidateSize();
+            isMobile = window.innerWidth <= 768;
+        }, 100);
+    });
+    
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        const wasMobile = isMobile;
+        isMobile = window.innerWidth <= 768;
+        
+        console.log('Window resized, isMobile:', isMobile, 'wasMobile:', wasMobile);
+        
+        if (wasMobile && !isMobile) {
+            // Switched from mobile to desktop
+            closeSidebar();
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar) {
+                sidebar.style.left = '';
+                sidebar.classList.remove('open');
+            }
+        } else if (!wasMobile && isMobile) {
+            // Switched from desktop to mobile
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar && !sidebarOpen) {
+                sidebar.style.left = '-100%';
+            }
+        }
+        
+        setTimeout(function() {
+            map.invalidateSize();
+        }, 100);
+    });
+}
+
+// Toggle sidebar on mobile
+function toggleSidebar() {
+    console.log('Toggle sidebar called, isMobile:', isMobile, 'sidebarOpen:', sidebarOpen);
+    
+    const sidebar = document.getElementById('sidebar');
+    let overlay = document.querySelector('.sidebar-overlay');
+    const toggle = document.querySelector('.sidebar-toggle');
+    
+    // Create overlay if it doesn't exist
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.className = 'sidebar-overlay';
+        overlay.addEventListener('click', closeSidebar);
+        document.body.appendChild(overlay);
+        console.log('Created overlay');
+    }
+    
+    if (!sidebar || !toggle) {
+        console.error('Sidebar elements not found', { sidebar: !!sidebar, toggle: !!toggle });
+        return;
+    }
+    
+    sidebarOpen = !sidebarOpen;
+    console.log('New sidebarOpen state:', sidebarOpen);
+    
+    if (sidebarOpen) {
+        sidebar.classList.add('open');
+        overlay.classList.add('active');
+        toggle.classList.add('open');
+        toggle.innerHTML = '<i class="fas fa-times"></i>';
+        document.body.style.overflow = 'hidden';
+        console.log('Sidebar opened');
+    } else {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+        toggle.classList.remove('open');
+        toggle.innerHTML = '<i class="fas fa-bars"></i>';
+        document.body.style.overflow = '';
+        console.log('Sidebar closed');
+    }
+}
+
+// Close sidebar
+function closeSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    const toggle = document.querySelector('.sidebar-toggle');
+    
+    if (!sidebar || !toggle) return;
+    
+    sidebarOpen = false;
+    
+    sidebar.classList.remove('open');
+    if (overlay) overlay.classList.remove('active');
+    toggle.classList.remove('open');
+    toggle.innerHTML = '<i class="fas fa-bars"></i>';
+    document.body.style.overflow = '';
+}
+
+// Setup tab navigation
+function setupTabNavigation() {
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabPanels = document.querySelectorAll('.tab-panel');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const targetTab = button.dataset.tab;
+            
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            
+            tabPanels.forEach(panel => panel.classList.remove('active'));
+            const targetPanel = document.getElementById(targetTab + '-panel');
+            if (targetPanel) {
+                targetPanel.classList.add('active');
+            }
+        });
+    });
+}
+
+// Setup event listeners
+function setupEventListeners() {
+    // Base layer cards
+    document.querySelectorAll('[data-layer]').forEach(card => {
+        card.addEventListener('click', () => {
+            const layerType = card.dataset.layer;
+            switchBaseLayer(layerType);
+            
+            document.querySelectorAll('[data-layer]').forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+        });
+    });
+
+    // Search functionality
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchLocation();
+            }
+        });
+    }
+
+    // Map click events
+    map.on('click', function(e) {
+        if (measuring) {
+            addMeasurePoint(e.latlng);
+        } else if (activeRoutes.length > 0) {
+            // Check for route info
+            activeRoutes.forEach(route => {
+                const bounds = map.getBounds();
+                const size = map.getSize();
+                
+                const params = {
+                    request: 'GetFeatureInfo',
+                    service: 'WMS',
+                    srs: 'EPSG:4326',
+                    version: '1.1.0',
+                    format: 'image/png',
+                    bbox: `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`,
+                    height: size.y,
+                    width: size.x,
+                    layers: route.layerName,
+                    query_layers: route.layerName,
+                    info_format: 'application/json',
+                    x: Math.round(e.containerPoint.x),
+                    y: Math.round(e.containerPoint.y)
+                };
+                
+                const url = 'https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0?' + 
+                            Object.keys(params).map(key => `${key}=${encodeURIComponent(params[key])}`).join('&');
+                
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.features && data.features.length > 0) {
+                            const filteredFeatures = data.features.filter(feature => 
+                                feature.properties.lawnaam === route.filter
+                            );
+                            
+                            if (filteredFeatures.length > 0) {
+                                showRouteInfoInPanel(filteredFeatures[0]);
+                                highlightEtappe(filteredFeatures[0]);
+                                
+                                // Show nearby OV stops
+                                if (ovStopsVisible) {
+                                    setTimeout(() => {
+                                        showNearbyOVStops(e.latlng);
+                                    }, 500);
+                                }
+                                
+                                // Auto-close sidebar on mobile after showing route info
+                                if (isMobile) {
+                                    setTimeout(() => {
+                                        closeSidebar();
+                                    }, 500);
+                                }
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.log('Geen route info beschikbaar');
+                    });
+            });
+        }
+    });
+}
+
+// Switch base layer
+function switchBaseLayer(layerType) {
+    if (baseLayers[activeBaseLayer]) {
+        map.removeLayer(baseLayers[activeBaseLayer]);
+    }
+    
+    if (baseLayers[layerType]) {
+        baseLayers[layerType].addTo(map);
+        activeBaseLayer = layerType;
+    }
+}
+
+// ============ CAMPING FUNCTIONALITY ============
+
+function toggleCampingLayer() {
+    campingVisible = !campingVisible;
+    const card = document.getElementById('camping-layer-card');
+    
+    if (campingVisible) {
+        if (campingClusterGroup.getLayers().length === 0) {
+            loadCampingGeoJSON();
+        } else {
+            map.addLayer(campingClusterGroup);
+            card.classList.add('active');
+            showNotification('Campings zichtbaar', 'success');
+        }
+    } else {
+        map.removeLayer(campingClusterGroup);
+        card.classList.remove('active');
+        showNotification('Campings verborgen', 'info');
+    }
+}
+
+function loadCampingGeoJSON() {
+    showLoadingOverlay('Campings laden...');
+    
+    fetch('./data/campings.geojson')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('GeoJSON bestand niet gevonden');
+            }
+            return response.json();
+        })
+        .then(geojsonData => {
+            campingClusterGroup.clearLayers();
+            
+            geojsonData.features.forEach(feature => {
+                const coords = feature.geometry.coordinates;
+                const props = feature.properties;
+                
+                const popupContent = `
+                    <div class="camping-popup">
+                        <h4><i class="fas fa-campground"></i> ${props.name || 'Camping'}</h4>
+                        ${props.operator ? `<p><strong>Beheerder:</strong> ${props.operator}</p>` : ''}
+                        ${props.access ? `<p><strong>Toegang:</strong> ${props.access}</p>` : ''}
+                        ${props.house ? `<p><strong>Accommodatie:</strong> ${props.house}</p>` : ''}
+                        <p style="font-size: 10px; color: #666;">OSM ID: ${props.osm_id}</p>
+                    </div>
+                `;
+                
+                const marker = L.marker([coords[1], coords[0]], {
+                    icon: campingIcon
+                }).bindPopup(popupContent);
+                
+                campingClusterGroup.addLayer(marker);
+            });
+            
+            map.addLayer(campingClusterGroup);
+            campingVisible = true;
+            
+            const card = document.getElementById('camping-layer-card');
+            if (card) {
+                card.classList.add('active');
+            }
+            
+            hideLoadingOverlay();
+            
+            const clusterText = (typeof L.markerClusterGroup !== 'undefined') ? ' (geclusterd)' : '';
+            showNotification(`${geojsonData.features.length} campings geladen${clusterText}`, 'success');
         })
         .catch(error => {
             hideLoadingOverlay();
@@ -2026,4 +1862,49 @@ function loadVriendenGeoJSON() {
             hideLoadingOverlay();
             
             const clusterText = (typeof L.markerClusterGroup !== 'undefined') ? ' (geclusterd)' : '';
-            showNotification
+            showNotification(`${geojsonData.features.length} Vrienden op de Fiets locaties geladen${clusterText}`, 'success');
+        })
+        .catch(error => {
+            hideLoadingOverlay();
+            showNotification('Vrienden op de Fiets GeoJSON niet gevonden in data/vrienden-op-de-fiets.geojson', 'error');
+        });
+}
+
+// ============ OPENBAAR VERVOER FUNCTIONALITY ============
+
+function toggleOVStopsLayer() {
+    ovStopsVisible = !ovStopsVisible;
+    const card = document.getElementById('ov-layer-card');
+    
+    if (ovStopsVisible) {
+        if (ovStopsClusterGroup.getLayers().length === 0) {
+            loadOVStopsData();
+        } else {
+            map.addLayer(ovStopsClusterGroup);
+            card.classList.add('active');
+            showNotification('Openbaar vervoer haltes zichtbaar', 'success');
+        }
+    } else {
+        map.removeLayer(ovStopsClusterGroup);
+        card.classList.remove('active');
+        showNotification('Openbaar vervoer haltes verborgen', 'info');
+    }
+}
+
+async function loadOVStopsData() {
+    showLoadingOverlay('Openbaar vervoer data laden...');
+    
+    try {
+        // First try to load local GeoJSON
+        try {
+            const response = await fetch('./data/ov-stops.geojson');
+            if (response.ok) {
+                const geojsonData = await response.json();
+                processOVStopsGeoJSON(geojsonData);
+                return;
+            }
+        } catch (error) {
+            console.log('Lokale OV data niet gevonden, laad NS stations...');
+        }
+        
+        // Load NS stations as fall
