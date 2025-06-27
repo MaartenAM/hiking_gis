@@ -7,6 +7,8 @@
     --orange-hover: #e66a47;
     --camping-color: #f59e0b;
     --camping-hover: #d97706;
+    --ov-blue: #003082;
+    --ov-light-blue: #0066cc;
     --background: #f8fafc;
     --surface: #ffffff;
     --surface-elevated: #f1f5f9;
@@ -228,18 +230,6 @@ body {
     box-shadow: 0 0 0 3px rgb(77 128 97 / 0.1);
 }
 
-/* Optgroup styling */
-.select-field optgroup {
-    font-weight: 600;
-    color: var(--text-primary);
-    background: var(--surface-elevated);
-}
-
-.select-field option {
-    padding: 8px 12px;
-    font-size: 13px;
-}
-
 /* Buttons */
 .button-primary {
     width: 100%;
@@ -340,101 +330,31 @@ body {
     letter-spacing: -0.01em;
 }
 
-/* Vrienden op de Fiets Layer Card Styling */
+/* Specific Layer Card Styling */
+#camping-layer-card.active {
+    background: linear-gradient(135deg, var(--camping-color), var(--camping-hover));
+    border-color: var(--camping-color);
+}
+
 #vrienden-layer-card.active {
     background: linear-gradient(135deg, #3b82f6, #2563eb);
     border-color: #3b82f6;
 }
 
-/* Vrienden popup styling */
-.vrienden-popup {
-    min-width: 300px;
-    max-width: 380px;
+#ov-layer-card.active {
+    background: linear-gradient(135deg, var(--ov-blue), var(--ov-light-blue));
+    border-color: var(--ov-blue);
 }
 
-.vrienden-popup h4 {
-    margin: 0 0 12px 0;
-    color: #3b82f6;
-    font-size: 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.vrienden-popup h5 {
-    margin: 12px 0 8px 0;
-    color: #1e40af;
-    font-size: 14px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    border-bottom: 1px solid #e5e7eb;
-    padding-bottom: 4px;
-}
-
-.vrienden-popup p {
-    margin: 6px 0;
-    font-size: 13px;
-    line-height: 1.4;
-}
-
-.vrienden-popup strong {
-    color: var(--text-primary);
-    font-weight: 600;
-}
-
-.vrienden-popup a {
-    color: #3b82f6;
-    text-decoration: none;
-}
-
-.vrienden-popup a:hover {
-    text-decoration: underline;
-}
-
-.vrienden-accommodation {
-    background: linear-gradient(135deg, #eff6ff, #dbeafe);
-    border: 1px solid #bfdbfe;
-    border-radius: var(--radius-md);
-    padding: 12px;
-    margin: 12px 0;
-}
-
-.vrienden-accommodation h5 {
-    margin: 0 0 8px 0;
-    border: none;
-    padding: 0;
-}
-
-.vrienden-availability {
-    background: linear-gradient(135deg, #fef3c7, #fde68a);
-    border: 1px solid #f59e0b;
-    border-radius: var(--radius-md);
-    padding: 12px;
-    margin: 12px 0;
-}
-
-.vrienden-availability h5 {
-    margin: 0 0 8px 0;
-    color: #92400e;
-    border: none;
-    padding: 0;
-}
-
-.vrienden-availability p {
-    color: #92400e;
-    font-weight: 500;
-}
-
-.vrienden-description {
-    background: var(--surface-elevated);
-    padding: 8px;
-    border-radius: var(--radius-sm);
-    margin: 8px 0;
+/* OV Info Text */
+.ov-info-text {
     font-size: 12px;
-    font-style: italic;
     color: var(--text-secondary);
+    margin-top: 8px;
+    text-align: center;
+    padding: 8px;
+    background: var(--surface-elevated);
+    border-radius: var(--radius-md);
 }
 
 /* Marker Clustering Styles */
@@ -492,21 +412,135 @@ body {
     box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
-.marker-cluster-small .cluster-inner {
-    font-size: 11px;
+.cluster-inner.ov-cluster {
+    background: linear-gradient(135deg, var(--ov-blue), var(--ov-light-blue)) !important;
+    box-shadow: 0 2px 8px rgba(0, 48, 130, 0.3);
 }
 
-.marker-cluster-medium .cluster-inner {
-    font-size: 12px;
+/* Popup Styling */
+.camping-popup, .vrienden-popup, .ov-popup {
+    min-width: 280px;
+    max-width: 350px;
 }
 
-.marker-cluster-large .cluster-inner {
+.camping-popup h4 {
+    margin: 0 0 12px 0;
+    color: var(--camping-color);
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.vrienden-popup h4 {
+    margin: 0 0 12px 0;
+    color: #3b82f6;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ov-popup h4, .train-popup h4 {
+    margin: 0 0 12px 0;
+    color: var(--ov-blue);
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.camping-popup p, .vrienden-popup p, .ov-popup p {
+    margin: 6px 0;
     font-size: 13px;
-    font-weight: 800;
+    line-height: 1.4;
 }
-#camping-layer-card.active {
-    background: linear-gradient(135deg, var(--camping-color), var(--camping-hover));
-    border-color: var(--camping-color);
+
+.camping-popup strong, .vrienden-popup strong, .ov-popup strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Vrienden popup specific styling */
+.vrienden-accommodation {
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    border: 1px solid #bfdbfe;
+    border-radius: var(--radius-md);
+    padding: 12px;
+    margin: 12px 0;
+}
+
+.vrienden-accommodation h5 {
+    margin: 0 0 8px 0;
+    border: none;
+    padding: 0;
+    color: #1e40af;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.vrienden-availability {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 1px solid #f59e0b;
+    border-radius: var(--radius-md);
+    padding: 12px;
+    margin: 12px 0;
+}
+
+.vrienden-availability h5 {
+    margin: 0 0 8px 0;
+    color: #92400e;
+    border: none;
+    padding: 0;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.vrienden-availability p {
+    color: #92400e;
+    font-weight: 500;
+}
+
+.vrienden-description {
+    background: var(--surface-elevated);
+    padding: 8px;
+    border-radius: var(--radius-sm);
+    margin: 8px 0;
+    font-size: 12px;
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+/* OV Actions */
+.ov-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.ov-actions .popup-button {
+    background: var(--ov-blue);
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ov-actions .popup-button:hover {
+    background: var(--ov-light-blue);
 }
 
 /* Search */
@@ -586,6 +620,7 @@ body {
     margin: 0 4px;
     font-size: 14px;
 }
+
 .distance-display {
     background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
     color: white;
@@ -611,161 +646,6 @@ body {
     letter-spacing: 0.05em;
     font-weight: 500;
 }
-
-/* Camping Statistics */
-.camping-stats {
-    background: linear-gradient(135deg, var(--surface-elevated), var(--surface));
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 20px;
-    box-shadow: var(--shadow-sm);
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-}
-
-.stats-item {
-    text-align: center;
-    padding: 16px;
-    background: var(--surface);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-subtle);
-}
-
-.stats-value {
-    display: block;
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--camping-color);
-    margin-bottom: 4px;
-    font-family: 'JetBrains Mono', monospace;
-}
-
-.stats-label {
-    font-size: 11px;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: 500;
-}
-
-/* Camping List */
-.camping-list {
-    max-height: 300px;
-    overflow-y: auto;
-}
-
-.camping-item {
-    padding: 12px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    margin-bottom: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.camping-item:hover {
-    background: var(--surface-elevated);
-    border-color: var(--camping-color);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-sm);
-}
-
-.camping-item h4 {
-    font-size: 14px;
-    color: var(--text-primary);
-    margin-bottom: 4px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.camping-item h4 i {
-    color: var(--camping-color);
-    font-size: 12px;
-}
-
-.camping-item p {
-    font-size: 12px;
-    color: var(--text-secondary);
-    margin: 2px 0;
-}
-
-.camping-item .camping-distance {
-    font-size: 11px;
-    color: var(--camping-color);
-    font-weight: 600;
-    background: rgba(245, 158, 11, 0.1);
-    padding: 2px 6px;
-    border-radius: 4px;
-    display: inline-block;
-    margin-top: 4px;
-}
-
-/* Legend */
-.legend {
-    background: var(--surface-elevated);
-    border-radius: var(--radius-lg);
-    padding: 20px;
-    margin-top: 24px;
-    border: 1px solid var(--border-subtle);
-}
-
-.legend-title {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 16px;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
-    font-size: 14px;
-    color: var(--text-secondary);
-}
-
-.legend-color {
-    width: 24px;
-    height: 4px;
-    border-radius: 2px;
-    flex-shrink: 0;
-}
-
-/* Status */
-.status-container {
-    space-y: 8px;
-}
-
-.status-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
-    font-size: 14px;
-    color: var(--text-secondary);
-}
-
-.status-indicator {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-.status-online { background: #10b981; }
-.status-loading { background: var(--orange); }
-.status-offline { background: #ef4444; }
 
 /* Info instruction styling */
 .info-instruction {
@@ -1014,6 +894,72 @@ body {
     flex-shrink: 0;
 }
 
+/* OV Analysis Section */
+.ov-analysis-section {
+    margin: 20px 0;
+    padding: 16px;
+    background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+    border-radius: var(--radius-lg);
+    border-left: 4px solid #0369a1;
+}
+
+.ov-analysis-section .section-title {
+    color: #0369a1;
+    margin-bottom: 12px;
+}
+
+.ov-analysis-section .section-title i {
+    color: var(--ov-blue);
+}
+
+/* OV Stops List */
+.ov-stops-list {
+    max-height: 300px;
+    overflow-y: auto;
+    margin: 16px 0;
+}
+
+.ov-stop-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ov-stop-item:hover {
+    background: var(--surface-elevated);
+    border-color: var(--ov-blue);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.ov-stop-info h5 {
+    font-size: 14px;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+
+.ov-stop-info p {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ov-stop-action {
+    color: var(--ov-blue);
+    font-size: 16px;
+}
+
 /* Route Cards Grid */
 .route-cards-grid {
     display: grid;
@@ -1159,59 +1105,13 @@ body {
         transform: scale(1);
     }
 }
+
 .empty-state {
     font-style: italic;
     color: var(--text-muted);
     font-size: 14px;
     padding: 16px 0;
     text-align: center;
-}
-
-/* Step-by-step interface */
-.step-container {
-    display: flex;
-    align-items: flex-start;
-    gap: 16px;
-    margin-bottom: 24px;
-    padding: 16px;
-    background: var(--surface-elevated);
-    border-radius: var(--radius-lg);
-    border-left: 4px solid var(--accent-green);
-    transition: all 0.3s ease;
-}
-
-.step-container.active {
-    background: var(--surface);
-    border-left-color: var(--orange);
-    box-shadow: var(--shadow-sm);
-}
-
-.step-number {
-    width: 32px;
-    height: 32px;
-    background: var(--accent-green);
-    color: white;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    font-size: 14px;
-    flex-shrink: 0;
-}
-
-.step-container.active .step-number {
-    background: var(--orange);
-}
-
-.step-content {
-    flex: 1;
-}
-
-.step-content .control-label {
-    margin-bottom: 8px;
-    font-size: 14px;
-    font-weight: 500;
 }
 
 /* Active routes display */
@@ -1266,139 +1166,6 @@ body {
     background: #fee2e2;
     color: #dc2626;
     transform: scale(1.1);
-}
-
-/* Route details styling */
-.route-detail-item {
-    padding: 12px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    margin-bottom: 12px;
-}
-
-.route-detail-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.route-detail-header h4 {
-    font-size: 14px;
-    color: var(--text-primary);
-}
-
-.route-type-badge {
-    background: var(--accent-green);
-    color: white;
-    padding: 2px 8px;
-    border-radius: var(--radius-sm);
-    font-size: 11px;
-    font-weight: 500;
-}
-
-.route-detail-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.route-detail-info div {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    color: var(--text-secondary);
-}
-
-.route-detail-info i {
-    width: 12px;
-    color: var(--accent-green);
-}
-
-/* Route Popup */
-.route-popup h4 {
-    margin-bottom: 12px;
-    color: var(--text-primary);
-    font-size: 16px;
-}
-
-.popup-details p {
-    margin-bottom: 6px;
-    font-size: 13px;
-    line-height: 1.4;
-}
-
-.popup-button {
-    background: var(--orange);
-    color: white;
-    border: none;
-    padding: 8px 12px;
-    border-radius: var(--radius-sm);
-    font-size: 12px;
-    cursor: pointer;
-    margin-top: 8px;
-    margin-right: 8px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: background 0.2s ease;
-}
-
-.popup-button:hover {
-    background: var(--orange-hover);
-}
-
-/* Camping popup styling */
-.camping-popup {
-    min-width: 280px;
-    max-width: 350px;
-}
-
-.camping-popup h4 {
-    margin: 0 0 12px 0;
-    color: var(--camping-color);
-    font-size: 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.camping-popup p {
-    margin: 6px 0;
-    font-size: 13px;
-    line-height: 1.4;
-}
-
-.camping-popup strong {
-    color: var(--text-primary);
-    font-weight: 600;
-}
-
-.camping-facilities {
-    background: var(--surface-elevated);
-    padding: 8px;
-    border-radius: var(--radius-sm);
-    margin: 8px 0;
-    font-size: 12px;
-}
-
-.camping-popup .popup-buttons {
-    display: flex;
-    gap: 8px;
-    margin-top: 12px;
-    flex-wrap: wrap;
-}
-
-.camping-popup .popup-button {
-    background: var(--camping-color);
-    font-size: 11px;
-    padding: 6px 10px;
-}
-
-.camping-popup .popup-button:hover {
-    background: var(--camping-hover);
 }
 
 /* Map */
@@ -1477,65 +1244,7 @@ body {
     line-height: 1.5;
 }
 
-/* Scrollbar */
-.sidebar-content::-webkit-scrollbar {
-    width: 6px;
-}
-
-.sidebar-content::-webkit-scrollbar-track {
-    background: var(--surface-elevated);
-}
-
-.sidebar-content::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 3px;
-}
-
-.sidebar-content::-webkit-scrollbar-thumb:hover {
-    background: var(--text-muted);
-}
-
-.camping-list::-webkit-scrollbar {
-    width: 4px;
-}
-
-.camping-list::-webkit-scrollbar-track {
-    background: var(--surface-elevated);
-}
-
-.camping-list::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 2px;
-}
-
-/* Mobile overlay for sidebar */
-.sidebar-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 9999;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s ease;
-}
-
-.sidebar-overlay.active {
-    opacity: 1;
-    visibility: visible;
-}
-
-/* Better touch targets */
-.leaflet-control-zoom a {
-    width: 40px !important;
-    height: 40px !important;
-    line-height: 40px !important;
-    font-size: 16px !important;
-}
-
-/* Subtle kilometer marker tooltips */
+/* Tooltips */
 .km-tooltip-subtle {
     background: transparent !important;
     border: none !important;
@@ -1601,7 +1310,7 @@ body {
     display: none !important;
 }
 
-/* Distance label containers with auto-sizing */
+/* Distance label containers */
 .distance-label-container {
     z-index: 1002 !important;
     pointer-events: none !important;
@@ -1667,198 +1376,6 @@ body {
     }
 }
 
-/* Measure point animations */
-.distance-label-container,
-.total-distance-label-container {
-    animation: distanceLabelAppear 0.3s ease-out;
-}
-
-@keyframes distanceLabelAppear {
-    0% {
-        opacity: 0;
-        transform: scale(0.5);
-    }
-    100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-.clear-measure-btn {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    width: 100%;
-    margin-top: 12px;
-}
-
-.clear-measure-btn:hover {
-    background: linear-gradient(135deg, #dc2626, #b91c1c);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-sm);
-}
-
-/* Route trace section */
-.route-trace-section {
-    margin-bottom: 20px;
-    padding: 16px;
-    background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
-    border-radius: var(--radius-lg);
-    border-left: 4px solid #3b82f6;
-    box-shadow: var(--shadow-sm);
-}
-
-.route-trace-section h4 {
-    font-size: 14px;
-    font-weight: 600;
-    color: #1e40af;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.trace-btn {
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
-    color: white;
-    border: none;
-    padding: 10px 18px;
-    border-radius: var(--radius-lg);
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    justify-content: center;
-    box-shadow: var(--shadow-sm);
-}
-
-.trace-btn:hover {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-}
-
-.trace-btn.active {
-    background: linear-gradient(135deg, #dc2626, #b91c1c);
-}
-
-.trace-progress {
-    margin-top: 16px;
-    padding: 16px;
-    background: white;
-    border-radius: var(--radius-md);
-    border: 1px solid #e5e7eb;
-}
-
-.trace-stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 16px;
-}
-
-.trace-stat {
-    text-align: center;
-    padding: 12px;
-    background: var(--surface-elevated);
-    border-radius: var(--radius-md);
-}
-
-.trace-value {
-    display: block;
-    font-size: 20px;
-    font-weight: 700;
-    color: #3b82f6;
-    margin-bottom: 4px;
-}
-
-.trace-label {
-    font-size: 11px;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.trace-progress-bar {
-    width: 100%;
-    height: 8px;
-    background: #e5e7eb;
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-.trace-progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #3b82f6, #10b981);
-    width: 0%;
-    transition: width 0.3s ease;
-    border-radius: 4px;
-}
-
-/* Highlight route animation */
-.highlight-route {
-    animation: routePulse 2s ease-in-out infinite alternate;
-}
-
-@keyframes routePulse {
-    0% {
-        opacity: 0.8;
-    }
-    100% {
-        opacity: 1;
-    }
-}
-
-/* Subtle kilometer marker animation */
-.km-marker {
-    animation: kmFadeIn 0.6s ease-out;
-}
-
-@keyframes kmFadeIn {
-    0% {
-        opacity: 0;
-        transform: scale(0.5);
-    }
-    100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-/* Camping marker animations */
-.camping-marker {
-    animation: campingBounce 0.8s ease-out;
-}
-
-@keyframes campingBounce {
-    0% {
-        transform: scale(0) translateY(-20px);
-        opacity: 0;
-    }
-    50% {
-        transform: scale(1.2) translateY(-10px);
-        opacity: 0.8;
-    }
-    100% {
-        transform: scale(1) translateY(0);
-        opacity: 1;
-    }
-}
-
 /* Loading states */
 .loading-overlay {
     position: fixed;
@@ -1904,6 +1421,64 @@ body {
     color: var(--text-muted);
 }
 
+/* Scrollbar */
+.sidebar-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-content::-webkit-scrollbar-track {
+    background: var(--surface-elevated);
+}
+
+.sidebar-content::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+.ov-stops-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.ov-stops-list::-webkit-scrollbar-track {
+    background: var(--surface-elevated);
+}
+
+.ov-stops-list::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
+}
+
+/* Mobile overlay for sidebar */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.sidebar-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Better touch targets */
+.leaflet-control-zoom a {
+    width: 40px !important;
+    height: 40px !important;
+    line-height: 40px !important;
+    font-size: 16px !important;
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
     .sidebar {
@@ -1920,7 +1495,7 @@ body {
         width: 320px;
     }
     
-    .trace-stats, .stats-grid {
+    .route-stats-grid, .stats-grid {
         grid-template-columns: 1fr;
         gap: 12px;
     }
@@ -2034,12 +1609,12 @@ body {
         font-size: 12px;
         padding: 10px 12px;
     }
-    
-    .trace-stats, .stats-grid {
-        grid-template-columns: 1fr;
+
+    .ov-stops-list {
+        max-height: 200px;
     }
 
-    .camping-popup {
+    .ov-popup, .camping-popup, .vrienden-popup {
         min-width: 220px;
         max-width: 260px;
     }
@@ -2094,17 +1669,6 @@ body {
     .button-primary, .button-secondary {
         padding: 14px 20px;
         font-size: 14px;
-    }
-    
-    .step-container {
-        padding: 12px;
-        gap: 12px;
-    }
-    
-    .step-number {
-        width: 28px;
-        height: 28px;
-        font-size: 12px;
     }
     
     .distance-display {
@@ -2171,8 +1735,8 @@ body {
     .route-info-title {
         font-size: 16px;
     }
-    
-    .camping-popup {
+
+    .ov-popup, .camping-popup, .vrienden-popup {
         min-width: 200px;
         max-width: 240px;
     }
@@ -2274,89 +1838,4 @@ body {
     .control-section {
         margin-bottom: 16px;
     }
-}
-
-// CSS voor OV styling (voeg toe aan styles.css)
-const ovStyles = `
-.ov-cluster {
-    background: linear-gradient(135deg, #003082, #0066cc) !important;
-    box-shadow: 0 2px 8px rgba(0, 48, 130, 0.3);
-}
-
-.ov-popup {
-    min-width: 280px;
-    max-width: 350px;
-}
-
-.ov-popup h4 {
-    margin: 0 0 12px 0;
-    color: #003082;
-    font-size: 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.train-popup h4 {
-    color: #003082;
-}
-
-.ov-actions {
-    display: flex;
-    gap: 8px;
-    margin-top: 12px;
-    flex-wrap: wrap;
-}
-
-.ov-actions .popup-button {
-    background: #003082;
-    font-size: 11px;
-    padding: 6px 10px;
-}
-
-.ov-stops-list {
-    max-height: 300px;
-    overflow-y: auto;
-    margin: 16px 0;
-}
-
-.ov-stop-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    margin-bottom: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.ov-stop-item:hover {
-    background: var(--surface-elevated);
-    border-color: #003082;
-    transform: translateY(-1px);
-}
-
-.ov-stop-info h5 {
-    font-size: 14px;
-    color: var(--text-primary);
-    margin-bottom: 4px;
-}
-
-.ov-stop-info p {
-    font-size: 12px;
-    color: var(--text-secondary);
-    margin: 0;
-}
-
-.ov-stop-action {
-    color: #003082;
-    font-size: 16px;
-}
-
-#ov-layer-card.active {
-    background: linear-gradient(135deg, #003082, #0066cc);
-    border-color: #003082;
 }
