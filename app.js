@@ -11,8 +11,11 @@ let campingLayer;
 let campingClusterGroup;
 let vriendenLayer;
 let vriendenClusterGroup;
+let ovStopsLayer;
+let ovStopsClusterGroup;
 let campingVisible = false;
 let vriendenVisible = false;
+let ovStopsVisible = false;
 let loadingOverlay = null;
 let isMobile = window.innerWidth <= 768;
 let sidebarOpen = false;
@@ -70,7 +73,20 @@ L.tileLayer.pdokFilter = function (url, options) {
     return new L.TileLayer.PDOKFilter(url, options);
 };
 
-// Vrienden op de Fiets icon
+// Icons
+const campingIcon = L.icon({
+    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+            <circle cx="12" cy="12" r="12" fill="#f59e0b"/>
+            <path d="M7 4L12 14L17 4H15L12 10L9 4H7Z" fill="white"/>
+            <rect x="6" y="18" width="12" height="2" fill="white"/>
+        </svg>
+    `),
+    iconSize: [24, 24],
+    iconAnchor: [12, 24],
+    popupAnchor: [0, -24]
+});
+
 const vriendenIcon = L.icon({
     iconUrl: 'data:image/svg+xml;base64,' + btoa(`
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
@@ -85,12 +101,30 @@ const vriendenIcon = L.icon({
     iconAnchor: [12, 24],
     popupAnchor: [0, -24]
 });
-const campingIcon = L.icon({
+
+const trainIcon = L.icon({
     iconUrl: 'data:image/svg+xml;base64,' + btoa(`
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-            <circle cx="12" cy="12" r="12" fill="#f59e0b"/>
-            <path d="M7 4L12 14L17 4H15L12 10L9 4H7Z" fill="white"/>
-            <rect x="6" y="18" width="12" height="2" fill="white"/>
+            <circle cx="12" cy="12" r="12" fill="#003082"/>
+            <rect x="6" y="8" width="12" height="8" rx="2" fill="white"/>
+            <circle cx="9" cy="14" r="1.5" fill="#003082"/>
+            <circle cx="15" cy="14" r="1.5" fill="#003082"/>
+            <rect x="8" y="10" width="8" height="2" fill="#003082"/>
+        </svg>
+    `),
+    iconSize: [24, 24],
+    iconAnchor: [12, 24],
+    popupAnchor: [0, -24]
+});
+
+const busIcon = L.icon({
+    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+            <circle cx="12" cy="12" r="12" fill="#e17000"/>
+            <rect x="5" y="7" width="14" height="10" rx="2" fill="white"/>
+            <circle cx="8" cy="15" r="1.5" fill="#e17000"/>
+            <circle cx="16" cy="15" r="1.5" fill="#e17000"/>
+            <rect x="6" y="9" width="12" height="4" fill="#e17000"/>
         </svg>
     `),
     iconSize: [24, 24],
@@ -119,22 +153,26 @@ function initMap() {
 
         const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
-            zIndex: 1
+            zIndex: 1,
+            maxZoom: 19
         });
 
         const topoLayer = L.tileLayer('https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:3857/{z}/{x}/{y}.png', {
             attribution: '© PDOK',
-            zIndex: 1
+            zIndex: 1,
+            maxZoom: 19
         });
 
         const satelliteLayer = L.tileLayer('https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_ortho25/EPSG:3857/{z}/{x}/{y}.jpeg', {
             attribution: '© PDOK Luchtfoto',
-            zIndex: 1
+            zIndex: 1,
+            maxZoom: 19
         });
 
         const terrainLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}', {
             attribution: '© Esri',
-            zIndex: 1
+            zIndex: 1,
+            maxZoom: 19
         });
 
         osmLayer.addTo(map);
@@ -152,6 +190,7 @@ function initMap() {
         // Initialize simple layer groups (clustering will be added later if library loads)
         campingLayer = L.layerGroup();
         vriendenLayer = L.layerGroup();
+        ovStopsLayer = L.layerGroup();
         
         // Try to initialize clustering if available
         initializeClustering();
@@ -208,10 +247,31 @@ function initializeClustering() {
                 });
             }
         });
+
+        ovStopsClusterGroup = L.markerClusterGroup({
+            maxClusterRadius: 60,
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: true,
+            disableClusteringAtZoom: 15,
+            iconCreateFunction: function(cluster) {
+                const count = cluster.getChildCount();
+                let size = 'small';
+                if (count > 15) size = 'medium';
+                if (count > 30) size = 'large';
+                
+                return L.divIcon({
+                    html: `<div class="cluster-inner ov-cluster">${count}</div>`,
+                    className: `marker-cluster marker-cluster-${size}`,
+                    iconSize: L.point(40, 40)
+                });
+            }
+        });
     } else {
         console.log('MarkerCluster library not available, using simple layer groups');
         campingClusterGroup = campingLayer;
         vriendenClusterGroup = vriendenLayer;
+        ovStopsClusterGroup = ovStopsLayer;
     }
 }
 
@@ -429,6 +489,13 @@ function setupEventListeners() {
                             if (filteredFeatures.length > 0) {
                                 showRouteInfoInPanel(filteredFeatures[0]);
                                 highlightEtappe(filteredFeatures[0]);
+                                
+                                // Show nearby OV stops
+                                if (ovStopsVisible) {
+                                    setTimeout(() => {
+                                        showNearbyOVStops(e.latlng);
+                                    }, 500);
+                                }
                                 
                                 // Auto-close sidebar on mobile after showing route info
                                 if (isMobile) {
@@ -650,12 +717,375 @@ function loadVriendenGeoJSON() {
         });
 }
 
-// Simplified route adding function
+// ============ OPENBAAR VERVOER FUNCTIONALITY ============
+
+function toggleOVStopsLayer() {
+    ovStopsVisible = !ovStopsVisible;
+    const card = document.getElementById('ov-layer-card');
+    
+    if (ovStopsVisible) {
+        if (ovStopsClusterGroup.getLayers().length === 0) {
+            loadOVStopsData();
+        } else {
+            map.addLayer(ovStopsClusterGroup);
+            card.classList.add('active');
+            showNotification('Openbaar vervoer haltes zichtbaar', 'success');
+        }
+    } else {
+        map.removeLayer(ovStopsClusterGroup);
+        card.classList.remove('active');
+        showNotification('Openbaar vervoer haltes verborgen', 'info');
+    }
+}
+
+async function loadOVStopsData() {
+    showLoadingOverlay('Openbaar vervoer data laden...');
+    
+    try {
+        // First try to load local GeoJSON
+        try {
+            const response = await fetch('./data/ov-stops.geojson');
+            if (response.ok) {
+                const geojsonData = await response.json();
+                processOVStopsGeoJSON(geojsonData);
+                return;
+            }
+        } catch (error) {
+            console.log('Lokale OV data niet gevonden, laad NS stations...');
+        }
+        
+        // Load NS stations as fallback
+        await loadNSStations();
+        
+    } catch (error) {
+        console.error('Fout bij laden OV data:', error);
+        showNotification('Kon openbaar vervoer data niet laden', 'error');
+    } finally {
+        hideLoadingOverlay();
+    }
+}
+
+async function loadNSStations() {
+    try {
+        const response = await fetch('https://www.rijdendetreinen.nl/api/v2/stations');
+        const stationsData = await response.json();
+        
+        ovStopsClusterGroup.clearLayers();
+        
+        stationsData.forEach(station => {
+            if (station.land === 'NL') {
+                const popupContent = `
+                    <div class="ov-popup train-popup">
+                        <h4><i class="fas fa-train"></i> ${station.namen.lang}</h4>
+                        <p><strong>Type:</strong> ${getStationTypeDescription(station.stationType)}</p>
+                        <p><strong>Stationscode:</strong> ${station.code}</p>
+                        ${station.namen.kort !== station.namen.lang ? `<p><strong>Korte naam:</strong> ${station.namen.kort}</p>` : ''}
+                        <div class="ov-actions">
+                            <button class="popup-button" onclick="showNSSchedule('${station.code}')">
+                                <i class="fas fa-clock"></i> Vertrektijden
+                            </button>
+                            <button class="popup-button" onclick="planRouteToStation('${station.lat}', '${station.lng}')">
+                                <i class="fas fa-route"></i> Route plannen
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                const marker = L.marker([station.lat, station.lng], {
+                    icon: trainIcon
+                }).bindPopup(popupContent);
+                
+                ovStopsClusterGroup.addLayer(marker);
+            }
+        });
+        
+        map.addLayer(ovStopsClusterGroup);
+        ovStopsVisible = true;
+        
+        const card = document.getElementById('ov-layer-card');
+        if (card) {
+            card.classList.add('active');
+        }
+        
+        const clusterText = (typeof L.markerClusterGroup !== 'undefined') ? ' (geclusterd)' : '';
+        showNotification(`${stationsData.filter(s => s.land === 'NL').length} treinstations geladen${clusterText}`, 'success');
+        
+    } catch (error) {
+        console.error('Fout bij laden NS stations:', error);
+        throw error;
+    }
+}
+
+function processOVStopsGeoJSON(geojsonData) {
+    ovStopsClusterGroup.clearLayers();
+    
+    geojsonData.features.forEach(feature => {
+        const coords = feature.geometry.coordinates;
+        const props = feature.properties;
+        
+        let icon = busIcon;
+        let typeLabel = 'Bushalte';
+        
+        if (props.stop_type === 'train' || props.route_type === '1') {
+            icon = trainIcon;
+            typeLabel = 'Treinstation';
+        } else if (props.stop_type === 'tram' || props.route_type === '0') {
+            icon = trainIcon; // Use train icon for tram too
+            typeLabel = 'Tramhalte';
+        }
+        
+        const popupContent = `
+            <div class="ov-popup">
+                <h4><i class="fas fa-bus"></i> ${props.stop_name || props.name}</h4>
+                <p><strong>Type:</strong> ${typeLabel}</p>
+                ${props.stop_code ? `<p><strong>Haltecode:</strong> ${props.stop_code}</p>` : ''}
+                ${props.stop_desc ? `<p><strong>Beschrijving:</strong> ${props.stop_desc}</p>` : ''}
+                <div class="ov-actions">
+                    <button class="popup-button" onclick="showOVSchedule('${props.stop_id}')">
+                        <i class="fas fa-clock"></i> Vertrektijden
+                    </button>
+                    <button class="popup-button" onclick="planRouteToStop('${coords[1]}', '${coords[0]}')">
+                        <i class="fas fa-route"></i> Route plannen
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        const marker = L.marker([coords[1], coords[0]], {
+            icon: icon
+        }).bindPopup(popupContent);
+        
+        ovStopsClusterGroup.addLayer(marker);
+    });
+    
+    map.addLayer(ovStopsClusterGroup);
+    ovStopsVisible = true;
+    
+    const card = document.getElementById('ov-layer-card');
+    if (card) {
+        card.classList.add('active');
+    }
+    
+    const clusterText = (typeof L.markerClusterGroup !== 'undefined') ? ' (geclusterd)' : '';
+    showNotification(`${geojsonData.features.length} OV haltes geladen${clusterText}`, 'success');
+}
+
+function getStationTypeDescription(type) {
+    const types = {
+        'megastation': 'Megastation',
+        'knooppuntIntercitystation': 'Knooppunt Intercitystation',
+        'intercitystation': 'Intercitystation',
+        'knooppuntSneltreinstation': 'Knooppunt Sneltreinstation',
+        'sneltreinstation': 'Sneltreinstation',
+        'knooppuntStoptreinstation': 'Knooppunt Stoptreinstation',
+        'stoptreinstation': 'Stoptreinstation',
+        'facultatiefStation': 'Facultatief station'
+    };
+    return types[type] || type;
+}
+
+function showNearbyOVStops(latlng, radius = 2000) {
+    if (!ovStopsVisible || ovStopsClusterGroup.getLayers().length === 0) {
+        showNotification('Laad eerst de openbaar vervoer haltes', 'warning');
+        return;
+    }
+    
+    const nearbyStops = [];
+    
+    ovStopsClusterGroup.eachLayer(layer => {
+        if (layer.getLatLng) {
+            const distance = latlng.distanceTo(layer.getLatLng());
+            if (distance <= radius) {
+                nearbyStops.push({
+                    layer: layer,
+                    distance: distance
+                });
+            }
+        }
+    });
+    
+    nearbyStops.sort((a, b) => a.distance - b.distance);
+    
+    if (nearbyStops.length > 0) {
+        nearbyStops.forEach(stop => {
+            if (stop.layer.setStyle) {
+                stop.layer.setStyle({
+                    color: '#ff7b54',
+                    weight: 4,
+                    opacity: 1
+                });
+            }
+        });
+        
+        showNearbyOVPanel(nearbyStops, latlng);
+    } else {
+        showNotification('Geen openbaar vervoer in de buurt (binnen 2km)', 'info');
+    }
+}
+
+function showNearbyOVPanel(nearbyStops, centerPoint) {
+    const panelContent = `
+        <div class="ov-analysis-section">
+            <div class="section-title">
+                <i class="fas fa-bus"></i>
+                Openbaar Vervoer in de Buurt
+            </div>
+            <div class="route-info-badge" style="margin-bottom: 16px;">
+                <i class="fas fa-map-marker-alt"></i>
+                ${nearbyStops.length} halte(s) binnen 2km
+            </div>
+            
+            <div class="ov-stops-list">
+                ${nearbyStops.slice(0, 8).map(stop => {
+                    const distance = (stop.distance / 1000).toFixed(1);
+                    const stopName = extractStopName(stop.layer.getPopup()?.getContent() || '');
+                    
+                    return `
+                        <div class="ov-stop-item" onclick="zoomToOVStop(${stop.layer.getLatLng().lat}, ${stop.layer.getLatLng().lng})">
+                            <div class="ov-stop-info">
+                                <h5>${stopName}</h5>
+                                <p><i class="fas fa-walking"></i> ${distance} km • ca. ${Math.round(distance * 12)} min lopen</p>
+                            </div>
+                            <div class="ov-stop-action">
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+            
+            <div class="route-info-actions">
+                <button class="highlight-btn" onclick="clearOVHighlight()">
+                    <i class="fas fa-eye-slash"></i>
+                    Verberg highlights
+                </button>
+                <button class="zoom-btn" onclick="fitToNearbyOV()">
+                    <i class="fas fa-search-plus"></i>
+                    Zoom naar OV
+                </button>
+            </div>
+        </div>
+    `;
+    
+    // Add to existing route info instead of replacing
+    const existingContent = document.getElementById('routeInfoPanel').innerHTML;
+    if (existingContent.includes('empty-state')) {
+        document.getElementById('routeInfoPanel').innerHTML = panelContent;
+    } else {
+        // Append to existing content
+        document.getElementById('routeInfoPanel').innerHTML = existingContent + panelContent;
+    }
+    
+    switchToRouteInfoTab();
+    window.currentNearbyOV = nearbyStops;
+}
+
+function extractStopName(content) {
+    const match = content.match(/<h4[^>]*>(.*?)<\/h4>/);
+    if (match) {
+        return match[1].replace(/<[^>]*>/g, '').trim();
+    }
+    return 'Onbekende halte';
+}
+
+// OV utility functions
+function showNSSchedule(stationCode) {
+    showNotification(`Vertrektijden voor ${stationCode} - Open NS app of website`, 'info');
+    window.open(`https://www.ns.nl/reisplanner/#/?vertrek=${stationCode}`, '_blank');
+}
+
+function showOVSchedule(stopId) {
+    showNotification(`Vertrektijden voor halte ${stopId} - Open 9292`, 'info');
+}
+
+function planRouteToStation(lat, lng) {
+    const url = `https://9292.nl/reisadvies/naar/${lat},${lng}`;
+    window.open(url, '_blank');
+}
+
+function planRouteToStop(lat, lng) {
+    const url = `https://9292.nl/reisadvies/naar/${lat},${lng}`;
+    window.open(url, '_blank');
+}
+
+function zoomToOVStop(lat, lng) {
+    map.setView([lat, lng], 16);
+    if (isMobile) {
+        closeSidebar();
+    }
+}
+
+function clearOVHighlight() {
+    if (window.currentNearbyOV) {
+        window.currentNearbyOV.forEach(stop => {
+            if (stop.layer.setStyle) {
+                stop.layer.setStyle({
+                    color: '#3388ff',
+                    weight: 2,
+                    opacity: 0.8
+                });
+            }
+        });
+        window.currentNearbyOV = null;
+    }
+    
+    // Remove OV section from route info panel
+    const panel = document.getElementById('routeInfoPanel');
+    const ovSection = panel.querySelector('.ov-analysis-section');
+    if (ovSection) {
+        ovSection.remove();
+    }
+    
+    showNotification('OV highlights verwijderd', 'info');
+}
+
+function fitToNearbyOV() {
+    if (window.currentNearbyOV && window.currentNearbyOV.length > 0) {
+        const group = new L.featureGroup(window.currentNearbyOV.map(stop => stop.layer));
+        map.fitBounds(group.getBounds(), { padding: [20, 20] });
+        
+        if (isMobile) {
+            closeSidebar();
+        }
+    }
+}
+
+function showOVInfo() {
+    showNotification('Vertrektijden functie - Implementeer API integratie', 'info');
+}
+
+function findNearestOVStops() {
+    if (!ovStopsVisible) {
+        showNotification('Activeer eerst de OV laag', 'warning');
+        return;
+    }
+    
+    const center = map.getCenter();
+    showNearbyOVStops(center, 5000);
+}
+
+function planMultiModalRoute() {
+    window.open('https://9292.nl', '_blank');
+}
+
+function fitToOVStops() {
+    if (ovStopsClusterGroup.getLayers().length > 0) {
+        map.fitBounds(ovStopsClusterGroup.getBounds(), { padding: [20, 20] });
+        
+        if (isMobile) {
+            closeSidebar();
+        }
+    } else {
+        showNotification('Geen OV haltes geladen', 'warning');
+    }
+}
+
+// ============ ROUTE FUNCTIONALITY ============
+
 function addLAWRoute(routeValue, routeFilter) {
     const routeName = `${routeValue} - ${routeFilter}`;
     const layerName = 'landelijke-wandelroutes';
     
-    // Check if route already exists
     const existingRoute = activeRoutes.find(route => route.filter === routeFilter);
     if (existingRoute) {
         showNotification(`Route "${routeName}" is al toegevoegd!`, 'warning');
@@ -671,13 +1101,11 @@ function addLAWRoute(routeValue, routeFilter) {
         value: routeValue
     };
     
-    // Add visual feedback
     const routeCard = document.querySelector(`[data-route="${routeValue}"]`);
     if (routeCard) {
         routeCard.classList.add('added');
         routeCard.classList.add('route-card-added');
         
-        // Update action text
         const action = routeCard.querySelector('.route-card-action');
         if (action) {
             action.innerHTML = '<i class="fas fa-check"></i> Toegevoegd';
@@ -692,81 +1120,9 @@ function addLAWRoute(routeValue, routeFilter) {
     addRouteToMap(routeData);
     updateActiveRoutesDisplay();
     
-    // Close sidebar on mobile
     if (isMobile) {
         setTimeout(() => closeSidebar(), 1000);
     }
-}
-
-function loadRouteOptions() {
-    const routeType = document.getElementById('routeTypeSelect').value;
-    const specificSelect = document.getElementById('specificRouteSelect');
-    const step2 = document.getElementById('step2');
-    const step3 = document.getElementById('step3');
-    
-    if (routeType === 'law' && routeDefinitions.law) {
-        step2.style.display = 'block';
-        
-        specificSelect.innerHTML = '<option value="">-- Selecteer een LAW route --</option>';
-        routeDefinitions.law.forEach(route => {
-            const option = document.createElement('option');
-            option.value = route.value;
-            option.textContent = route.name;
-            option.dataset.filter = route.filter;
-            option.dataset.type = routeType;
-            specificSelect.appendChild(option);
-        });
-        
-        specificSelect.onchange = function() {
-            if (this.value) {
-                step3.style.display = 'block';
-            } else {
-                step3.style.display = 'none';
-            }
-        };
-    } else {
-        step2.style.display = 'none';
-        step3.style.display = 'none';
-        specificSelect.innerHTML = '<option value="">-- Selecteer eerst LAW --</option>';
-    }
-}
-
-function showSelectedRoute() {
-    const routeTypeSelect = document.getElementById('routeTypeSelect');
-    const specificSelect = document.getElementById('specificRouteSelect');
-    
-    const routeType = routeTypeSelect.value;
-    const selectedOption = specificSelect.options[specificSelect.selectedIndex];
-    
-    if (!routeType || !selectedOption.value) {
-        alert('Selecteer eerst een route type en specifieke route');
-        return;
-    }
-    
-    const routeName = selectedOption.textContent;
-    const routeFilter = selectedOption.dataset.filter;
-    const layerName = 'landelijke-wandelroutes';
-    
-    const existingRoute = activeRoutes.find(route => route.filter === routeFilter);
-    if (existingRoute) {
-        alert(`Route "${routeName}" is al toegevoegd!`);
-        resetRouteForm();
-        return;
-    }
-    
-    const routeData = {
-        id: Date.now(),
-        name: routeName,
-        type: routeType,
-        filter: routeFilter,
-        layerName: layerName,
-        value: selectedOption.value
-    };
-    
-    activeRoutes.push(routeData);
-    addRouteToMap(routeData);
-    updateActiveRoutesDisplay();
-    resetRouteForm();
 }
 
 function addRouteToMap(routeData) {
@@ -790,7 +1146,6 @@ function addRouteToMap(routeData) {
 function showRouteInfoInPanel(feature) {
     const props = feature.properties;
     
-    // Calculate route distance if geometry is available
     let routeDistance = 0;
     let routeDistanceText = 'Onbekend';
     
@@ -810,7 +1165,6 @@ function showRouteInfoInPanel(feature) {
                 routeDistance += prevPoint.distanceTo(currentPoint);
             }
             
-            // Convert to kilometers
             const distanceKm = routeDistance / 1000;
             routeDistanceText = distanceKm < 1 ? 
                 `${Math.round(routeDistance)} meter` : 
@@ -818,7 +1172,6 @@ function showRouteInfoInPanel(feature) {
         }
     }
     
-    // Estimate walking time (4 km/h average)
     let walkingTimeText = 'Onbekend';
     if (routeDistance > 0) {
         const walkingTimeHours = (routeDistance / 1000) / 4;
@@ -924,10 +1277,7 @@ function showRouteInfoInPanel(feature) {
     `;
     
     document.getElementById('routeInfoPanel').innerHTML = panelContent;
-    
-    // Store current feature for zoom functionality
     window.currentEtappeFeature = feature;
-    
     switchToRouteInfoTab();
 }
 
@@ -941,7 +1291,6 @@ function switchToRouteInfoTab() {
     if (infoTab) infoTab.classList.add('active');
     if (infoPanel) infoPanel.classList.add('active');
     
-    // On mobile, open sidebar to show the info
     if (isMobile && !sidebarOpen) {
         toggleSidebar();
     }
@@ -1072,12 +1421,33 @@ function interpolatePosition(coordinates, targetDistance) {
     return null;
 }
 
-// Zoom to current etappe
 function clearEtappeHighlight() {
     highlightLayer.clearLayers();
     window.currentEtappeFeature = null;
     document.getElementById('routeInfoPanel').innerHTML = '<div class="empty-state">Geen etappe geselecteerd</div>';
     showNotification('Highlight verwijderd', 'info');
+}
+
+function zoomToEtappe() {
+    if (window.currentEtappeFeature && window.currentEtappeFeature.geometry) {
+        const feature = window.currentEtappeFeature;
+        let coordinates;
+        
+        if (feature.geometry.type === 'LineString') {
+            coordinates = feature.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+        } else if (feature.geometry.type === 'MultiLineString') {
+            coordinates = feature.geometry.coordinates[0].map(coord => [coord[1], coord[0]]);
+        }
+        
+        if (coordinates && coordinates.length > 0) {
+            const bounds = L.latLngBounds(coordinates);
+            map.fitBounds(bounds, { padding: [20, 20] });
+            
+            if (isMobile) {
+                closeSidebar();
+            }
+        }
+    }
 }
 
 function updateActiveRoutesDisplay() {
@@ -1086,7 +1456,6 @@ function updateActiveRoutesDisplay() {
     if (activeRoutes.length === 0) {
         container.innerHTML = '<div class="empty-state">Klik op een route card hierboven om deze toe te voegen</div>';
         
-        // Reset all route cards
         document.querySelectorAll('.route-card').forEach(card => {
             card.classList.remove('added');
             const action = card.querySelector('.route-card-action');
@@ -1115,7 +1484,6 @@ function removeRoute(routeId) {
     if (routeIndex !== -1) {
         const route = activeRoutes[routeIndex];
         
-        // Remove visual feedback from route card
         const routeCard = document.querySelector(`[data-route="${route.value}"]`);
         if (routeCard) {
             routeCard.classList.remove('added');
@@ -1145,19 +1513,15 @@ function clearAllRoutes() {
     
     activeRoutes = [];
     updateActiveRoutesDisplay();
-    resetRouteForm();
-}
-
-function resetRouteForm() {
-    document.getElementById('routeTypeSelect').value = '';
-    document.getElementById('specificRouteSelect').innerHTML = '<option value="">-- Eerst route type kiezen --</option>';
-    document.getElementById('step2').style.display = 'none';
-    document.getElementById('step3').style.display = 'none';
+    
+    highlightLayer.clearLayers();
+    document.getElementById('routeInfoPanel').innerHTML = '<div class="empty-state">Geen etappe geselecteerd</div>';
+    
+    showNotification('Alle routes verwijderd', 'info');
 }
 
 // ============ TOOLS & UTILITY FUNCTIONS ============
 
-// Toggle measure from map control button
 function toggleMeasureFromMap() {
     measuring = !measuring;
     const btn = document.getElementById('measureControlBtn');
@@ -1168,32 +1532,13 @@ function toggleMeasureFromMap() {
         btn.innerHTML = '<i class="fas fa-stop"></i>';
         map.getContainer().style.cursor = 'crosshair';
         showNotification('Afstand meten geactiveerd - Klik punten op de kaart', 'info');
-        
-        // Update sidebar button if it exists
-        const sidebarBtn = document.getElementById('measureBtn');
-        if (sidebarBtn) {
-            sidebarBtn.innerHTML = '<i class="fas fa-stop"></i> Stop meting';
-            sidebarBtn.classList.add('active');
-        }
     } else {
         btn.classList.remove('active');
         btn.title = 'Afstand meten';
         btn.innerHTML = '<i class="fas fa-ruler-combined"></i>';
         map.getContainer().style.cursor = '';
         showNotification('Afstand meten gestopt', 'info');
-        
-        // Update sidebar button if it exists
-        const sidebarBtn = document.getElementById('measureBtn');
-        if (sidebarBtn) {
-            sidebarBtn.innerHTML = '<i class="fas fa-ruler-combined"></i> Start meting';
-            sidebarBtn.classList.remove('active');
-        }
     }
-}
-
-// Legacy function for sidebar (if needed)
-function toggleMeasure() {
-    toggleMeasureFromMap();
 }
 
 function addMeasurePoint(latlng) {
@@ -1206,7 +1551,6 @@ function addMeasurePoint(latlng) {
         zIndex: 1001
     }).addTo(map);
 
-    // Add point number
     const pointNumber = measureMarkers.filter(item => item.getLatLng).length + 1;
     marker.bindTooltip(`${pointNumber}`, { 
         permanent: true, 
@@ -1218,7 +1562,6 @@ function addMeasurePoint(latlng) {
     measureMarkers.push(marker);
 
     if (measureMarkers.length > 1) {
-        // Find the previous actual marker (not label)
         let prevMarker = null;
         for (let i = measureMarkers.length - 2; i >= 0; i--) {
             if (measureMarkers[i].getLatLng && measureMarkers[i].options.fillColor === '#f59e0b') {
@@ -1238,7 +1581,6 @@ function addMeasurePoint(latlng) {
 
             measureMarkers.push(line);
 
-            // Calculate midpoint for distance label
             const midPoint = [
                 (prevMarker.getLatLng().lat + latlng.lat) / 2,
                 (prevMarker.getLatLng().lng + latlng.lng) / 2
@@ -1253,11 +1595,11 @@ function addMeasurePoint(latlng) {
                 icon: L.divIcon({
                     className: 'distance-label-container',
                     html: `<div class="distance-text">${distanceText}</div>`,
-                    iconSize: [null, null], // Auto-size
-                    iconAnchor: [null, null] // Auto-anchor
+                    iconSize: [null, null],
+                    iconAnchor: [null, null]
                 }),
                 zIndex: 1002,
-                interactive: false // Make non-interactive so clicks go through to map
+                interactive: false
             }).addTo(map);
 
             measureMarkers.push(distanceLabel);
@@ -1267,19 +1609,16 @@ function addMeasurePoint(latlng) {
             updateTotalDistanceOnMap();
         }
     } else {
-        // First point - show starting indicator
         updateTotalDistanceOnMap();
     }
 }
 
 function updateTotalDistanceOnMap() {
-    // Remove existing total distance marker
     if (window.totalDistanceMarker) {
         map.removeLayer(window.totalDistanceMarker);
     }
     
     if (measureMarkers.length > 0) {
-        // Get last actual marker (not label)
         let lastMarker = null;
         for (let i = measureMarkers.length - 1; i >= 0; i--) {
             if (measureMarkers[i].getLatLng && measureMarkers[i].options.fillColor === '#f59e0b') {
@@ -1293,19 +1632,18 @@ function updateTotalDistanceOnMap() {
                 `Totaal: ${Math.round(totalDistance * 1000)} m` : 
                 `Totaal: ${totalDistance.toFixed(2)} km`;
 
-            // Position total slightly offset from last point
-            const offsetLat = lastMarker.getLatLng().lat + 0.002; // Small offset north
+            const offsetLat = lastMarker.getLatLng().lat + 0.002;
             const offsetLng = lastMarker.getLatLng().lng;
 
             window.totalDistanceMarker = L.marker([offsetLat, offsetLng], {
                 icon: L.divIcon({
                     className: 'total-distance-label-container',
                     html: `<div class="total-distance-text">${totalText}</div>`,
-                    iconSize: [null, null], // Auto-size
-                    iconAnchor: [null, null] // Auto-anchor
+                    iconSize: [null, null],
+                    iconAnchor: [null, null]
                 }),
                 zIndex: 1003,
-                interactive: false // Make non-interactive
+                interactive: false
             }).addTo(map);
         }
     }
@@ -1326,19 +1664,16 @@ function clearMeasurements() {
     totalDistance = 0;
     updateDistanceDisplay();
     
-    // Reset map control button
+    if (window.totalDistanceMarker) {
+        map.removeLayer(window.totalDistanceMarker);
+        window.totalDistanceMarker = null;
+    }
+    
     const mapBtn = document.getElementById('measureControlBtn');
     if (mapBtn) {
         mapBtn.classList.remove('active');
         mapBtn.title = 'Afstand meten';
         mapBtn.innerHTML = '<i class="fas fa-ruler-combined"></i>';
-    }
-    
-    // Reset sidebar button if it exists
-    const sidebarBtn = document.getElementById('measureBtn');
-    if (sidebarBtn) {
-        sidebarBtn.innerHTML = '<i class="fas fa-ruler-combined"></i> Start meting';
-        sidebarBtn.classList.remove('active');
     }
     
     measuring = false;
@@ -1350,9 +1685,14 @@ function searchLocation() {
     const query = document.getElementById('searchInput').value.trim();
     if (!query) return;
 
+    const spinner = document.getElementById('searchSpinner');
+    spinner.style.display = 'block';
+
     fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=nl&limit=3`)
         .then(response => response.json())
         .then(data => {
+            spinner.style.display = 'none';
+            
             if (data.length > 0) {
                 const result = data[0];
                 const lat = parseFloat(result.lat);
@@ -1367,24 +1707,25 @@ function searchLocation() {
                     map.removeLayer(marker);
                 }, 10000);
                 
-                // Close sidebar on mobile after search
                 if (isMobile) {
                     closeSidebar();
                 }
+                
+                showNotification('Locatie gevonden', 'success');
             } else {
-                alert('Locatie niet gevonden');
+                showNotification('Locatie niet gevonden', 'warning');
             }
         })
         .catch(error => {
+            spinner.style.display = 'none';
             console.error('Zoekfout:', error);
-            alert('Er is een fout opgetreden bij het zoeken');
+            showNotification('Er is een fout opgetreden bij het zoeken', 'error');
         });
 }
 
 function zoomToNetherlands() {
     map.setView([52.1326, 5.2913], 7);
     
-    // Close sidebar on mobile
     if (isMobile) {
         closeSidebar();
     }
@@ -1392,7 +1733,6 @@ function zoomToNetherlands() {
 
 function getCurrentLocation() {
     if (navigator.geolocation) {
-        // Close sidebar on mobile when using location
         if (isMobile) {
             closeSidebar();
         }
@@ -1409,11 +1749,13 @@ function getCurrentLocation() {
             setTimeout(() => {
                 map.removeLayer(marker);
             }, 15000);
+            
+            showNotification('Locatie gevonden', 'success');
         }, function(error) {
-            alert('Locatie kon niet worden bepaald');
+            showNotification('Locatie kon niet worden bepaald', 'error');
         });
     } else {
-        alert('Geolocation wordt niet ondersteund');
+        showNotification('Geolocation wordt niet ondersteund', 'error');
     }
 }
 
@@ -1421,7 +1763,6 @@ function fitToCampings() {
     if (campingClusterGroup.getLayers().length > 0) {
         map.fitBounds(campingClusterGroup.getBounds(), { padding: [20, 20] });
         
-        // Close sidebar on mobile
         if (isMobile) {
             closeSidebar();
         }
@@ -1434,7 +1775,6 @@ function fitToVrienden() {
     if (vriendenClusterGroup.getLayers().length > 0) {
         map.fitBounds(vriendenClusterGroup.getBounds(), { padding: [20, 20] });
         
-        // Close sidebar on mobile
         if (isMobile) {
             closeSidebar();
         }
@@ -1445,14 +1785,16 @@ function fitToVrienden() {
 
 function toggleFullscreen() {
     if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
+        document.documentElement.requestFullscreen().catch(err => {
+            showNotification('Volledig scherm niet ondersteund', 'warning');
+        });
     } else {
         document.exitFullscreen();
     }
 }
 
 function addCurrentViewToFavorites() {
-    alert('Favorieten functionaliteit beschikbaar');
+    showNotification('Favorieten functie beschikbaar voor uitbreiding', 'info');
 }
 
 function showNotification(message, type = 'info') {
@@ -1473,13 +1815,19 @@ function showNotification(message, type = 'info') {
         font-size: 14px;
         max-width: 300px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        animation: slideInRight 0.3s ease-out;
     `;
     notification.textContent = message;
     document.body.appendChild(notification);
     
     setTimeout(() => {
         if (notification.parentNode) {
-            notification.parentNode.removeChild(notification);
+            notification.style.animation = 'slideOutRight 0.3s ease-in';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
         }
     }, type === 'error' ? 5000 : 3000);
 }
@@ -1506,9 +1854,39 @@ function hideLoadingOverlay() {
     }
 }
 
+// Add notification animations
+const notificationStyles = `
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+`;
+
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, initializing...');
+    
+    // Add notification styles
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = notificationStyles;
+    document.head.appendChild(styleSheet);
     
     // Set initial mobile state
     isMobile = window.innerWidth <= 768;
@@ -1527,1002 +1905,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Push initial state for back button handling
         history.pushState(null, null, location.href);
     }
-});
-
-// Uitbreiding voor app.js - Openbaar Vervoer functionaliteit
-
-// Global variables voor OV
-let ovStopsLayer;
-let ovStopsClusterGroup;
-let ovStopsVisible = false;
-let ovStopsData = [];
-
-// Iconen voor verschillende OV types
-const trainIcon = L.icon({
-    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-            <circle cx="12" cy="12" r="12" fill="#003082"/>
-            <rect x="6" y="8" width="12" height="8" rx="2" fill="white"/>
-            <circle cx="9" cy="14" r="1.5" fill="#003082"/>
-            <circle cx="15" cy="14" r="1.5" fill="#003082"/>
-            <rect x="8" y="10" width="8" height="2" fill="#003082"/>
-        </svg>
-    `),
-    iconSize: [24, 24],
-    iconAnchor: [12, 24],
-    popupAnchor: [0, -24]
-});
-
-const busIcon = L.icon({
-    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-            <circle cx="12" cy="12" r="12" fill="#e17000"/>
-            <rect x="5" y="7" width="14" height="10" rx="2" fill="white"/>
-            <circle cx="8" cy="15" r="1.5" fill="#e17000"/>
-            <circle cx="16" cy="15" r="1.5" fill="#e17000"/>
-            <rect x="6" y="9" width="12" height="4" fill="#e17000"/>
-        </svg>
-    `),
-    iconSize: [24, 24],
-    iconAnchor: [12, 24],
-    popupAnchor: [0, -24]
-});
-
-const tramIcon = L.icon({
-    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-            <circle cx="12" cy="12" r="12" fill="#009639"/>
-            <rect x="6" y="8" width="12" height="8" rx="2" fill="white"/>
-            <circle cx="9" cy="14" r="1.5" fill="#009639"/>
-            <circle cx="15" cy="14" r="1.5" fill="#009639"/>
-            <rect x="8" y="10" width="8" height="2" fill="#009639"/>
-            <line x1="12" y1="6" x2="12" y2="8" stroke="#009639" stroke-width="2"/>
-        </svg>
-    `),
-    iconSize: [24, 24],
-    iconAnchor: [12, 24],
-    popupAnchor: [0, -24]
-});
-
-// Initialize OV clustering
-function initializeOVClustering() {
-    if (typeof L.markerClusterGroup !== 'undefined') {
-        ovStopsClusterGroup = L.markerClusterGroup({
-            maxClusterRadius: 60,
-            spiderfyOnMaxZoom: true,
-            showCoverageOnHover: false,
-            zoomToBoundsOnClick: true,
-            iconCreateFunction: function(cluster) {
-                const count = cluster.getChildCount();
-                let size = 'small';
-                if (count > 15) size = 'medium';
-                if (count > 30) size = 'large';
-                
-                return L.divIcon({
-                    html: `<div class="cluster-inner ov-cluster">${count}</div>`,
-                    className: `marker-cluster marker-cluster-${size}`,
-                    iconSize: L.point(40, 40)
-                });
-            }
-        });
-    } else {
-        ovStopsClusterGroup = L.layerGroup();
-    }
-}
-
-// Toggle OV stops layer
-function toggleOVStopsLayer() {
-    ovStopsVisible = !ovStopsVisible;
-    const card = document.getElementById('ov-layer-card');
     
-    if (ovStopsVisible) {
-        if (ovStopsClusterGroup.getLayers().length === 0) {
-            loadOVStopsData();
-        } else {
-            map.addLayer(ovStopsClusterGroup);
-            card.classList.add('active');
-            showNotification('Openbaar vervoer haltes zichtbaar', 'success');
-        }
-    } else {
-        map.removeLayer(ovStopsClusterGroup);
-        card.classList.remove('active');
-        showNotification('Openbaar vervoer haltes verborgen', 'info');
-    }
-}
-
-// Load OV stops data from GTFS or alternative source
-async function loadOVStopsData() {
-    showLoadingOverlay('Openbaar vervoer data laden...');
-    
-    try {
-        // Optie 1: Gebruik lokale GeoJSON (als je GTFS data hebt geconverteerd)
-        const response = await fetch('./data/ov-stops.geojson');
-        if (response.ok) {
-            const geojsonData = await response.json();
-            processOVStopsGeoJSON(geojsonData);
-            return;
-        }
-    } catch (error) {
-        console.log('Lokale OV data niet gevonden, probeer alternatieve bronnen...');
-    }
-    
-    try {
-        // Optie 2: Gebruik NS stations data
-        await loadNSStations();
-        
-        // Optie 3: Voor bushaltes, gebruik OpenOV/OVapi
-        // await loadBusStopsFromOVapi();
-        
-    } catch (error) {
-        console.error('Fout bij laden OV data:', error);
-        showNotification('Kon openbaar vervoer data niet laden', 'error');
-    } finally {
-        hideLoadingOverlay();
-    }
-}
-
-// Load NS railway stations
-async function loadNSStations() {
-    try {
-        // Gebruik open data van Rijden de Treinen (CC0 licentie)
-        const response = await fetch('https://www.rijdendetreinen.nl/api/v2/stations');
-        const stationsData = await response.json();
-        
-        stationsData.forEach(station => {
-            if (station.land === 'NL') { // Alleen Nederlandse stations
-                const popupContent = `
-                    <div class="ov-popup train-popup">
-                        <h4><i class="fas fa-train"></i> ${station.namen.lang}</h4>
-                        <p><strong>Type:</strong> ${getStationTypeDescription(station.stationType)}</p>
-                        <p><strong>Stationscode:</strong> ${station.code}</p>
-                        ${station.namen.kort !== station.namen.lang ? `<p><strong>Korte naam:</strong> ${station.namen.kort}</p>` : ''}
-                        <div class="ov-actions">
-                            <button class="popup-button" onclick="showNSSchedule('${station.code}')">
-                                <i class="fas fa-clock"></i> Vertrektijden
-                            </button>
-                            <button class="popup-button" onclick="planRouteToStation('${station.lat}', '${station.lng}')">
-                                <i class="fas fa-route"></i> Route plannen
-                            </button>
-                        </div>
-                    </div>
-                `;
-                
-                const marker = L.marker([station.lat, station.lng], {
-                    icon: trainIcon
-                }).bindPopup(popupContent);
-                
-                ovStopsClusterGroup.addLayer(marker);
-            }
-        });
-        
-        map.addLayer(ovStopsClusterGroup);
-        ovStopsVisible = true;
-        
-        const card = document.getElementById('ov-layer-card');
-        if (card) {
-            card.classList.add('active');
-        }
-        
-        showNotification(`${stationsData.length} treinstations geladen`, 'success');
-        
-    } catch (error) {
-        console.error('Fout bij laden NS stations:', error);
-        throw error;
-    }
-}
-
-// Process local GeoJSON OV data
-function processOVStopsGeoJSON(geojsonData) {
-    ovStopsClusterGroup.clearLayers();
-    
-    geojsonData.features.forEach(feature => {
-        const coords = feature.geometry.coordinates;
-        const props = feature.properties;
-        
-        // Bepaal icon type op basis van stop type
-        let icon = busIcon;
-        let typeLabel = 'Bushalte';
-        
-        if (props.stop_type === 'train' || props.route_type === '1') {
-            icon = trainIcon;
-            typeLabel = 'Treinstation';
-        } else if (props.stop_type === 'tram' || props.route_type === '0') {
-            icon = tramIcon;
-            typeLabel = 'Tramhalte';
-        }
-        
-        const popupContent = `
-            <div class="ov-popup">
-                <h4><i class="fas fa-bus"></i> ${props.stop_name || props.name}</h4>
-                <p><strong>Type:</strong> ${typeLabel}</p>
-                ${props.stop_code ? `<p><strong>Haltecode:</strong> ${props.stop_code}</p>` : ''}
-                ${props.stop_desc ? `<p><strong>Beschrijving:</strong> ${props.stop_desc}</p>` : ''}
-                <div class="ov-actions">
-                    <button class="popup-button" onclick="showOVSchedule('${props.stop_id}')">
-                        <i class="fas fa-clock"></i> Vertrektijden
-                    </button>
-                    <button class="popup-button" onclick="planRouteToStop('${coords[1]}', '${coords[0]}')">
-                        <i class="fas fa-route"></i> Route plannen
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        const marker = L.marker([coords[1], coords[0]], {
-            icon: icon
-        }).bindPopup(popupContent);
-        
-        ovStopsClusterGroup.addLayer(marker);
-    });
-    
-    map.addLayer(ovStopsClusterGroup);
-    ovStopsVisible = true;
-    
-    const card = document.getElementById('ov-layer-card');
-    if (card) {
-        card.classList.add('active');
-    }
-    
-    showNotification(`${geojsonData.features.length} OV haltes geladen`, 'success');
-}
-
-// Helper function voor station type beschrijvingen
-function getStationTypeDescription(type) {
-    const types = {
-        'megastation': 'Megastation',
-        'knooppuntIntercitystation': 'Knooppunt Intercitystation',
-        'intercitystation': 'Intercitystation',
-        'knooppuntSneltreinstation': 'Knooppunt Sneltreinstation',
-        'sneltreinstation': 'Sneltreinstation',
-        'knooppuntStoptreinstation': 'Knooppunt Stoptreinstation',
-        'stoptreinstation': 'Stoptreinstation',
-        'facultatiefStation': 'Facultatief station'
-    };
-    return types[type] || type;
-}
-
-// Show nearby OV stops when clicking on a route
-function showNearbyOVStops(latlng, radius = 2000) {
-    if (!ovStopsVisible || ovStopsClusterGroup.getLayers().length === 0) {
-        showNotification('Laad eerst de openbaar vervoer haltes', 'warning');
-        return;
-    }
-    
-    const nearbyStops = [];
-    
-    ovStopsClusterGroup.eachLayer(layer => {
-        if (layer.getLatLng) {
-            const distance = latlng.distanceTo(layer.getLatLng());
-            if (distance <= radius) {
-                nearbyStops.push({
-                    layer: layer,
-                    distance: distance
-                });
-            }
-        }
-    });
-    
-    // Sorteer op afstand
-    nearbyStops.sort((a, b) => a.distance - b.distance);
-    
-    if (nearbyStops.length > 0) {
-        // Highlight nearby stops
-        nearbyStops.forEach(stop => {
-            if (stop.layer.setStyle) {
-                stop.layer.setStyle({
-                    color: '#ff7b54',
-                    weight: 4,
-                    opacity: 1
-                });
-            }
-        });
-        
-        // Show info panel with nearby stops
-        showNearbyOVPanel(nearbyStops, latlng);
-    } else {
-        showNotification('Geen openbaar vervoer in de buurt (binnen 2km)', 'info');
-    }
-}
-
-// Show panel with nearby OV information
-function showNearbyOVPanel(nearbyStops, centerPoint) {
-    const panelContent = `
-        <div class="route-info-card">
-            <div class="route-info-header">
-                <div class="route-info-title">
-                    <i class="fas fa-bus"></i>
-                    Openbaar Vervoer in de Buurt
-                </div>
-                <div class="route-info-badge">
-                    <i class="fas fa-map-marker-alt"></i>
-                    ${nearbyStops.length} halte(s)
-                </div>
-            </div>
-            
-            <div class="ov-stops-list">
-                ${nearbyStops.slice(0, 10).map(stop => {
-                    const distance = (stop.distance / 1000).toFixed(1);
-                    const stopName = stop.layer.getPopup()?.getContent()?.match(/<h4[^>]*>(.*?)<\/h4>/)?.[1]?.replace(/<[^>]*>/g, '') || 'Onbekende halte';
-                    
-                    return `
-                        <div class="ov-stop-item" onclick="zoomToOVStop(${stop.layer.getLatLng().lat}, ${stop.layer.getLatLng().lng})">
-                            <div class="ov-stop-info">
-                                <h5>${stopName}</h5>
-                                <p><i class="fas fa-walking"></i> ${distance} km • ca. ${Math.round(distance * 12)} min lopen</p>
-                            </div>
-                            <div class="ov-stop-action">
-                                <i class="fas fa-arrow-right"></i>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-            
-            <div class="route-info-actions">
-                <button class="highlight-btn" onclick="clearOVHighlight()">
-                    <i class="fas fa-eye-slash"></i>
-                    Verberg highlights
-                </button>
-                <button class="zoom-btn" onclick="fitToNearbyOV()">
-                    <i class="fas fa-search-plus"></i>
-                    Zoom naar OV
-                </button>
-            </div>
-        </div>
-    `;
-    
-    document.getElementById('routeInfoPanel').innerHTML = panelContent;
-    switchToRouteInfoTab();
-    
-    // Store for zoom functionality
-    window.currentNearbyOV = nearbyStops;
-}
-
-// Additional functions for OV integration
-function showNSSchedule(stationCode) {
-    // Implementeer NS API call voor vertrektijden
-    showNotification(`Vertrektijden voor ${stationCode} - Implementeer NS API`, 'info');
-}
-
-function showOVSchedule(stopId) {
-    // Implementeer 9292 API of OVapi call
-    showNotification(`Vertrektijden voor halte ${stopId} - Implementeer OV API`, 'info');
-}
-
-function planRouteToStation(lat, lng) {
-    // Open externe route planner (9292, Google Maps, etc.)
-    const url = `https://9292.nl/reisadvies/naar/${lat},${lng}`;
-    window.open(url, '_blank');
-}
-
-function zoomToOVStop(lat, lng) {
-    map.setView([lat, lng], 16);
-    if (isMobile) {
-        closeSidebar();
-    }
-}
-
-function clearOVHighlight() {
-    // Reset all highlighted OV stops
-    if (window.currentNearbyOV) {
-        window.currentNearbyOV.forEach(stop => {
-            if (stop.layer.setStyle) {
-                stop.layer.setStyle({
-                    color: '#3388ff',
-                    weight: 2,
-                    opacity: 0.8
-                });
-            }
-        });
-        window.currentNearbyOV = null;
-    }
-    
-    document.getElementById('routeInfoPanel').innerHTML = '<div class="empty-state">Geen informatie geselecteerd</div>';
-    showNotification('OV highlights verwijderd', 'info');
-}
-
-function fitToNearbyOV() {
-    if (window.currentNearbyOV && window.currentNearbyOV.length > 0) {
-        const group = new L.featureGroup(window.currentNearbyOV.map(stop => stop.layer));
-        map.fitBounds(group.getBounds(), { padding: [20, 20] });
-        
-        if (isMobile) {
-            closeSidebar();
-        }
-    }
-}
-
-// Extend existing route click handler to show nearby OV
-function extendRouteClickHandler() {
-    // Voeg toe aan bestaande map click event
-    const originalMapClick = map._events.click;
-    
-    map.on('click', function(e) {
-        // Voer bestaande functionaliteit uit
-        // ...
-        
-        // Als er een route feature is gevonden, toon ook nearby OV
-        if (activeRoutes.length > 0 && ovStopsVisible) {
-            setTimeout(() => {
-                showNearbyOVStops(e.latlng);
-            }, 500);
-        }
-    });
-}
-
-
-// Initialize OV functionality
-function initializeOVIntegration() {
-    // Add styles
-    const styleSheet = document.createElement('style');
-    styleSheet.textContent = ovStyles;
-    document.head.appendChild(styleSheet);
-    
-    // Initialize clustering
-    initializeOVClustering();
-    
-    // Extend route click handler
-    extendRouteClickHandler();
-}
-
-// Call initialization when map is ready
-document.addEventListener('DOMContentLoaded', function() {
-    // Add to existing initialization
-    setTimeout(() => {
-        initializeOVIntegration();
-    }, 1000);
-});
-
-export {
-    toggleOVStopsLayer,
-    showNearbyOVStops,
-    initializeOVIntegration
-};
-
-
-// Geavanceerde OV-Route integratie functies
-// Voeg toe aan app.js na de basis OV functionaliteit
-
-class OVRouteIntegration {
-    constructor(map) {
-        this.map = map;
-        this.ovConnections = [];
-        this.routeAnalysis = null;
-    }
-
-    // Analyseer een volledige wandelroute voor OV toegankelijkheid
-    async analyzeRouteOVAccessibility(routeFeature) {
-        const coordinates = this.extractRouteCoordinates(routeFeature);
-        if (!coordinates || coordinates.length < 2) return null;
-
-        const startPoint = coordinates[0];
-        const endPoint = coordinates[coordinates.length - 1];
-        const midPoints = this.getMidPoints(coordinates, 5); // 5 punten langs de route
-
-        const analysis = {
-            startOV: await this.findNearestOVStops(startPoint, 5000),
-            endOV: await this.findNearestOVStops(endPoint, 5000),
-            routeOV: [],
-            recommendations: []
-        };
-
-        // Analyseer tussenliggende punten
-        for (const point of midPoints) {
-            const nearbyOV = await this.findNearestOVStops(point, 2000);
-            if (nearbyOV.length > 0) {
-                analysis.routeOV.push({
-                    location: point,
-                    stops: nearbyOV.slice(0, 3) // Top 3 dichtstbijzijnde
-                });
-            }
-        }
-
-        // Genereer aanbevelingen
-        analysis.recommendations = this.generateOVRecommendations(analysis);
-
-        this.routeAnalysis = analysis;
-        return analysis;
-    }
-
-    // Vind dichtstbijzijnde OV haltes
-    async findNearestOVStops(latlng, maxDistance = 2000) {
-        const nearbyStops = [];
-        
-        if (!ovStopsClusterGroup || ovStopsClusterGroup.getLayers().length === 0) {
-            return nearbyStops;
-        }
-
-        ovStopsClusterGroup.eachLayer(layer => {
-            if (layer.getLatLng) {
-                const distance = latlng.distanceTo(layer.getLatLng());
-                if (distance <= maxDistance) {
-                    const popup = layer.getPopup();
-                    const content = popup ? popup.getContent() : '';
-                    const name = this.extractStopName(content);
-                    const type = this.extractStopType(content);
-
-                    nearbyStops.push({
-                        name: name,
-                        type: type,
-                        distance: distance,
-                        latlng: layer.getLatLng(),
-                        walkingTime: Math.round((distance / 1000) * 12), // 5 km/h gemiddelde loopsnelheid
-                        layer: layer
-                    });
-                }
-            }
-        });
-
-        // Sorteer op afstand
-        return nearbyStops.sort((a, b) => a.distance - b.distance);
-    }
-
-    // Genereer OV aanbevelingen
-    generateOVRecommendations(analysis) {
-        const recommendations = [];
-
-        // Aanbeveling 1: Beste start/eindpunt combinatie
-        if (analysis.startOV.length > 0 && analysis.endOV.length > 0) {
-            const bestStart = analysis.startOV[0];
-            const bestEnd = analysis.endOV[0];
-
-            recommendations.push({
-                type: 'start-end',
-                title: 'Reis met OV naar start en vanaf einde',
-                description: `Begin bij ${bestStart.name} (${(bestStart.distance/1000).toFixed(1)}km lopen) en eindig bij ${bestEnd.name} (${(bestEnd.distance/1000).toFixed(1)}km lopen)`,
-                startStop: bestStart,
-                endStop: bestEnd,
-                priority: 'high'
-            });
-        }
-
-        // Aanbeveling 2: Alleen naar startpunt
-        if (analysis.startOV.length > 0) {
-            const bestStart = analysis.startOV[0];
-            recommendations.push({
-                type: 'start-only',
-                title: 'Reis met OV naar startpunt',
-                description: `Begin bij ${bestStart.name}, loop de volledige route`,
-                startStop: bestStart,
-                priority: 'medium'
-            });
-        }
-
-        // Aanbeveling 3: Tussenliggende haltes
-        if (analysis.routeOV.length > 0) {
-            recommendations.push({
-                type: 'intermediate',
-                title: 'Route opdelen met OV',
-                description: `${analysis.routeOV.length} OV haltes langs de route voor flexibele planning`,
-                intermediateStops: analysis.routeOV,
-                priority: 'low'
-            });
-        }
-
-        return recommendations;
-    }
-
-    // Toon route analyse in sidebar
-    displayRouteAnalysis(analysis) {
-        if (!analysis) return;
-
-        const panelContent = `
-            <div class="route-info-card">
-                <div class="route-info-header">
-                    <div class="route-info-title">
-                        <i class="fas fa-route"></i>
-                        OV Toegankelijkheid Analyse
-                    </div>
-                    <div class="route-info-badge">
-                        <i class="fas fa-bus"></i>
-                        ${analysis.recommendations.length} aanbevelingen
-                    </div>
-                </div>
-
-                ${this.generateRecommendationsHTML(analysis.recommendations)}
-                
-                <div class="ov-stats-grid">
-                    <div class="ov-stat">
-                        <div class="stat-icon">
-                            <i class="fas fa-play"></i>
-                        </div>
-                        <div class="stat-content">
-                            <div class="stat-value">${analysis.startOV.length}</div>
-                            <div class="stat-label">Start haltes</div>
-                        </div>
-                    </div>
-                    
-                    <div class="ov-stat">
-                        <div class="stat-icon">
-                            <i class="fas fa-stop"></i>
-                        </div>
-                        <div class="stat-content">
-                            <div class="stat-value">${analysis.endOV.length}</div>
-                            <div class="stat-label">Eind haltes</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="route-info-actions">
-                    <button class="highlight-btn" onclick="highlightOVRoute()">
-                        <i class="fas fa-eye"></i>
-                        Toon alle OV
-                    </button>
-                    <button class="zoom-btn" onclick="planOVJourney()">
-                        <i class="fas fa-map-marked-alt"></i>
-                        Plan reis
-                    </button>
-                </div>
-            </div>
-        `;
-
-        document.getElementById('routeInfoPanel').innerHTML = panelContent;
-        switchToRouteInfoTab();
-    }
-
-    // Genereer HTML voor aanbevelingen
-    generateRecommendationsHTML(recommendations) {
-        if (recommendations.length === 0) {
-            return '<div class="empty-state">Geen OV aanbevelingen beschikbaar</div>';
-        }
-
-        return `
-            <div class="ov-recommendations">
-                <h4><i class="fas fa-lightbulb"></i> Reis Aanbevelingen</h4>
-                ${recommendations.map((rec, index) => `
-                    <div class="ov-recommendation ${rec.priority}" onclick="selectRecommendation(${index})">
-                        <div class="rec-header">
-                            <div class="rec-title">${rec.title}</div>
-                            <div class="rec-priority ${rec.priority}">
-                                ${rec.priority === 'high' ? '⭐' : rec.priority === 'medium' ? '👍' : 'ℹ️'}
-                            </div>
-                        </div>
-                        <div class="rec-description">${rec.description}</div>
-                        ${this.generateRecommendationDetails(rec)}
-                    </div>
-                `).join('')}
-            </div>
-        `;
-    }
-
-    // Genereer details voor elke aanbeveling
-    generateRecommendationDetails(rec) {
-        let details = '';
-
-        if (rec.startStop) {
-            details += `
-                <div class="rec-stop">
-                    <i class="fas fa-play"></i>
-                    <strong>Start:</strong> ${rec.startStop.name} 
-                    (${Math.round(rec.startStop.walkingTime)} min lopen)
-                </div>
-            `;
-        }
-
-        if (rec.endStop) {
-            details += `
-                <div class="rec-stop">
-                    <i class="fas fa-stop"></i>
-                    <strong>Einde:</strong> ${rec.endStop.name} 
-                    (${Math.round(rec.endStop.walkingTime)} min lopen)
-                </div>
-            `;
-        }
-
-        if (rec.intermediateStops) {
-            details += `
-                <div class="rec-stop">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <strong>Tussenhaltes:</strong> ${rec.intermediateStops.length} locaties langs route
-                </div>
-            `;
-        }
-
-        return details ? `<div class="rec-details">${details}</div>` : '';
-    }
-
-    // Helper functies
-    extractRouteCoordinates(feature) {
-        if (!feature.geometry) return null;
-
-        if (feature.geometry.type === 'LineString') {
-            return feature.geometry.coordinates.map(coord => L.latLng(coord[1], coord[0]));
-        } else if (feature.geometry.type === 'MultiLineString') {
-            return feature.geometry.coordinates[0].map(coord => L.latLng(coord[1], coord[0]));
-        }
-
-        return null;
-    }
-
-    getMidPoints(coordinates, count) {
-        const points = [];
-        const step = Math.floor(coordinates.length / (count + 1));
-
-        for (let i = 1; i <= count; i++) {
-            const index = i * step;
-            if (index < coordinates.length) {
-                points.push(coordinates[index]);
-            }
-        }
-
-        return points;
-    }
-
-    extractStopName(content) {
-        const match = content.match(/<h4[^>]*>(.*?)<\/h4>/);
-        if (match) {
-            return match[1].replace(/<[^>]*>/g, '').trim();
-        }
-        return 'Onbekende halte';
-    }
-
-    extractStopType(content) {
-        if (content.includes('train') || content.includes('Treinstation')) return 'train';
-        if (content.includes('tram') || content.includes('Tramhalte')) return 'tram';
-        return 'bus';
-    }
-}
-
-// Globale instantie
-let ovRouteIntegration;
-
-// Initialize OV Route Integration
-function initializeOVRouteIntegration() {
-    ovRouteIntegration = new OVRouteIntegration(map);
-}
-
-// Extend bestaande route click handler
-function extendedRouteClickHandler(feature) {
-    // Voer bestaande route info functie uit
-    showRouteInfoInPanel(feature);
-    
-    // Voeg OV analyse toe
-    if (ovStopsVisible && ovRouteIntegration) {
-        setTimeout(async () => {
-            const analysis = await ovRouteIntegration.analyzeRouteOVAccessibility(feature);
-            if (analysis && analysis.recommendations.length > 0) {
-                // Voeg OV sectie toe aan bestaande route info
-                appendOVAnalysisToRouteInfo(analysis);
-            }
-        }, 500);
-    }
-}
-
-// Voeg OV analyse toe aan bestaande route info
-function appendOVAnalysisToRouteInfo(analysis) {
-    const existingContent = document.getElementById('routeInfoPanel').innerHTML;
-    const ovAnalysisHTML = `
-        <div class="ov-analysis-section">
-            <div class="section-title">
-                <i class="fas fa-bus"></i>
-                Openbaar Vervoer Opties
-            </div>
-            ${ovRouteIntegration.generateRecommendationsHTML(analysis.recommendations)}
-        </div>
-    `;
-    
-    // Voeg toe voor de bestaande actions
-    const updatedContent = existingContent.replace(
-        '<div class="route-info-actions">',
-        ovAnalysisHTML + '<div class="route-info-actions">'
-    );
-    
-    document.getElementById('routeInfoPanel').innerHTML = updatedContent;
-}
-
-// Global functies voor UI interactie
-function selectRecommendation(index) {
-    if (!ovRouteIntegration.routeAnalysis) return;
-    
-    const recommendation = ovRouteIntegration.routeAnalysis.recommendations[index];
-    
-    // Highlight relevante stops
-    if (recommendation.startStop) {
-        highlightOVStop(recommendation.startStop);
-    }
-    if (recommendation.endStop) {
-        highlightOVStop(recommendation.endStop);
-    }
-    
-    showNotification(`Aanbeveling geselecteerd: ${recommendation.title}`, 'success');
-}
-
-function highlightOVStop(stop) {
-    // Highlight de stop op de kaart
-    if (stop.layer && stop.layer.setStyle) {
-        stop.layer.setStyle({
-            color: '#ff7b54',
-            weight: 6,
-            opacity: 1
-        });
-    }
-    
-    // Zoom naar stop
-    map.setView(stop.latlng, 15);
-}
-
-function highlightOVRoute() {
-    if (!ovRouteIntegration.routeAnalysis) return;
-    
-    const analysis = ovRouteIntegration.routeAnalysis;
-    
-    // Highlight alle relevante stops
-    [...analysis.startOV, ...analysis.endOV].forEach(stop => {
-        if (stop.layer && stop.layer.setStyle) {
-            stop.layer.setStyle({
-                color: '#ff7b54',
-                weight: 4,
-                opacity: 1
-            });
-        }
-    });
-    
-    showNotification('OV haltes gemarkeerd op kaart', 'success');
-}
-
-function planOVJourney() {
-    if (!ovRouteIntegration.routeAnalysis) return;
-    
-    const analysis = ovRouteIntegration.routeAnalysis;
-    
-    if (analysis.recommendations.length > 0) {
-        const bestRec = analysis.recommendations[0];
-        
-        if (bestRec.startStop && bestRec.endStop) {
-            // Open 9292 met van/naar planning
-            const startLat = bestRec.startStop.latlng.lat;
-            const startLng = bestRec.startStop.latlng.lng;
-            const endLat = bestRec.endStop.latlng.lat;
-            const endLng = bestRec.endStop.latlng.lng;
-            
-            const url = `https://9292.nl/reisadvies/van/${startLat},${startLng}/naar/${endLat},${endLng}`;
-            window.open(url, '_blank');
-        } else if (bestRec.startStop) {
-            // Open 9292 met alleen naar startpunt
-            const lat = bestRec.startStop.latlng.lat;
-            const lng = bestRec.startStop.latlng.lng;
-            const url = `https://9292.nl/reisadvies/naar/${lat},${lng}`;
-            window.open(url, '_blank');
-        }
-    }
-}
-
-// CSS voor OV Route Integration
-const ovRouteStyles = `
-.ov-analysis-section {
-    margin: 20px 0;
-    padding: 16px;
-    background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
-    border-radius: var(--radius-lg);
-    border-left: 4px solid #0369a1;
-}
-
-.ov-recommendations {
-    margin-top: 16px;
-}
-
-.ov-recommendation {
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: var(--radius-md);
-    padding: 12px;
-    margin-bottom: 12px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.ov-recommendation:hover {
-    border-color: #3b82f6;
-    box-shadow: var(--shadow-sm);
-    transform: translateY(-1px);
-}
-
-.ov-recommendation.high {
-    border-left: 4px solid #10b981;
-}
-
-.ov-recommendation.medium {
-    border-left: 4px solid #f59e0b;
-}
-
-.ov-recommendation.low {
-    border-left: 4px solid #6b7280;
-}
-
-.rec-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.rec-title {
-    font-weight: 600;
-    color: var(--text-primary);
-    font-size: 14px;
-}
-
-.rec-priority {
-    font-size: 16px;
-}
-
-.rec-description {
-    font-size: 13px;
-    color: var(--text-secondary);
-    margin-bottom: 8px;
-    line-height: 1.4;
-}
-
-.rec-details {
-    border-top: 1px solid #f3f4f6;
-    padding-top: 8px;
-}
-
-.rec-stop {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    color: var(--text-secondary);
-    margin-bottom: 4px;
-}
-
-.rec-stop i {
-    color: #3b82f6;
-    width: 12px;
-}
-
-.ov-stats-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin: 16px 0;
-}
-
-.ov-stat {
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: var(--radius-md);
-    padding: 12px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.ov-stat .stat-icon {
-    width: 36px;
-    height: 36px;
-    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 14px;
-}
-
-.ov-stat .stat-value {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--text-primary);
-}
-
-.ov-stat .stat-label {
-    font-size: 10px;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-`;
-
-// Initialize alles
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(() => {
-        initializeOVRouteIntegration();
-        
-        // Add styles
-        const styleSheet = document.createElement('style');
-        styleSheet.textContent = ovRouteStyles;
-        document.head.appendChild(styleSheet);
-    }, 1000);
+    console.log('App initialization complete');
 });
