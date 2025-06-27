@@ -1978,3 +1978,551 @@ export {
     showNearbyOVStops,
     initializeOVIntegration
 };
+
+
+// Geavanceerde OV-Route integratie functies
+// Voeg toe aan app.js na de basis OV functionaliteit
+
+class OVRouteIntegration {
+    constructor(map) {
+        this.map = map;
+        this.ovConnections = [];
+        this.routeAnalysis = null;
+    }
+
+    // Analyseer een volledige wandelroute voor OV toegankelijkheid
+    async analyzeRouteOVAccessibility(routeFeature) {
+        const coordinates = this.extractRouteCoordinates(routeFeature);
+        if (!coordinates || coordinates.length < 2) return null;
+
+        const startPoint = coordinates[0];
+        const endPoint = coordinates[coordinates.length - 1];
+        const midPoints = this.getMidPoints(coordinates, 5); // 5 punten langs de route
+
+        const analysis = {
+            startOV: await this.findNearestOVStops(startPoint, 5000),
+            endOV: await this.findNearestOVStops(endPoint, 5000),
+            routeOV: [],
+            recommendations: []
+        };
+
+        // Analyseer tussenliggende punten
+        for (const point of midPoints) {
+            const nearbyOV = await this.findNearestOVStops(point, 2000);
+            if (nearbyOV.length > 0) {
+                analysis.routeOV.push({
+                    location: point,
+                    stops: nearbyOV.slice(0, 3) // Top 3 dichtstbijzijnde
+                });
+            }
+        }
+
+        // Genereer aanbevelingen
+        analysis.recommendations = this.generateOVRecommendations(analysis);
+
+        this.routeAnalysis = analysis;
+        return analysis;
+    }
+
+    // Vind dichtstbijzijnde OV haltes
+    async findNearestOVStops(latlng, maxDistance = 2000) {
+        const nearbyStops = [];
+        
+        if (!ovStopsClusterGroup || ovStopsClusterGroup.getLayers().length === 0) {
+            return nearbyStops;
+        }
+
+        ovStopsClusterGroup.eachLayer(layer => {
+            if (layer.getLatLng) {
+                const distance = latlng.distanceTo(layer.getLatLng());
+                if (distance <= maxDistance) {
+                    const popup = layer.getPopup();
+                    const content = popup ? popup.getContent() : '';
+                    const name = this.extractStopName(content);
+                    const type = this.extractStopType(content);
+
+                    nearbyStops.push({
+                        name: name,
+                        type: type,
+                        distance: distance,
+                        latlng: layer.getLatLng(),
+                        walkingTime: Math.round((distance / 1000) * 12), // 5 km/h gemiddelde loopsnelheid
+                        layer: layer
+                    });
+                }
+            }
+        });
+
+        // Sorteer op afstand
+        return nearbyStops.sort((a, b) => a.distance - b.distance);
+    }
+
+    // Genereer OV aanbevelingen
+    generateOVRecommendations(analysis) {
+        const recommendations = [];
+
+        // Aanbeveling 1: Beste start/eindpunt combinatie
+        if (analysis.startOV.length > 0 && analysis.endOV.length > 0) {
+            const bestStart = analysis.startOV[0];
+            const bestEnd = analysis.endOV[0];
+
+            recommendations.push({
+                type: 'start-end',
+                title: 'Reis met OV naar start en vanaf einde',
+                description: `Begin bij ${bestStart.name} (${(bestStart.distance/1000).toFixed(1)}km lopen) en eindig bij ${bestEnd.name} (${(bestEnd.distance/1000).toFixed(1)}km lopen)`,
+                startStop: bestStart,
+                endStop: bestEnd,
+                priority: 'high'
+            });
+        }
+
+        // Aanbeveling 2: Alleen naar startpunt
+        if (analysis.startOV.length > 0) {
+            const bestStart = analysis.startOV[0];
+            recommendations.push({
+                type: 'start-only',
+                title: 'Reis met OV naar startpunt',
+                description: `Begin bij ${bestStart.name}, loop de volledige route`,
+                startStop: bestStart,
+                priority: 'medium'
+            });
+        }
+
+        // Aanbeveling 3: Tussenliggende haltes
+        if (analysis.routeOV.length > 0) {
+            recommendations.push({
+                type: 'intermediate',
+                title: 'Route opdelen met OV',
+                description: `${analysis.routeOV.length} OV haltes langs de route voor flexibele planning`,
+                intermediateStops: analysis.routeOV,
+                priority: 'low'
+            });
+        }
+
+        return recommendations;
+    }
+
+    // Toon route analyse in sidebar
+    displayRouteAnalysis(analysis) {
+        if (!analysis) return;
+
+        const panelContent = `
+            <div class="route-info-card">
+                <div class="route-info-header">
+                    <div class="route-info-title">
+                        <i class="fas fa-route"></i>
+                        OV Toegankelijkheid Analyse
+                    </div>
+                    <div class="route-info-badge">
+                        <i class="fas fa-bus"></i>
+                        ${analysis.recommendations.length} aanbevelingen
+                    </div>
+                </div>
+
+                ${this.generateRecommendationsHTML(analysis.recommendations)}
+                
+                <div class="ov-stats-grid">
+                    <div class="ov-stat">
+                        <div class="stat-icon">
+                            <i class="fas fa-play"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value">${analysis.startOV.length}</div>
+                            <div class="stat-label">Start haltes</div>
+                        </div>
+                    </div>
+                    
+                    <div class="ov-stat">
+                        <div class="stat-icon">
+                            <i class="fas fa-stop"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value">${analysis.endOV.length}</div>
+                            <div class="stat-label">Eind haltes</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="route-info-actions">
+                    <button class="highlight-btn" onclick="highlightOVRoute()">
+                        <i class="fas fa-eye"></i>
+                        Toon alle OV
+                    </button>
+                    <button class="zoom-btn" onclick="planOVJourney()">
+                        <i class="fas fa-map-marked-alt"></i>
+                        Plan reis
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('routeInfoPanel').innerHTML = panelContent;
+        switchToRouteInfoTab();
+    }
+
+    // Genereer HTML voor aanbevelingen
+    generateRecommendationsHTML(recommendations) {
+        if (recommendations.length === 0) {
+            return '<div class="empty-state">Geen OV aanbevelingen beschikbaar</div>';
+        }
+
+        return `
+            <div class="ov-recommendations">
+                <h4><i class="fas fa-lightbulb"></i> Reis Aanbevelingen</h4>
+                ${recommendations.map((rec, index) => `
+                    <div class="ov-recommendation ${rec.priority}" onclick="selectRecommendation(${index})">
+                        <div class="rec-header">
+                            <div class="rec-title">${rec.title}</div>
+                            <div class="rec-priority ${rec.priority}">
+                                ${rec.priority === 'high' ? '⭐' : rec.priority === 'medium' ? '👍' : 'ℹ️'}
+                            </div>
+                        </div>
+                        <div class="rec-description">${rec.description}</div>
+                        ${this.generateRecommendationDetails(rec)}
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    // Genereer details voor elke aanbeveling
+    generateRecommendationDetails(rec) {
+        let details = '';
+
+        if (rec.startStop) {
+            details += `
+                <div class="rec-stop">
+                    <i class="fas fa-play"></i>
+                    <strong>Start:</strong> ${rec.startStop.name} 
+                    (${Math.round(rec.startStop.walkingTime)} min lopen)
+                </div>
+            `;
+        }
+
+        if (rec.endStop) {
+            details += `
+                <div class="rec-stop">
+                    <i class="fas fa-stop"></i>
+                    <strong>Einde:</strong> ${rec.endStop.name} 
+                    (${Math.round(rec.endStop.walkingTime)} min lopen)
+                </div>
+            `;
+        }
+
+        if (rec.intermediateStops) {
+            details += `
+                <div class="rec-stop">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <strong>Tussenhaltes:</strong> ${rec.intermediateStops.length} locaties langs route
+                </div>
+            `;
+        }
+
+        return details ? `<div class="rec-details">${details}</div>` : '';
+    }
+
+    // Helper functies
+    extractRouteCoordinates(feature) {
+        if (!feature.geometry) return null;
+
+        if (feature.geometry.type === 'LineString') {
+            return feature.geometry.coordinates.map(coord => L.latLng(coord[1], coord[0]));
+        } else if (feature.geometry.type === 'MultiLineString') {
+            return feature.geometry.coordinates[0].map(coord => L.latLng(coord[1], coord[0]));
+        }
+
+        return null;
+    }
+
+    getMidPoints(coordinates, count) {
+        const points = [];
+        const step = Math.floor(coordinates.length / (count + 1));
+
+        for (let i = 1; i <= count; i++) {
+            const index = i * step;
+            if (index < coordinates.length) {
+                points.push(coordinates[index]);
+            }
+        }
+
+        return points;
+    }
+
+    extractStopName(content) {
+        const match = content.match(/<h4[^>]*>(.*?)<\/h4>/);
+        if (match) {
+            return match[1].replace(/<[^>]*>/g, '').trim();
+        }
+        return 'Onbekende halte';
+    }
+
+    extractStopType(content) {
+        if (content.includes('train') || content.includes('Treinstation')) return 'train';
+        if (content.includes('tram') || content.includes('Tramhalte')) return 'tram';
+        return 'bus';
+    }
+}
+
+// Globale instantie
+let ovRouteIntegration;
+
+// Initialize OV Route Integration
+function initializeOVRouteIntegration() {
+    ovRouteIntegration = new OVRouteIntegration(map);
+}
+
+// Extend bestaande route click handler
+function extendedRouteClickHandler(feature) {
+    // Voer bestaande route info functie uit
+    showRouteInfoInPanel(feature);
+    
+    // Voeg OV analyse toe
+    if (ovStopsVisible && ovRouteIntegration) {
+        setTimeout(async () => {
+            const analysis = await ovRouteIntegration.analyzeRouteOVAccessibility(feature);
+            if (analysis && analysis.recommendations.length > 0) {
+                // Voeg OV sectie toe aan bestaande route info
+                appendOVAnalysisToRouteInfo(analysis);
+            }
+        }, 500);
+    }
+}
+
+// Voeg OV analyse toe aan bestaande route info
+function appendOVAnalysisToRouteInfo(analysis) {
+    const existingContent = document.getElementById('routeInfoPanel').innerHTML;
+    const ovAnalysisHTML = `
+        <div class="ov-analysis-section">
+            <div class="section-title">
+                <i class="fas fa-bus"></i>
+                Openbaar Vervoer Opties
+            </div>
+            ${ovRouteIntegration.generateRecommendationsHTML(analysis.recommendations)}
+        </div>
+    `;
+    
+    // Voeg toe voor de bestaande actions
+    const updatedContent = existingContent.replace(
+        '<div class="route-info-actions">',
+        ovAnalysisHTML + '<div class="route-info-actions">'
+    );
+    
+    document.getElementById('routeInfoPanel').innerHTML = updatedContent;
+}
+
+// Global functies voor UI interactie
+function selectRecommendation(index) {
+    if (!ovRouteIntegration.routeAnalysis) return;
+    
+    const recommendation = ovRouteIntegration.routeAnalysis.recommendations[index];
+    
+    // Highlight relevante stops
+    if (recommendation.startStop) {
+        highlightOVStop(recommendation.startStop);
+    }
+    if (recommendation.endStop) {
+        highlightOVStop(recommendation.endStop);
+    }
+    
+    showNotification(`Aanbeveling geselecteerd: ${recommendation.title}`, 'success');
+}
+
+function highlightOVStop(stop) {
+    // Highlight de stop op de kaart
+    if (stop.layer && stop.layer.setStyle) {
+        stop.layer.setStyle({
+            color: '#ff7b54',
+            weight: 6,
+            opacity: 1
+        });
+    }
+    
+    // Zoom naar stop
+    map.setView(stop.latlng, 15);
+}
+
+function highlightOVRoute() {
+    if (!ovRouteIntegration.routeAnalysis) return;
+    
+    const analysis = ovRouteIntegration.routeAnalysis;
+    
+    // Highlight alle relevante stops
+    [...analysis.startOV, ...analysis.endOV].forEach(stop => {
+        if (stop.layer && stop.layer.setStyle) {
+            stop.layer.setStyle({
+                color: '#ff7b54',
+                weight: 4,
+                opacity: 1
+            });
+        }
+    });
+    
+    showNotification('OV haltes gemarkeerd op kaart', 'success');
+}
+
+function planOVJourney() {
+    if (!ovRouteIntegration.routeAnalysis) return;
+    
+    const analysis = ovRouteIntegration.routeAnalysis;
+    
+    if (analysis.recommendations.length > 0) {
+        const bestRec = analysis.recommendations[0];
+        
+        if (bestRec.startStop && bestRec.endStop) {
+            // Open 9292 met van/naar planning
+            const startLat = bestRec.startStop.latlng.lat;
+            const startLng = bestRec.startStop.latlng.lng;
+            const endLat = bestRec.endStop.latlng.lat;
+            const endLng = bestRec.endStop.latlng.lng;
+            
+            const url = `https://9292.nl/reisadvies/van/${startLat},${startLng}/naar/${endLat},${endLng}`;
+            window.open(url, '_blank');
+        } else if (bestRec.startStop) {
+            // Open 9292 met alleen naar startpunt
+            const lat = bestRec.startStop.latlng.lat;
+            const lng = bestRec.startStop.latlng.lng;
+            const url = `https://9292.nl/reisadvies/naar/${lat},${lng}`;
+            window.open(url, '_blank');
+        }
+    }
+}
+
+// CSS voor OV Route Integration
+const ovRouteStyles = `
+.ov-analysis-section {
+    margin: 20px 0;
+    padding: 16px;
+    background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+    border-radius: var(--radius-lg);
+    border-left: 4px solid #0369a1;
+}
+
+.ov-recommendations {
+    margin-top: 16px;
+}
+
+.ov-recommendation {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: var(--radius-md);
+    padding: 12px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ov-recommendation:hover {
+    border-color: #3b82f6;
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
+}
+
+.ov-recommendation.high {
+    border-left: 4px solid #10b981;
+}
+
+.ov-recommendation.medium {
+    border-left: 4px solid #f59e0b;
+}
+
+.ov-recommendation.low {
+    border-left: 4px solid #6b7280;
+}
+
+.rec-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.rec-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.rec-priority {
+    font-size: 16px;
+}
+
+.rec-description {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.rec-details {
+    border-top: 1px solid #f3f4f6;
+    padding-top: 8px;
+}
+
+.rec-stop {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.rec-stop i {
+    color: #3b82f6;
+    width: 12px;
+}
+
+.ov-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 16px 0;
+}
+
+.ov-stat {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: var(--radius-md);
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ov-stat .stat-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+}
+
+.ov-stat .stat-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.ov-stat .stat-label {
+    font-size: 10px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+`;
+
+// Initialize alles
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+        initializeOVRouteIntegration();
+        
+        // Add styles
+        const styleSheet = document.createElement('style');
+        styleSheet.textContent = ovRouteStyles;
+        document.head.appendChild(styleSheet);
+    }, 1000);
+});
