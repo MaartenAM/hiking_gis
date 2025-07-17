@@ -549,8 +549,7 @@ function toggleCampingLayer() {
 // Declaratie voor vector- en clusterlagen bovenin
 let campingVectorLayer;
 
-// Polyfill voor verwijderde L.DomEvent.fakeStop in recentere Leaflet-versies
-(function(){
+// Polyfill voor verwijderde L.DomEvent.fakeStop in recentere Leaflet-versies\;(function(){
     if (!L.DomEvent.fakeStop) {
         L.DomEvent.fakeStop = function (e) {
             L.DomEvent.stopPropagation(e);
@@ -580,7 +579,6 @@ function loadCampingGeoJSON() {
                 rendererFactory: L.svg.tile,
                 interactive: true,
                 vectorTileLayerStyles: {
-                    // 'sliced' is de default layernaam
                     sliced: {
                         fill: true,
                         fillColor: '#2E8B57',
@@ -593,17 +591,30 @@ function loadCampingGeoJSON() {
                 getFeatureId: feature => feature.properties.osm_id
             });
 
-            // Klik-handler voor pop-ups
+            // Klik-handler voor pop-ups met latlng-fallbacks
             vectorLayer.on('click', event => {
-                if (!event.latlng) {
-                    console.warn('Geen latlng beschikbaar in click event');
+                // Bepaal latlng uit event
+                let latlng = event.latlng;
+                if (!latlng) {
+                    if (event.containerPoint) {
+                        latlng = map.containerPointToLatLng(event.containerPoint);
+                    } else if (event.originalEvent) {
+                        latlng = map.mouseEventToLatLng(event.originalEvent);
+                    }
+                }
+                if (!latlng) {
+                    console.warn('Geen geldige latlng beschikbaar voor popup');
                     return;
                 }
-                const props = (event.layer && event.layer.properties) ? event.layer.properties : {};
+                // Haal feature-properties veilig op
+                const props = (event.layer && event.layer.properties) ? event.layer.properties : (event.properties || {});
+                // Bouw Google-zoek-URL
                 const zoekQuery = encodeURIComponent((props.name || '') + ' camping');
                 const searchUrl = `https://www.google.com/search?q=${zoekQuery}`;
+
+                // Toon popup
                 L.popup({ maxWidth: 280, autoClose: true, closeOnClick: true })
-                    .setLatLng(event.latlng)
+                    .setLatLng(latlng)
                     .setContent(
                         `<div class="camping-popup">
                             <h4><i class="fas fa-campground"></i> ${props.name || 'Camping'}</h4>
@@ -627,7 +638,6 @@ function loadCampingGeoJSON() {
             console.error(err);
         });
 }
-
 
 
 function loadVriendenGeoJSON() {
