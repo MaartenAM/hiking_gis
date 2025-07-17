@@ -561,7 +561,7 @@ function defaultFakeStop() {
     }
 }
 
-// Functie: Campings laden als geoptimaliseerde vector tiles via Leaflet.VectorGrid zonder aparte geojson-vt call
+// Functie: Campings laden als geoptimaliseerde vector tiles via Leaflet.VectorGrid
 function loadCampingGeoJSON() {
     showLoadingOverlay('Campings laden...');
     const geojsonPath = './data/campings.geojson';
@@ -577,11 +577,10 @@ function loadCampingGeoJSON() {
                 throw new Error('Ongeldige GeoJSON structuur');
             }
 
-            // Gebruik VectorGrid.slicer direct op de geojsonData voor on-the-fly tiling met SVG renderer
+            // Maak VectorGrid layer direct vanuit GeoJSON
             const vectorLayer = L.vectorGrid.slicer(geojsonData, {
-                rendererFactory: L.svg.tile,  // Gebruik SVG in plaats van canvas om fakeStop-fout te vermijden
+                rendererFactory: L.svg.tile,
                 vectorTileLayerStyles: {
-                    // 'sliced' is the default layer name
                     sliced: {
                         fill: true,
                         fillColor: '#2E8B57',
@@ -595,16 +594,23 @@ function loadCampingGeoJSON() {
                 getFeatureId: feature => feature.properties.osm_id
             });
 
-            // Bind click-event op de vectorlaag voor popups
+            // Bind click-event op de vectorlaag met fallback voor latlng en properties
             vectorLayer.on('click', event => {
-                const props = event.layer.properties;
+                // Bepaal latlng: probeer event.latlng, anders val terug op originele DOM-event
+                let latlng = event.latlng;
+                if (!latlng && event.originalEvent) {
+                    latlng = map.mouseEventToLatLng(event.originalEvent);
+                }
+                // Haal feature-properties: probeer event.layer.properties, anders event.properties
+                const props = (event.layer && event.layer.properties) || event.properties || {};
+                
                 // Bouw Google-zoek-URL
                 const zoekQuery = encodeURIComponent((props.name || '') + ' camping');
                 const searchUrl = `https://www.google.com/search?q=${zoekQuery}`;
 
-                // Bouw popup
+                // Bouw en toon popup
                 const popup = L.popup({ maxWidth: 280, autoClose: true, closeOnClick: true })
-                    .setLatLng(event.latlng)
+                    .setLatLng(latlng)
                     .setContent(
                         `<div class="camping-popup">
                             <h4><i class="fas fa-campground"></i> ${props.name || 'Camping'}</h4>
