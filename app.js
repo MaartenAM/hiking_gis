@@ -549,15 +549,24 @@ function toggleCampingLayer() {
 // Declaratie voor vectorverschillende lagen bovenin
 let campingVectorLayer;
 
-// Verbeterde functie: Campings laden als vector tiles voor snellere rendering
+// Robuuste en debugbare functie: Campings laden als vector tiles
 function loadCampingGeoJSON() {
     showLoadingOverlay('Campings laden...');
-    fetch('./data/campings.geojson')
+    // Pas hier indien nodig het pad aan naar je GeoJSON-bestand
+    const geojsonPath = './data/campings.geojson';
+
+    fetch(geojsonPath)
         .then(response => {
-            if (!response.ok) throw new Error('GeoJSON bestand niet gevonden');
+            if (!response.ok) throw new Error(`GeoJSON bestand niet gevonden (status ${response.status})`);
             return response.json();
         })
         .then(geojsonData => {
+            // Debug: log de inhoud om te controleren of het een geldig GeoJSON is
+            console.log('Camping GeoJSON geladen:', geojsonData);
+            if (!geojsonData || geojsonData.type !== 'FeatureCollection' || !Array.isArray(geojsonData.features)) {
+                throw new Error('Ongeldige GeoJSON structuur');
+            }
+
             // Maak vector tile index voor efficiënte client-side tiles
             const tileIndex = geojsonvt(geojsonData, {
                 maxZoom: 18,
@@ -608,9 +617,11 @@ function loadCampingGeoJSON() {
         })
         .catch(err => {
             hideLoadingOverlay();
-            showNotification(err.message, 'error');
+            showNotification(`Fout: ${err.message}`, 'error');
+            console.error(err);
         });
 }
+
 
 function toggleVriendenLayer() {
     vriendenVisible = !vriendenVisible;
