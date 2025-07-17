@@ -569,6 +569,7 @@ function loadCampingGeoJSON() {
             const vectorLayer = L.vectorGrid.slicer(geojsonData, {
                 rendererFactory: L.canvas.tile,
                 vectorTileLayerStyles: {
+                    // 'sliced' is the default layer name
                     sliced: {
                         fill: true,
                         fillColor: '#2E8B57',
@@ -580,24 +581,34 @@ function loadCampingGeoJSON() {
                 },
                 interactive: true,
                 getFeatureId: feature => feature.properties.osm_id
-            }).on('click', e => {
-                const props = e.layer.properties;
-                const zoekQuery = encodeURIComponent(props.name + ' camping');
+            });
+
+            // Bind click-event op de vectorlaag voor popups
+            vectorLayer.on('click', event => {
+                const props = event.layer.properties;
+                // Bouw Google-zoek-URL
+                const zoekQuery = encodeURIComponent((props.name || '') + ' camping');
                 const searchUrl = `https://www.google.com/search?q=${zoekQuery}`;
-                const popupContent = `
-                    <div class=\"camping-popup\">  
-                        <h4><i class=\"fas fa-campground\"></i> ${props.name || 'Camping'}</h4>
-                        <p><a href=\"${searchUrl}\" target=\"_blank\">Zoek website</a></p>
-                    </div>`;
-                L.popup()
-                    .setLatLng(e.latlng)
-                    .setContent(popupContent)
-                    .openOn(map);
+
+                // Bouw popup
+                const popup = L.popup({ maxWidth: 280, autoClose: true, closeOnClick: true })
+                    .setLatLng(event.latlng)
+                    .setContent(
+                        `<div class="camping-popup">
+                            <h4><i class="fas fa-campground"></i> ${props.name || 'Camping'}</h4>
+                            <p><a href="${searchUrl}" target="_blank" rel="noopener">Zoek website</a></p>
+                        </div>`
+                    );
+                popup.openOn(map);
             });
 
             // Vervang oude cluster- of vectorlaag door nieuwe vectorlaag
-            if (map.hasLayer(campingClusterGroup)) map.removeLayer(campingClusterGroup);
-            if (campingVectorLayer) map.removeLayer(campingVectorLayer);
+            if (map.hasLayer(campingClusterGroup)) {
+                map.removeLayer(campingClusterGroup);
+            }
+            if (campingVectorLayer) {
+                map.removeLayer(campingVectorLayer);
+            }
             campingVectorLayer = vectorLayer.addTo(map);
 
             hideLoadingOverlay();
@@ -609,6 +620,7 @@ function loadCampingGeoJSON() {
             console.error(err);
         });
 }
+
 
 function loadVriendenGeoJSON() {
     showLoadingOverlay('Vrienden op de Fiets laden...');
