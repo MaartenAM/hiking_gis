@@ -547,58 +547,50 @@ function toggleCampingLayer() {
     }
 }
 
+// Toevoeging: Google-zoeklink naar campingwebsite in de popup
 function loadCampingGeoJSON() {
     showLoadingOverlay('Campings laden...');
-    
     fetch('./data/campings.geojson')
         .then(response => {
-            if (!response.ok) {
-                throw new Error('GeoJSON bestand niet gevonden');
-            }
+            if (!response.ok) throw new Error('GeoJSON bestand niet gevonden');
             return response.json();
         })
         .then(geojsonData => {
             campingClusterGroup.clearLayers();
-            
             geojsonData.features.forEach(feature => {
                 const coords = feature.geometry.coordinates;
                 const props = feature.properties;
-                
+
+                // Bouw Google-zoek-URL voor deze camping
+                const zoekQuery = encodeURIComponent(props.name + ' camping');
+                const searchUrl = `https://www.google.com/search?q=${zoekQuery}`;
+
+                // Bouw popup-inhoud met link
                 const popupContent = `
                     <div class="camping-popup">
                         <h4><i class="fas fa-campground"></i> ${props.name || 'Camping'}</h4>
                         ${props.operator ? `<p><strong>Beheerder:</strong> ${props.operator}</p>` : ''}
                         ${props.access ? `<p><strong>Toegang:</strong> ${props.access}</p>` : ''}
                         ${props.house ? `<p><strong>Accommodatie:</strong> ${props.house}</p>` : ''}
+                        <p><a href="${searchUrl}" target="_blank">Zoek website</a></p>
                         <p style="font-size: 10px; color: #666;">OSM ID: ${props.osm_id}</p>
                     </div>
                 `;
-                
-                const marker = L.marker([coords[1], coords[0]], {
-                    icon: campingIcon
-                }).bindPopup(popupContent);
-                
+
+                const marker = L.marker([coords[1], coords[0]], { icon: campingIcon })
+                    .bindPopup(popupContent);
                 campingClusterGroup.addLayer(marker);
             });
-            
             map.addLayer(campingClusterGroup);
-            campingVisible = true;
-            
-            const card = document.getElementById('camping-layer-card');
-            if (card) {
-                card.classList.add('active');
-            }
-            
             hideLoadingOverlay();
-            
-            const clusterText = (typeof L.markerClusterGroup !== 'undefined') ? ' (geclusterd)' : '';
-            showNotification(`${geojsonData.features.length} campings geladen${clusterText}`, 'success');
+            showNotification(`${geojsonData.features.length} campings geladen`, 'success');
         })
-        .catch(error => {
+        .catch(err => {
             hideLoadingOverlay();
-            showNotification('Campings GeoJSON niet gevonden in data/campings.geojson', 'error');
+            showNotification(err.message, 'error');
         });
 }
+
 
 function toggleVriendenLayer() {
     vriendenVisible = !vriendenVisible;
