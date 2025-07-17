@@ -548,8 +548,10 @@ function toggleCampingLayer() {
 }
 // Declaratie voor vector- en clusterlagen bovenin
 let campingVectorLayer;
+let campingClusterGroup; // Toegevoegd: declaratie voor cluster group
 
-// Polyfill voor verwijderde L.DomEvent.fakeStop in recentere Leaflet-versies\;(function(){
+// Polyfill voor verwijderde L.DomEvent.fakeStop in recentere Leaflet-versies
+(function(){
     if (!L.DomEvent.fakeStop) {
         L.DomEvent.fakeStop = function (e) {
             L.DomEvent.stopPropagation(e);
@@ -574,6 +576,11 @@ function loadCampingGeoJSON() {
                 throw new Error('Ongeldige GeoJSON structuur');
             }
 
+            // Controleer of VectorGrid beschikbaar is
+            if (!L.vectorGrid || !L.vectorGrid.slicer) {
+                throw new Error('Leaflet.VectorGrid plugin is niet geladen');
+            }
+
             // Maak VectorGrid layer direct vanuit GeoJSON (SVG-renderer)
             const vectorLayer = L.vectorGrid.slicer(geojsonData, {
                 rendererFactory: L.svg.tile,
@@ -588,7 +595,7 @@ function loadCampingGeoJSON() {
                         weight: 1
                     }
                 },
-                getFeatureId: feature => feature.properties.osm_id
+                getFeatureId: feature => feature.properties && feature.properties.osm_id ? feature.properties.osm_id : Math.random()
             });
 
             // Klik-handler voor pop-ups met latlng-fallbacks
@@ -596,9 +603,9 @@ function loadCampingGeoJSON() {
                 // Bepaal latlng uit event
                 let latlng = event.latlng;
                 if (!latlng) {
-                    if (event.containerPoint) {
+                    if (event.containerPoint && map) {
                         latlng = map.containerPointToLatLng(event.containerPoint);
-                    } else if (event.originalEvent) {
+                    } else if (event.originalEvent && map) {
                         latlng = map.mouseEventToLatLng(event.originalEvent);
                     }
                 }
@@ -606,18 +613,27 @@ function loadCampingGeoJSON() {
                     console.warn('Geen geldige latlng beschikbaar voor popup');
                     return;
                 }
+                
                 // Haal feature-properties veilig op
                 const props = (event.layer && event.layer.properties) ? event.layer.properties : (event.properties || {});
+                
+                // Valideer en escape HTML-content
+                const campingName = props.name ? String(props.name).replace(/[<>]/g, '') : 'Camping';
+                
                 // Bouw Google-zoek-URL
-                const zoekQuery = encodeURIComponent((props.name || '') + ' camping');
+                const zoekQuery = encodeURIComponent(campingName + ' camping');
                 const searchUrl = `https://www.google.com/search?q=${zoekQuery}`;
 
                 // Toon popup
-                L.popup({ maxWidth: 280, autoClose: true, closeOnClick: true })
+                L.popup({ 
+                    maxWidth: 280, 
+                    autoClose: true, 
+                    closeOnClick: true 
+                })
                     .setLatLng(latlng)
                     .setContent(
                         `<div class="camping-popup">
-                            <h4><i class="fas fa-campground"></i> ${props.name || 'Camping'}</h4>
+                            <h4><i class="fas fa-campground"></i> ${campingName}</h4>
                             <p><a href="${searchUrl}" target="_blank" rel="noopener">Zoek website</a></p>
                         </div>`
                     )
@@ -625,8 +641,13 @@ function loadCampingGeoJSON() {
             });
 
             // Verwijder oude cluster- of vectorlaag en voeg nieuwe vectorlaag toe
-            if (map.hasLayer(campingClusterGroup)) map.removeLayer(campingClusterGroup);
-            if (campingVectorLayer) map.removeLayer(campingVectorLayer);
+            if (campingClusterGroup && map.hasLayer(campingClusterGroup)) {
+                map.removeLayer(campingClusterGroup);
+            }
+            if (campingVectorLayer && map.hasLayer(campingVectorLayer)) {
+                map.removeLayer(campingVectorLayer);
+            }
+            
             campingVectorLayer = vectorLayer.addTo(map);
 
             hideLoadingOverlay();
@@ -635,7 +656,7 @@ function loadCampingGeoJSON() {
         .catch(err => {
             hideLoadingOverlay();
             showNotification(`Fout: ${err.message}`, 'error');
-            console.error(err);
+            console.error('Fout bij laden campings:', err);
         });
 }
 
