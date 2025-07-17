@@ -546,120 +546,78 @@ function toggleCampingLayer() {
         showNotification('Campings verborgen', 'info');
     }
 }
-// Declaratie voor vector- en clusterlagen bovenin
-let campingVectorLayer;
-let campingClusterGroup; // Toegevoegd: declaratie voor cluster group
 
-// Polyfill voor verwijderde L.DomEvent.fakeStop in recentere Leaflet-versies
-(function(){
-    if (!L.DomEvent.fakeStop) {
-        L.DomEvent.fakeStop = function (e) {
-            L.DomEvent.stopPropagation(e);
-            L.DomEvent.preventDefault(e);
-        };
-    }
-})();
-
-// Functie: Campings laden als geoptimaliseerde vector tiles via Leaflet.VectorGrid met SVG-renderer
 function loadCampingGeoJSON() {
     showLoadingOverlay('Campings laden...');
-    const geojsonPath = './data/campings.geojson';
-
-    fetch(geojsonPath)
+    
+    fetch('./data/campings.geojson')
         .then(response => {
-            if (!response.ok) throw new Error(`GeoJSON bestand niet gevonden (status ${response.status})`);
+            if (!response.ok) {
+                throw new Error('GeoJSON bestand niet gevonden');
+            }
             return response.json();
         })
         .then(geojsonData => {
-            console.log('Camping GeoJSON geladen:', geojsonData);
-            if (!geojsonData || geojsonData.type !== 'FeatureCollection' || !Array.isArray(geojsonData.features)) {
-                throw new Error('Ongeldige GeoJSON structuur');
-            }
-
-            // Controleer of VectorGrid beschikbaar is
-            if (!L.vectorGrid || !L.vectorGrid.slicer) {
-                throw new Error('Leaflet.VectorGrid plugin is niet geladen');
-            }
-
-            // Maak VectorGrid layer direct vanuit GeoJSON (SVG-renderer)
-            const vectorLayer = L.vectorGrid.slicer(geojsonData, {
-                rendererFactory: L.svg.tile,
-                interactive: true,
-                vectorTileLayerStyles: {
-                    sliced: {
-                        fill: true,
-                        fillColor: '#2E8B57',
-                        fillOpacity: 0.6,
-                        stroke: true,
-                        color: '#ffffff',
-                        weight: 1
-                    }
-                },
-                getFeatureId: feature => feature.properties && feature.properties.osm_id ? feature.properties.osm_id : Math.random()
+            campingClusterGroup.clearLayers();
+            
+            geojsonData.features.forEach(feature => {
+                const coords = feature.geometry.coordinates;
+                const props = feature.properties;
+                
+                const popupContent = `
+                    <div class="camping-popup">
+                        <h4><i class="fas fa-campground"></i> ${props.name || 'Camping'}</h4>
+                        ${props.operator ? `<p><strong>Beheerder:</strong> ${props.operator}</p>` : ''}
+                        ${props.access ? `<p><strong>Toegang:</strong> ${props.access}</p>` : ''}
+                        ${props.house ? `<p><strong>Accommodatie:</strong> ${props.house}</p>` : ''}
+                        <p style="font-size: 10px; color: #666;">OSM ID: ${props.osm_id}</p>
+                    </div>
+                `;
+                
+                const marker = L.marker([coords[1], coords[0]], {
+                    icon: campingIcon
+                }).bindPopup(popupContent);
+                
+                campingClusterGroup.addLayer(marker);
             });
-
-            // Klik-handler voor pop-ups met latlng-fallbacks
-            vectorLayer.on('click', event => {
-                // Bepaal latlng uit event
-                let latlng = event.latlng;
-                if (!latlng) {
-                    if (event.containerPoint && map) {
-                        latlng = map.containerPointToLatLng(event.containerPoint);
-                    } else if (event.originalEvent && map) {
-                        latlng = map.mouseEventToLatLng(event.originalEvent);
-                    }
-                }
-                if (!latlng) {
-                    console.warn('Geen geldige latlng beschikbaar voor popup');
-                    return;
-                }
-                
-                // Haal feature-properties veilig op
-                const props = (event.layer && event.layer.properties) ? event.layer.properties : (event.properties || {});
-                
-                // Valideer en escape HTML-content
-                const campingName = props.name ? String(props.name).replace(/[<>]/g, '') : 'Camping';
-                
-                // Bouw Google-zoek-URL
-                const zoekQuery = encodeURIComponent(campingName + ' camping');
-                const searchUrl = `https://www.google.com/search?q=${zoekQuery}`;
-
-                // Toon popup
-                L.popup({ 
-                    maxWidth: 280, 
-                    autoClose: true, 
-                    closeOnClick: true 
-                })
-                    .setLatLng(latlng)
-                    .setContent(
-                        `<div class="camping-popup">
-                            <h4><i class="fas fa-campground"></i> ${campingName}</h4>
-                            <p><a href="${searchUrl}" target="_blank" rel="noopener">Zoek website</a></p>
-                        </div>`
-                    )
-                    .openOn(map);
-            });
-
-            // Verwijder oude cluster- of vectorlaag en voeg nieuwe vectorlaag toe
-            if (campingClusterGroup && map.hasLayer(campingClusterGroup)) {
-                map.removeLayer(campingClusterGroup);
-            }
-            if (campingVectorLayer && map.hasLayer(campingVectorLayer)) {
-                map.removeLayer(campingVectorLayer);
+            
+            map.addLayer(campingClusterGroup);
+            campingVisible = true;
+            
+            const card = document.getElementById('camping-layer-card');
+            if (card) {
+                card.classList.add('active');
             }
             
-            campingVectorLayer = vectorLayer.addTo(map);
-
             hideLoadingOverlay();
-            showNotification('Campings geladen als VectorGrid layer', 'success');
+            
+            const clusterText = (typeof L.markerClusterGroup !== 'undefined') ? ' (geclusterd)' : '';
+            showNotification(`${geojsonData.features.length} campings geladen${clusterText}`, 'success');
         })
-        .catch(err => {
+        .catch(error => {
             hideLoadingOverlay();
-            showNotification(`Fout: ${err.message}`, 'error');
-            console.error('Fout bij laden campings:', err);
+            showNotification('Campings GeoJSON niet gevonden in data/campings.geojson', 'error');
         });
 }
 
+function toggleVriendenLayer() {
+    vriendenVisible = !vriendenVisible;
+    const card = document.getElementById('vrienden-layer-card');
+    
+    if (vriendenVisible) {
+        if (vriendenClusterGroup.getLayers().length === 0) {
+            loadVriendenGeoJSON();
+        } else {
+            map.addLayer(vriendenClusterGroup);
+            card.classList.add('active');
+            showNotification('Vrienden op de Fiets zichtbaar', 'success');
+        }
+    } else {
+        map.removeLayer(vriendenClusterGroup);
+        card.classList.remove('active');
+        showNotification('Vrienden op de Fiets verborgen', 'info');
+    }
+}
 
 function loadVriendenGeoJSON() {
     showLoadingOverlay('Vrienden op de Fiets laden...');
