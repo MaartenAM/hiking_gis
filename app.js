@@ -546,8 +546,10 @@ function toggleCampingLayer() {
         showNotification('Campings verborgen', 'info');
     }
 }
+// Declaratie voor vectorverschillende lagen bovenin
+let campingVectorLayer;
 
-// Toevoeging: Google-zoeklink naar campingwebsite in de popup
+// Verbeterde functie: Campings laden als vector tiles voor snellere rendering
 function loadCampingGeoJSON() {
     showLoadingOverlay('Campings laden...');
     fetch('./data/campings.geojson')
@@ -556,41 +558,59 @@ function loadCampingGeoJSON() {
             return response.json();
         })
         .then(geojsonData => {
-            campingClusterGroup.clearLayers();
-            geojsonData.features.forEach(feature => {
-                const coords = feature.geometry.coordinates;
-                const props = feature.properties;
+            // Maak vector tile index voor efficiënte client-side tiles
+            const tileIndex = geojsonvt(geojsonData, {
+                maxZoom: 18,
+                tolerance: 3
+            });
 
-                // Bouw Google-zoek-URL voor deze camping
+            // Maak Leaflet VectorGrid laag
+            const vectorLayer = L.vectorGrid.slicer(tileIndex, {
+                maxNativeZoom: 14,
+                vectorTileLayerStyles: {
+                    sliced: {
+                        fill: true,
+                        fillColor: '#2E8B57',
+                        fillOpacity: 0.6,
+                        stroke: true,
+                        color: '#ffffff',
+                        weight: 1
+                    }
+                },
+                interactive: true,
+                getFeatureId: f => f.properties.osm_id
+            }).on('click', e => {
+                const props = e.layer.properties;
                 const zoekQuery = encodeURIComponent(props.name + ' camping');
                 const searchUrl = `https://www.google.com/search?q=${zoekQuery}`;
-
-                // Bouw popup-inhoud met link
                 const popupContent = `
-                    <div class="camping-popup">
-                        <h4><i class="fas fa-campground"></i> ${props.name || 'Camping'}</h4>
-                        ${props.operator ? `<p><strong>Beheerder:</strong> ${props.operator}</p>` : ''}
-                        ${props.access ? `<p><strong>Toegang:</strong> ${props.access}</p>` : ''}
-                        ${props.house ? `<p><strong>Accommodatie:</strong> ${props.house}</p>` : ''}
-                        <p><a href="${searchUrl}" target="_blank">Zoek website</a></p>
-                        <p style="font-size: 10px; color: #666;">OSM ID: ${props.osm_id}</p>
-                    </div>
-                `;
-
-                const marker = L.marker([coords[1], coords[0]], { icon: campingIcon })
-                    .bindPopup(popupContent);
-                campingClusterGroup.addLayer(marker);
+                    <div class=\"camping-popup\">  
+                        <h4><i class=\"fas fa-campground\"></i> ${props.name || 'Camping'}</h4>
+                        <p><a href=\"${searchUrl}\" target=\"_blank\">Zoek website</a></p>
+                    </div>`;
+                L.popup()
+                    .setLatLng(e.latlng)
+                    .setContent(popupContent)
+                    .openOn(map);
             });
-            map.addLayer(campingClusterGroup);
+
+            // Verwijder oude lagen en voeg nieuwe vector tile laag toe
+            if (map.hasLayer(campingClusterGroup)) {
+                map.removeLayer(campingClusterGroup);
+            }
+            if (campingVectorLayer) {
+                map.removeLayer(campingVectorLayer);
+            }
+            campingVectorLayer = vectorLayer.addTo(map);
+
             hideLoadingOverlay();
-            showNotification(`${geojsonData.features.length} campings geladen`, 'success');
+            showNotification('Campings geladen als vector tiles', 'success');
         })
         .catch(err => {
             hideLoadingOverlay();
             showNotification(err.message, 'error');
         });
 }
-
 
 function toggleVriendenLayer() {
     vriendenVisible = !vriendenVisible;
