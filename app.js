@@ -549,18 +549,6 @@ function toggleCampingLayer() {
 // Declaratie voor vector- en clusterlagen bovenin
 let campingVectorLayer;
 
-// Polyfill voor verwijderde L.DomEvent.fakeStop in recentere Leaflet-versies
-defaultFakeStop();
-function defaultFakeStop() {
-    if (!L.DomEvent.fakeStop) {
-        L.DomEvent.fakeStop = function (e) {
-            // Originele implementatie nabootsen: voorkom verdere event processing
-            L.DomEvent.stopPropagation(e);
-            L.DomEvent.preventDefault(e);
-        };
-    }
-}
-
 // Functie: Campings laden als geoptimaliseerde vector tiles via Leaflet.VectorGrid
 function loadCampingGeoJSON() {
     showLoadingOverlay('Campings laden...');
@@ -577,9 +565,8 @@ function loadCampingGeoJSON() {
                 throw new Error('Ongeldige GeoJSON structuur');
             }
 
-            // Maak VectorGrid layer direct vanuit GeoJSON
+            // Maak VectorGrid layer direct vanuit GeoJSON (Canvas-renderer)
             const vectorLayer = L.vectorGrid.slicer(geojsonData, {
-                rendererFactory: L.svg.tile,
                 vectorTileLayerStyles: {
                     sliced: {
                         fill: true,
@@ -594,16 +581,20 @@ function loadCampingGeoJSON() {
                 getFeatureId: feature => feature.properties.osm_id
             });
 
-            // Bind click-event op de vectorlaag met fallback voor latlng en properties
+            // Klik-handler voor pop-ups
             vectorLayer.on('click', event => {
-                // Bepaal latlng: probeer event.latlng, anders val terug op originele DOM-event
+                // Bepaal latlng: probeer event.latlng, anders containerPoint fallback
                 let latlng = event.latlng;
-                if (!latlng && event.originalEvent) {
-                    latlng = map.mouseEventToLatLng(event.originalEvent);
+                if (!latlng && event.containerPoint) {
+                    latlng = map.containerPointToLatLng(event.containerPoint);
                 }
-                // Haal feature-properties: probeer event.layer.properties, anders event.properties
+                if (!latlng) {
+                    console.warn('Kan latlng niet bepalen voor popup');
+                    return;
+                }
+
+                // Haal feature-properties
                 const props = (event.layer && event.layer.properties) || event.properties || {};
-                
                 // Bouw Google-zoek-URL
                 const zoekQuery = encodeURIComponent((props.name || '') + ' camping');
                 const searchUrl = `https://www.google.com/search?q=${zoekQuery}`;
@@ -620,7 +611,7 @@ function loadCampingGeoJSON() {
                 popup.openOn(map);
             });
 
-            // Vervang oude cluster- of vectorlaag door nieuwe vectorlaag
+            // Verwijder oude cluster- of vectorlaag en voeg nieuwe vectorlaag toe
             if (map.hasLayer(campingClusterGroup)) {
                 map.removeLayer(campingClusterGroup);
             }
