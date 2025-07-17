@@ -549,6 +549,18 @@ function toggleCampingLayer() {
 // Declaratie voor vector- en clusterlagen bovenin
 let campingVectorLayer;
 
+// Polyfill voor verwijderde L.DomEvent.fakeStop in recentere Leaflet-versies
+defaultFakeStop();
+function defaultFakeStop() {
+    if (!L.DomEvent.fakeStop) {
+        L.DomEvent.fakeStop = function (e) {
+            // Originele implementatie nabootsen: voorkom verdere event processing
+            L.DomEvent.stopPropagation(e);
+            L.DomEvent.preventDefault(e);
+        };
+    }
+}
+
 // Functie: Campings laden als geoptimaliseerde vector tiles via Leaflet.VectorGrid zonder aparte geojson-vt call
 function loadCampingGeoJSON() {
     showLoadingOverlay('Campings laden...');
@@ -565,9 +577,9 @@ function loadCampingGeoJSON() {
                 throw new Error('Ongeldige GeoJSON structuur');
             }
 
-            // Gebruik VectorGrid.slicer direct op de geojsonData voor on-the-fly tiling
+            // Gebruik VectorGrid.slicer direct op de geojsonData voor on-the-fly tiling met SVG renderer
             const vectorLayer = L.vectorGrid.slicer(geojsonData, {
-                rendererFactory: L.canvas.tile,
+                rendererFactory: L.svg.tile,  // Gebruik SVG in plaats van canvas om fakeStop-fout te vermijden
                 vectorTileLayerStyles: {
                     // 'sliced' is the default layer name
                     sliced: {
