@@ -564,15 +564,17 @@ function loadCampingGeoJSON() {
                 const coords = feature.geometry.coordinates;
                 const props = feature.properties;
                 
-                const popupContent = `
-                    <div class="camping-popup">
-                        <h4><i class="fas fa-campground"></i> ${props.name || 'Camping'}</h4>
-                        ${props.operator ? `<p><strong>Beheerder:</strong> ${props.operator}</p>` : ''}
-                        ${props.access ? `<p><strong>Toegang:</strong> ${props.access}</p>` : ''}
-                        ${props.house ? `<p><strong>Accommodatie:</strong> ${props.house}</p>` : ''}
-                        <p style="font-size: 10px; color: #666;">OSM ID: ${props.osm_id}</p>
-                    </div>
-                `;
+            const popupContent = `
+                <div class="camping-popup">
+                    <h4><i class="fas fa-campground"></i> ${props.name || 'Camping'}</h4>
+                    ${props.operator ? `<p><strong>Beheerder:</strong> ${props.operator}</p>` : ''}
+                    ${props.access ? `<p><strong>Toegang:</strong> ${props.access}</p>` : ''}
+                    ${props.house ? `<p><strong>Accommodatie:</strong> ${props.house}</p>` : ''}
+                    ${props.name ? `<p><strong>Website:</strong> <a href="https://www.google.com/search?q=${encodeURIComponent(props.name)} camping" target="_blank" rel="noopener noreferrer">Zoek ${props.name} op Google</a></p>` : ''}
+                    <p style="font-size: 10px; color: #666;">OSM ID: ${props.osm_id}</p>
+                </div>
+            `;
+
                 
                 const marker = L.marker([coords[1], coords[0]], {
                     icon: campingIcon
