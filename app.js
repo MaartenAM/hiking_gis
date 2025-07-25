@@ -571,7 +571,6 @@ function loadCampingGeoJSON() {
                     ${props.access ? `<p><strong>Toegang:</strong> ${props.access}</p>` : ''}
                     ${props.house ? `<p><strong>Accommodatie:</strong> ${props.house}</p>` : ''}
                     ${props.name ? `<p><strong>Website:</strong> <a href="https://www.google.com/search?q=${encodeURIComponent(props.name)} camping" target="_blank" rel="noopener noreferrer">Zoek ${props.name} op Google</a></p>` : ''}
-                    <p style="font-size: 10px; color: #666;">OSM ID: ${props.osm_id}</p>
                 </div>
             `;
 
