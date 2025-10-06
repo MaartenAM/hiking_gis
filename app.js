@@ -1,4 +1,12 @@
-// Global variables
+
+// === OV integration disabled: stubs ===
+let ovStopsLayer = L.layerGroup();
+let ovStopsClusterGroup = ovStopsLayer;
+let ovStopsVisible = false;
+function loadOVStops(){ /* disabled */ }
+function toggleOVStops(){ /* disabled */ }
+function showNearbyOVStops(){ /* disabled */ }
+\n// Global variables
 let map;
 let measuring = false;
 let measureMarkers = [];
@@ -1891,3 +1899,78 @@ document.addEventListener('DOMContentLoaded', function() {
 // OV integration removed — provide no-ops to avoid runtime errors
 window.toggleOV = () => {};
 window.loadOVStops = () => {};
+
+
+// ============ ROOTS NATUURPAD (CUSTOM GEOJSON ROUTE) ============
+let rootsRoute = null;
+
+async function addRootsNatuurpad() {
+    if (typeof activeRoutes !== 'undefined' && activeRoutes.some(r => r.value === 'ROOTS')) {
+        if (typeof showNotification === 'function') showNotification('Route "Roots Natuurpad" is al toegevoegd!', 'warning');
+        return;
+    }
+    if (typeof showLoadingOverlay === 'function') showLoadingOverlay('Roots Natuurpad laden...');
+
+    let data = null;
+    try {
+        const res = await fetch('./data/roots_json.geojson');
+        if (res.ok) data = await res.json();
+    } catch(e) {}
+
+    if (typeof hideLoadingOverlay === 'function') hideLoadingOverlay();
+
+    if (!data) {
+        if (typeof showNotification === 'function') showNotification('Kon Roots Natuurpad GeoJSON niet vinden (./data/roots_json.geojson)', 'error');
+        return;
+    }
+
+    function rootsStyle() {
+        return { color: '#22c55e', weight: 6, opacity: 0.95 };
+    }
+
+    rootsRoute = L.geoJSON(data, {
+        style: rootsStyle,
+        onEachFeature: function (feature, layer) {
+            const name = (feature.properties && (feature.properties.naam || feature.properties.name)) || 'Roots Natuurpad';
+            layer.bindPopup(`<strong>${name}</strong>`);
+            layer.on('click', function () {
+                try {
+                    let coords = [];
+                    const latlngs = layer.getLatLngs();
+                    function pushLatLngs(ll) {
+                        if (!ll) return;
+                        if (Array.isArray(ll) && Array.isArray(ll[0])) {
+                            ll.forEach(pushLatLngs);
+                        } else if (Array.isArray(ll)) {
+                            coords.push(ll.map(p => [p.lng, p.lat]));
+                        }
+                    }
+                    pushLatLngs(latlngs);
+
+                    let fauxFeature;
+                    if (coords.length > 1) {
+                        fauxFeature = { type: 'Feature', geometry: { type: 'MultiLineString', coordinates: coords }, properties: { lawnaam: 'Roots Natuurpad' } };
+                    } else {
+                        fauxFeature = { type: 'Feature', geometry: { type: 'LineString', coordinates: coords[0] || [] }, properties: { lawnaam: 'Roots Natuurpad' } };
+                    }
+                    if (typeof showRouteInfoInPanel === 'function') showRouteInfoInPanel(fauxFeature);
+                    if (typeof highlightEtappe === 'function') highlightEtappe(fauxFeature);
+                } catch (e) { console.error('Kon route info niet tonen:', e); }
+            });
+        }
+    }).addTo(map);
+    if (rootsRoute && rootsRoute.bringToFront) rootsRoute.bringToFront();
+
+    const routeData = { id: Date.now(), name: 'Roots Natuurpad', type: 'custom', filter: 'Roots Natuurpad', layerName: 'roots-geojson', value: 'ROOTS', layer: rootsRoute };
+    if (typeof activeRoutes !== 'undefined') { activeRoutes.push(routeData); if (typeof updateActiveRoutesDisplay === 'function') updateActiveRoutesDisplay(); }
+
+    const routeCard = document.querySelector(`[data-route="ROOTS"]`);
+    if (routeCard) {
+        routeCard.classList.add('added', 'route-card-added');
+        const action = routeCard.querySelector('.route-card-action');
+        if (action) action.innerHTML = '<i class="fas fa-check"></i> Toegevoegd';
+        setTimeout(() => routeCard.classList.remove('route-card-added'), 600);
+    }
+    try { map.fitBounds(rootsRoute.getBounds(), { padding: [20, 20] }); } catch(e){}
+    if (typeof showNotification === 'function') showNotification('Route "Roots Natuurpad" toegevoegd', 'success');
+}
