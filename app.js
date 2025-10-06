@@ -1999,6 +1999,7 @@ async function addRootsNatuurpad() {
             });
         }
     }).addTo(map);
+    try { rootsRoute.bringToFront(); } catch (e) {}
 
     // Add to active routes to integrate with UI
     const routeData = {
