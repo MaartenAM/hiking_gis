@@ -98,15 +98,25 @@
                         </div>
                     </div>
 
-                    
-                        
+                    <div class="control-section">
+                        <div class="section-title">
+                            <i class="fas fa-bus"></i>
+                            Openbaar Vervoer
+                        </div>
+                        <div class="layer-grid">
+                            <div class="layer-card" id="ov-layer-card" onclick="toggleOVStopsLayer()">
+                                <i class="fas fa-train"></i>
+                                <div class="layer-name">Stations & Haltes</div>
                             </div>
                             <div class="layer-card" onclick="showOVInfo()">
                                 <i class="fas fa-clock"></i>
                                 <div class="layer-name">Vertrektijden</div>
                             </div>
                         </div>
-                        
+                        <div class="ov-info-text" style="font-size: 12px; color: var(--text-secondary); margin-top: 8px; text-align: center;">
+                            <i class="fas fa-info-circle"></i>
+                            Klik op een wandelroute om nabijgelegen haltes te zien
+                        </div>
                     </div>
 
                     <div class="control-section">
@@ -132,20 +142,22 @@
                             LAW Routes Toevoegen
                         </div>
                         
-                        <div class="route-cards-grid">\n<div class="route-card" onclick="addRootsNatuurpad()" data-route="ROOTS">
-        <div class="route-card-header">
-            <i class="fas fa-leaf"></i>
-            <div class="route-number">Roots</div>
-        </div>
-        <div class="route-card-content">
-            <h4>Roots Natuurpad</h4>
-            <p>Lange natuurroute (GeoJSON)</p>
-        </div>
-        <div class="route-card-action">
-            <i class="fas fa-plus"></i>
-            Toevoegen
-        </div>
-    </div>\n
+                        <div class="route-cards-grid">
+<div class="route-card" onclick="addRootsNatuurpad()" data-route="ROOTS">
+    <div class="route-card-header">
+        <i class="fas fa-leaf"></i>
+        <div class="route-number">Roots</div>
+    </div>
+    <div class="route-card-content">
+        <h4>Roots Natuurpad</h4>
+        <p>Lange natuurroute (GeoJSON)</p>
+    </div>
+    <div class="route-card-action">
+        <i class="fas fa-plus"></i>
+        Toevoegen
+    </div>
+</div>
+
                             <div class="route-card" onclick="addLAWRoute('LAW 10', 'Marskramerpad')" data-route="LAW 10">
                                 <div class="route-card-header">
                                     <i class="fas fa-hiking"></i>
@@ -242,13 +254,20 @@
                         </div>
                     </div>
 
-                    
+                    <div class="control-section">
+                        <div class="section-title">
+                            <i class="fas fa-info-circle"></i>
+                            Openbaar Vervoer Info
+                        </div>
                         <div class="info-instruction">
                             <div class="instruction-icon">
                                 <i class="fas fa-bus"></i>
                             </div>
+                            <h4>OV Integratie</h4>
+                            <p>Klik op een wandelroute om nabijgelegen treinstations en bushaltes te zien. Perfect voor het plannen van reizen met openbaar vervoer naar startpunten van etappes.</p>
                         </div>
-                        
+                        <div id="ovInfoPanel">
+                            <div class="empty-state">Geen OV informatie beschikbaar</div>
                         </div>
                     </div>
                 </div>
@@ -304,13 +323,17 @@
                             <i class="fas fa-route"></i>
                             Route & Vervoer
                         </div>
+                        <button class="button-secondary" onclick="findNearestOVStops()">
                             <i class="fas fa-search-location"></i>
                             Vind dichtstbijzijnde haltes
                         </button>
                         <button class="button-secondary" onclick="planMultiModalRoute()">
                             <i class="fas fa-map-marked-alt"></i>
+                            Plan reis met OV
                         </button>
+                        <button class="button-secondary" onclick="fitToOVStops()">
                             <i class="fas fa-train"></i>
+                            Zoom naar OV haltes
                         </button>
                     </div>
                 </div>
