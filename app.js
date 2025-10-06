@@ -11,11 +11,11 @@ let campingLayer;
 let campingClusterGroup;
 let vriendenLayer;
 let vriendenClusterGroup;
-let ovStopsLayer;
-let ovStopsClusterGroup;
+
+
 let campingVisible = false;
 let vriendenVisible = false;
-let ovStopsVisible = false;
+
 let loadingOverlay = null;
 let isMobile = window.innerWidth <= 768;
 let sidebarOpen = false;
@@ -24,7 +24,10 @@ let sidebarOpen = false;
 const routeDefinitions = {
     law: [
         { value: 'LAW 10', name: 'LAW 10 - Marskramerpad', filter: 'Marskramerpad' },
-        { value: 'LAW 5', name: 'LAW 5 - Trekvogelpad', filter: 'Trekvogelpad' }    ]
+        { value: 'LAW 5', name: 'LAW 5 - Trekvogelpad', filter: 'Trekvogelpad' },
+        { value: 'LAW 4', name: 'LAW 4 - Zuiderzeepad', filter: 'Zuiderzeepad' },
+        { value: 'LAW 3', name: 'LAW 3 - Pelgrimspad deel 1', filter: 'Pelgrimspad' }
+    ]
 };
 
 // Custom WMS Layer class
@@ -143,8 +146,7 @@ function initMap() {
             keyboard: !isMobile
         }).setView([52.1326, 5.2913], 7);
 
-        // Move zoom controls to better position on mobile
-        if (isMobile) {
+                if (isMobile) {
             map.zoomControl.setPosition('bottomright');
         }
 
@@ -274,8 +276,7 @@ function initializeClustering() {
 
 // Setup mobile-specific features
 function setupMobileFeatures() {
-    // Always create overlay for mobile sidebar (might be needed after resize)
-    let overlay = document.querySelector('.sidebar-overlay');
+        
     if (!overlay) {
         overlay = document.createElement('div');
         overlay.className = 'sidebar-overlay';
@@ -348,11 +349,10 @@ function toggleSidebar() {
     console.log('Toggle sidebar called, isMobile:', isMobile, 'sidebarOpen:', sidebarOpen);
     
     const sidebar = document.getElementById('sidebar');
-    let overlay = document.querySelector('.sidebar-overlay');
+    
     const toggle = document.querySelector('.sidebar-toggle');
     
-    // Create overlay if it doesn't exist
-    if (!overlay) {
+        if (!overlay) {
         overlay = document.createElement('div');
         overlay.className = 'sidebar-overlay';
         overlay.addEventListener('click', closeSidebar);
@@ -388,7 +388,7 @@ function toggleSidebar() {
 // Close sidebar
 function closeSidebar() {
     const sidebar = document.getElementById('sidebar');
-    const overlay = document.querySelector('.sidebar-overlay');
+    
     const toggle = document.querySelector('.sidebar-toggle');
     
     if (!sidebar || !toggle) return;
@@ -487,8 +487,7 @@ function setupEventListeners() {
                                 showRouteInfoInPanel(filteredFeatures[0]);
                                 highlightEtappe(filteredFeatures[0]);
                                 
-                                // Show nearby OV stops
-                                if (ovStopsVisible) {
+                                                                if (ovStopsVisible) {
                                     setTimeout(() => {
                                         showNearbyOVStops(e.latlng);
                                     }, 500);
@@ -717,14 +716,7 @@ function loadVriendenGeoJSON() {
 
 // ============ OPENBAAR VERVOER FUNCTIONALITY ============
 
-function toggleOVStopsLayer() {
-    ovStopsVisible = !ovStopsVisible;
-    const card = document.getElementById('ov-layer-card');
-    
-    if (ovStopsVisible) {
-        if (ovStopsClusterGroup.getLayers().length === 0) {
-            loadOVStopsData();
-        } else {
+ else {
             map.addLayer(ovStopsClusterGroup);
             card.classList.add('active');
             showNotification('Openbaar vervoer haltes zichtbaar', 'success');
@@ -736,18 +728,7 @@ function toggleOVStopsLayer() {
     }
 }
 
-async function loadOVStopsData() {
-    showLoadingOverlay('Openbaar vervoer data laden...');
-    
-    try {
-        // First try to load local GeoJSON
-        try {
-            const response = await fetch('./data/ov-stops.geojson');
-            if (response.ok) {
-                const geojsonData = await response.json();
-                processOVStopsGeoJSON(geojsonData);
-                return;
-            }
+async 
         } catch (error) {
             console.log('Lokale OV data niet gevonden, laad NS stations...');
         }
@@ -986,7 +967,6 @@ function extractStopName(content) {
     return 'Onbekende halte';
 }
 
-// OV utility functions
 function showNSSchedule(stationCode) {
     showNotification(`Vertrektijden voor ${stationCode} - Open NS app of website`, 'info');
     window.open(`https://www.ns.nl/reisplanner/#/?vertrek=${stationCode}`, '_blank');
@@ -1027,9 +1007,8 @@ function clearOVHighlight() {
         window.currentNearbyOV = null;
     }
     
-    // Remove OV section from route info panel
-    const panel = document.getElementById('routeInfoPanel');
-    const ovSection = panel.querySelector('.ov-analysis-section');
+        const panel = document.getElementById('routeInfoPanel');
+    
     if (ovSection) {
         ovSection.remove();
     }
@@ -1908,123 +1887,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
-// ============ ROOTS NATUURPAD (CUSTOM GEOJSON ROUTE) ============
-let rootsRoute = null;
 
-async function addRootsNatuurpad() {
-    // Prevent duplicates
-    if (activeRoutes.some(r => r.value === 'ROOTS')) {
-        showNotification('Route "Roots Natuurpad" is al toegevoegd!', 'warning');
-        return;
-    }
-
-    showLoadingOverlay('Roots Natuurpad laden...');
-
-    const sources = ['./roots_json.geojson', './data/roots_json.geojson'];
-    let data = null;
-    for (let i = 0; i < sources.length; i++) {
-        try {
-            const res = await fetch(sources[i]);
-            if (res.ok) {
-                data = await res.json();
-                break;
-            }
-        } catch (e) {
-            // continue
-        }
-    }
-
-    hideLoadingOverlay();
-
-    if (!data) {
-        showNotification('Kon Roots Natuurpad GeoJSON niet vinden (probeer ./roots_json.geojson of ./data/roots_json.geojson)', 'error');
-        return;
-    }
-
-    // Style for the route
-    function rootsStyle() {
-        return {
-            color: '#22c55e',
-            weight: 6,
-            opacity: 0.95
-        };
-    }
-
-    // Build layer
-    rootsRoute = L.geoJSON(data, {
-        style: rootsStyle,
-        onEachFeature: function (feature, layer) {
-            let name = (feature.properties && (feature.properties.naam || feature.properties.name)) || 'Roots Natuurpad';
-            layer.bindPopup(`<strong>${name}</strong>`);
-            layer.on('click', function () {
-                try {
-                    // Convert Leaflet layer latlngs back into a GeoJSON-like structure compatible with our info panel
-                    let coords = [];
-                    const latlngs = layer.getLatLngs();
-                    function pushLatLngs(ll) {
-                        if (!ll) return;
-                        if (Array.isArray(ll) && Array.isArray(ll[0])) {
-                            // possibly MultiLineString-like nested structure
-                            ll.forEach(pushLatLngs);
-                        } else if (Array.isArray(ll)) {
-                            // simple linestring
-                            coords.push(ll.map(p => [p.lng, p.lat]));
-                        }
-                    }
-                    pushLatLngs(latlngs);
-
-                    let fauxFeature;
-                    if (coords.length > 1) {
-                        fauxFeature = {
-                            type: 'Feature',
-                            geometry: { type: 'MultiLineString', coordinates: coords },
-                            properties: { lawnaam: 'Roots Natuurpad' }
-                        };
-                    } else {
-                        fauxFeature = {
-                            type: 'Feature',
-                            geometry: { type: 'LineString', coordinates: coords[0] || [] },
-                            properties: { lawnaam: 'Roots Natuurpad' }
-                        };
-                    }
-
-                    showRouteInfoInPanel(fauxFeature);
-                    highlightEtappe(fauxFeature);
-                } catch (e) {
-                    console.error('Kon route info niet tonen:', e);
-                }
-            });
-        }
-    }).addTo(map);
-    try { rootsRoute.bringToFront(); } catch (e) {}
-
-    // Add to active routes to integrate with UI
-    const routeData = {
-        id: Date.now(),
-        name: 'Roots Natuurpad',
-        type: 'custom',
-        filter: 'Roots Natuurpad',
-        layerName: 'roots-geojson',
-        value: 'ROOTS',
-        layer: rootsRoute
-    };
-    activeRoutes.push(routeData);
-    updateActiveRoutesDisplay();
-
-    // Mark the card as added
-    const routeCard = document.querySelector(`[data-route="ROOTS"]`);
-    if (routeCard) {
-        routeCard.classList.add('added', 'route-card-added');
-        const action = routeCard.querySelector('.route-card-action');
-        if (action) action.innerHTML = '<i class="fas fa-check"></i> Toegevoegd';
-        setTimeout(() => routeCard.classList.remove('route-card-added'), 600);
-    }
-
-    try {
-        map.fitBounds(rootsRoute.getBounds(), { padding: [20, 20] });
-    } catch (e) {
-        // ignore
-    }
-
-    showNotification('Route "Roots Natuurpad" toegevoegd', 'success');
-}
+// OV integration removed — provide no-ops to avoid runtime errors
+window.toggleOV = () => {};
+window.loadOVStops = () => {};
