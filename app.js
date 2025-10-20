@@ -57,16 +57,13 @@ L.TileLayer.PDOKFilter = L.TileLayer.WMS.extend({
             'BBOX': bbox
         };
         
-        if (this.options.cqlFilter) {
-            params['CQL_FILTER'] = this.options.cqlFilter;
-        }
         if (this.options.xmlFilter) {
             params['FILTER'] = this.options.xmlFilter;
         }
         
-        var queryString = Object.keys(params).map(function(key) { 
-            return encodeURIComponent(key) + '=' + encodeURIComponent(params[key]);
-        }).join('&');
+        var queryString = Object.keys(params).map(key => 
+            encodeURIComponent(key) + '=' + encodeURIComponent(params[key])
+        ).join('&');
         
         return url + queryString;
     }
@@ -485,15 +482,11 @@ function setupEventListeners() {
                     .then(response => response.json())
                     .then(data => {
                         if (data.features && data.features.length > 0) {
-                            const filterRaw = route.filter;
-const filterBase = String(filterRaw).replace(/\s+\d+$/, '');
-const filteredFeatures = data.features.filter(feature => {
-    const ln = (feature.properties.lawnaam || '').toString().toLowerCase();
-    const fFull = filterRaw.toString().toLowerCase();
-    const fBase = filterBase.toLowerCase();
-    return ln === fFull || ln === fBase;
-});
-if (filteredFeatures.length > 0) {
+                            const filteredFeatures = data.features.filter(feature => 
+                                feature.properties.lawnaam === route.filter
+                            );
+                            
+                            if (filteredFeatures.length > 0) {
                                 showRouteInfoInPanel(filteredFeatures[0]);
                                 highlightEtappe(filteredFeatures[0]);
                                 
@@ -1134,55 +1127,7 @@ function addLAWRoute(routeValue, routeFilter) {
 }
 
 function addRouteToMap(routeData) {
-    // Base name: strip trailing ' <digits>' once (e.g., "Pieterpad 1" -> "Pieterpad")
-    const baseName = String(routeData.filter).replace(/\s+\d+$/, '');
-
-    // Escape XML special chars for Literal
-    const makeLiteral = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-
-    let xmlFilter;
-    if (baseName !== routeData.filter) {
-        // Match either the full value (with number) OR the base name (without number)
-        xmlFilter = [
-            '<Filter xmlns="http://www.opengis.net/ogc">',
-            '  <Or>',
-            '    <PropertyIsEqualTo>',
-            '      <PropertyName>lawnaam</PropertyName>',
-            `      <Literal>${makeLiteral(routeData.filter)}</Literal>`,
-            '    </PropertyIsEqualTo>',
-            '    <PropertyIsEqualTo>',
-            '      <PropertyName>lawnaam</PropertyName>',
-            `      <Literal>${makeLiteral(baseName)}</Literal>`,
-            '    </PropertyIsEqualTo>',
-            '  </Or>',
-            '</Filter>'
-        ].join('');
-    } else {
-        // Simple exact match
-        xmlFilter = [
-            '<Filter xmlns="http://www.opengis.net/ogc">',
-            '  <PropertyIsEqualTo>',
-            '    <PropertyName>lawnaam</PropertyName>',
-            `    <Literal>${makeLiteral(routeData.filter)}</Literal>`,
-            '  </PropertyIsEqualTo>',
-            '</Filter>'
-        ].join('');
-    }
-
-    const wmsLayer = L.tileLayer.pdokFilter('https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0', {
-        layers: routeData.layerName,
-        xmlFilter: xmlFilter,
-        attribution: '© PDOK Wandelnet',
-        opacity: 0.8,
-        zIndex: 10 + activeRoutes.length,
-        tileSize: 256
-    });
-
-    wmsLayer.addTo(map);
-    routeData.layer = wmsLayer;
-
-    showNotification(`Route "${routeData.name}" toegevoegd`, 'success');
-}</Literal></PropertyIsEqualTo></Filter>`;
+    const xmlFilter = `<Filter><PropertyIsEqualTo><PropertyName>lawnaam</PropertyName><Literal>${routeData.filter}</Literal></PropertyIsEqualTo></Filter>`;
     
     const wmsLayer = L.tileLayer.pdokFilter('https://service.pdok.nl/wandelnet/landelijke-wandelroutes/wms/v1_0', {
         layers: routeData.layerName,
