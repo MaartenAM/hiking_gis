@@ -25,7 +25,7 @@ const routeDefinitions = {
     law: [
         { value: 'LAW 10', name: 'LAW 10 - Marskramerpad', filter: 'Marskramerpad' },
         { value: 'LAW 5', name: 'LAW 5 - Trekvogelpad', filter: 'Trekvogelpad' },
-        { value: 'LAW 4', name: 'LAW 4 - Zuiderzeepad', filter: 'Zuiderzeepad' },
+        { value: 'LAW 9', name: 'LAW 9 - Pieterpad', filter: 'Pieterpad' },
         { value: 'LAW 3', name: 'LAW 3 - Pelgrimspad deel 1', filter: 'Pelgrimspad' }
     ]
 };
